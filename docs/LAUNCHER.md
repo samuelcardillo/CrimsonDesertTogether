@@ -56,7 +56,10 @@ iniciado sesión y el launcher dice "Could not check for updates (the server ans
 GitHub Actions (`.github/workflows/release.yml`) que compilaba y publicaba en cada push a `main`. No llegó a
 ejecutar un solo paso ("The job was not started because your account is locked due to a billing issue") y se quitó
 ese mismo día por decisión del dueño: las releases se hacen siempre desde este PC. La primera,
-`cdmp-coop-20261114-3663-b1` (commit `75bc963`), ya se publicó así.
+`cdmp-coop-20261114-3663-b1` (commit `75bc963`), ya se publicó así; se cerraba al arrancar de anfitrión por un
+objeto obsoleto de `build\` (`docs/research/objetos-obsoletos-msbuild.md`) y la sustituyó esa tarde
+`cdmp-coop-20261114-3663-b2` (commit `a4868ef`), la primera hecha con `publish_release.ps1 -Publish` de principio a
+fin (compilación limpia, 105 pruebas, kit, `gh release create`: 7 min).
 
 La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, igual en
 cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.

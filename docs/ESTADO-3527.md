@@ -22,12 +22,25 @@ público desde ese mismo día, no es un fork; esta carpeta es su copia de trabaj
 anterior; la etiqueta `kit-3663-v23` marca el código del último kit verificado en el juego y lo que hay después en
 `main` es trabajo sin verificar.
 
+**14-nov-2026, 17:06: publicada la release `cdmp-coop-20261114-3663-b2`** (commit `a4868ef`, `cdmp.asi`
+`ccd9457b`, compilación limpia, 105/105 pruebas), a petición del usuario («Push everything, release the build so the
+launcher pick it up»). Es lo que baja el launcher desde entonces y sustituye a la `b1`, que se cierra al arrancar.
+Lleva, con los ini del kit:
+- JUGADO esa tarde (tres sesiones de dos copias y una del propio usuario, `ERR` 0 y ningún volcado): las velas
+  (`gimmick_relay` en el anfitrión, `gimmick_take` + `gimmick_take_hold_ms=3000` en el invitado), los faroles
+  (`create_retry=1`, `create_retry_lost=8`), la tripulación del barco en su sitio (`EventKind::Riders`: 0,01–0,02 m de
+  media a 7,8 m/s; antes, 10–19 m) y los barcos grandes de la IA seguidos por el invitado;
+- SIN JUGAR: las barcas y demás vehículos de la IA (antes solo los de 6 piezas o más) y las poses de los vehículos
+  de mod a mod diez veces por segundo (`EventKind::Vehicles`), lo que respondía a «not all ships» y «very laggy» del
+  usuario. Antes de publicar solo se comprobó que una compilación limpia de ese commit arranca las dos copias hasta
+  el título con los ini del kit (el `.asi` publicado es otra compilación limpia del mismo commit).
+Detalle: `docs/research/port-3663.md`, «Barco, tarde del 14-nov».
+
 **14-nov-2026 (tarde): la release `cdmp-coop-20261114-3663-b1` SE CIERRA AL ARRANCAR de anfitrión** (`0xC0000005`
 en `session2::install`, antes del título; comprobado con su `cdmp.asi` exacto). No es un fallo del código: `build\`
 tenía 32 objetos del mod que MSBuild ya no recompilaba y `session2.obj` leía `Config` con la disposición del día
 anterior. `scripts/build.ps1` lo arregla solo desde esa tarde y una release se compila siempre limpia
-(`docs/research/objetos-obsoletos-msbuild.md`). Hace falta publicar una release nueva; hasta entonces, para jugar
-vale el kit v23 (`dist\cdmp-coop-20261114-3663-v23.zip`).
+(`docs/research/objetos-obsoletos-msbuild.md`). Sustituida por la `b2` esa misma tarde (arriba).
 
 **14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; no está en el kit v23, pero
 **sí en la release `cdmp-coop-20261114-3663-b1` que baja el launcher**, compilada de `main` esa tarde: con sus ini las
