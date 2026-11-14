@@ -166,11 +166,10 @@ there is one, the "Mod" line says "Update available" and the Update button next 
 keeps what it downloads, so cdmp_launcher.exe also works on its own, without the rest of this zip. If the line says
 "Could not check for updates", it carries on with the newest version already on your PC.
 If the mod is for another version of the game, the launcher says so instead of starting a game with the mod off.
-Checked so far: finding the game, and updating, installing, writing the settings and removing on a COPY of the game
-folder. Not checked yet: starting the real game from it, and an update that really comes from GitHub (the same steps
-were checked with the update in a folder). If it does anything odd, install by hand as below and tell us. Windows may
-warn that cdmp_launcher.exe comes from an unknown publisher (it is not signed): More info > Run anyway. The cdmp.ini
-you had before is kept as cdmp.ini.before-launcher.
+Checked so far: finding the game, and updating from GitHub, installing, writing the settings and removing on a COPY
+of the game folder. Not checked yet: starting the real game from it. If it does anything odd, install by hand as
+below and tell us. Windows may warn that cdmp_launcher.exe comes from an unknown publisher (it is not signed):
+More info > Run anyway. The cdmp.ini you had before is kept as cdmp.ini.before-launcher.
 
 BY HAND, WITHOUT THE LAUNCHER: in Steam, right-click the game > Manage > Browse local files > bin64 folder.
 Copy these there:

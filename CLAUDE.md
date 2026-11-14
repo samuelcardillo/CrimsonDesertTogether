@@ -46,7 +46,9 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
 - Los jugadores se actualizan con el botón Update del launcher, que baja la última release de GitHub. La compila y
   publica `.github/workflows/release.yml` en cada push a `main` que toque el kit (`scripts\ci_release.ps1`; sin
   `-Publish` solo hace el kit, para probarlo en local). Para qué build del juego es el kit lo dice
-  `kit/coop/game-builds.txt`: cámbialo en el mismo commit que un port.
+  `kit/coop/game-builds.txt`: cámbialo en el mismo commit que un port. Si GitHub no puede compilar (el 14-nov la
+  cuenta estaba bloqueada por facturación), se publica desde el PC con el commit ya subido: `.\scripts\build.ps1` y
+  `.\scripts\ci_release.ps1 -Run <n> -Publish` (`docs/LAUNCHER.md`). Publicar una release pide permiso, como un push.
 - Prueba completa sin juego: arranca `cdmp_peer.exe` y luego `cdmp_host.exe <ruta\cdmp.asi> <segundos>`.
   `LoadLibrary` falla con rutas largas (error 206), así que usa `build\e2e\`.
 - Prueba en el juego: arranca `cdmp_peer`, lanza `steam://rungameid/3321460` y lee `bin64\cdmp.log`.
