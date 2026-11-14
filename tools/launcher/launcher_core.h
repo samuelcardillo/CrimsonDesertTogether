@@ -63,21 +63,32 @@ struct Source {
 };
 
 struct Catalog {
-    std::vector<Source> sources;     // in order of preference: the update address, the kit folder, earlier copies
+    // In order of preference: what the update address lists (its order: newest first), then what is on this PC,
+    // newest first (the kit folder and the earlier copies).
+    std::vector<Source> sources;
     std::vector<std::string> notes;  // what could not be read, for the player
-    std::string update_address;      // the one in use; empty = none set
+    std::string update_address;      // the one in use; empty = no update check
     bool update_ok = false;          // the update address answered with a list
 };
 
 // The update address in the kit's own cdmp_launcher.ini ([update] address=), for players who set none.
 std::string kit_update_address(const Paths& paths);
-Catalog load_catalog(const Paths& paths, const Settings& settings, std::stop_token stop);
+// Where newer packages are looked for: the player's own address (settings), else the kit's, else `built_in` (the
+// project's releases: main.cpp passes it; the tests pass none, so they never use the network). "off" in the
+// settings or in the kit means no update check, and so does an empty result.
+std::string update_address(const Paths& paths, const Settings& settings, std::string_view built_in = {});
+Catalog load_catalog(const Paths& paths, const std::string& update_address, std::stop_token stop);
 
 struct Choice {
     const Source* source = nullptr;
     bool stated = false;  // the package names this game build; false = a kit folder that does not say
 };
+// The package to play with on this game build: the first in the catalog's order that names it. When that one comes
+// from the update address and the kit folder holds the very same package, the kit's is returned (no download).
 Choice choose(const Catalog& catalog, uint32_t game_pe);
+// The package's files are on this PC already: it is the kit folder's or an earlier copy, or one of those is the
+// same package. False = it has to be downloaded first.
+bool on_this_pc(const Catalog& catalog, const Source& source);
 
 // ---- downloads (https only)
 struct Download {
@@ -87,6 +98,12 @@ struct Download {
 };
 Download http_get(const std::string& url, size_t max_bytes, std::stop_token stop,
                   const std::function<void(size_t done, size_t total)>& progress = {});
+
+// ---- what the Update button does
+// Brings the package's files into the launcher's own folder, downloading or copying the ones it does not have and
+// checking each against its SHA-256. The game folder is not touched, so it works while the game runs.
+bool fetch_package(const Paths& paths, const Source& source, const std::function<void(const std::string&)>& status,
+                   std::stop_token stop, std::string* error);
 
 // ---- what the Play button does before the game starts
 struct ReadyRequest {

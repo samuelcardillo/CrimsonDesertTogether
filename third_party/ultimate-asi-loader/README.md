@@ -11,3 +11,7 @@ redistributed in this repository. To install it:
    (this path is ignored by git).
 3. `scripts/deploy.ps1` installs it as `bin64\winmm.dll`, because CrimsonDesert.exe
    imports WINMM.dll. `scripts/package_kit.ps1` and `scripts/package_coop.ps1` copy it too.
+
+`scripts/fetch_loader.ps1` does steps 1 and 2 (it checks the SHA-256 of the zip and of the dll); the GitHub
+build runs it. The kits and the releases made from them do carry the binary, as `winmm.dll`, together with its
+license (`LICENSE.txt` here, `winmm.dll.LICENSE.txt` in a kit).

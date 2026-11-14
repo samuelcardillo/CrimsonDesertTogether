@@ -137,8 +137,10 @@ KNOWN PROBLEMS
 1. REQUIREMENTS (BOTH PLAYERS)
 ------------------------------
 - Crimson Desert 1.0.0.3663 (right-click bin64\CrimsonDesert.exe > Properties > Details: File version).
-  With another version the mod turns itself off, and if Steam updates the game you will need a new zip.
-- Each player has their own Steam account and copy of the game. You must be Steam friends, and BOTH USE THE SAME ZIP.
+  With another version the mod turns itself off, and if Steam updates the game you will need a new version of the
+  mod (the launcher's Update button gets it once there is one).
+- Each player has their own Steam account and copy of the game. You must be Steam friends, and BOTH USE THE SAME
+  VERSION OF THE MOD: the same zip, or both press Update in the launcher before playing.
 - The guest needs a save of their own: they join with the most recent one and its character. Joining with no save at
   all has not been tested.
 - Two players only: one host and one guest.
@@ -158,11 +160,17 @@ press the big button: it copies the mod into the game folder, writes your settin
     Host a game     You are the HOST. You can also say which friend may join.
     Single-player   Takes the mod out of the game folder and starts the game as Steam installed it. The mod comes
                     back when you choose Join or Host again.
-If the kit is for another version of the game, the launcher says so instead of starting a game with the mod off.
-Checked so far: finding the game, and installing, writing the settings and removing on a COPY of the game folder.
-Not checked yet: starting the real game from it, and getting an update over the internet. If it does anything odd,
-install by hand as below and tell us. Windows may warn that cdmp_launcher.exe comes from an unknown publisher (it
-is not signed): More info > Run anyway. The cdmp.ini you had before is kept as cdmp.ini.before-launcher.
+UPDATES: when it starts, the launcher asks the mod's GitHub releases for the newest version made for your game. If
+there is one, the "Mod" line says "Update available" and the Update button next to it downloads and installs it
+(every file is checked before it is used); the big button does the same before it starts the game. The launcher
+keeps what it downloads, so cdmp_launcher.exe also works on its own, without the rest of this zip. If the line says
+"Could not check for updates", it carries on with the newest version already on your PC.
+If the mod is for another version of the game, the launcher says so instead of starting a game with the mod off.
+Checked so far: finding the game, and updating, installing, writing the settings and removing on a COPY of the game
+folder. Not checked yet: starting the real game from it, and an update that really comes from GitHub (the same steps
+were checked with the update in a folder). If it does anything odd, install by hand as below and tell us. Windows may
+warn that cdmp_launcher.exe comes from an unknown publisher (it is not signed): More info > Run anyway. The cdmp.ini
+you had before is kept as cdmp.ini.before-launcher.
 
 BY HAND, WITHOUT THE LAUNCHER: in Steam, right-click the game > Manage > Browse local files > bin64 folder.
 Copy these there:

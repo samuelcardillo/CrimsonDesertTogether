@@ -129,8 +129,8 @@ fs::path cache_dir(const Paths& paths, const Package& package) {
 
 // Every file of the package in the launcher's own folder, each checked against its SHA-256. Files already there
 // with the right hash are not fetched again.
-bool ensure_cached(const Paths& paths, const Source& source, const ReadyRequest& request, std::stop_token stop,
-                   std::string& error) {
+bool ensure_cached(const Paths& paths, const Source& source, const std::function<void(const std::string&)>& status,
+                   std::stop_token stop, std::string& error) {
     const fs::path dir = cache_dir(paths, source.package);
     std::error_code ec;
     fs::create_directories(dir, ec);
@@ -153,9 +153,9 @@ bool ensure_cached(const Paths& paths, const Source& source, const ReadyRequest&
         std::vector<uint8_t> data;
         if (is_https(from)) {
             Download d = http_get(from, kMaxFileBytes, stop, [&](size_t done, size_t total) {
-                if (!request.status) return;
-                request.status("Downloading " + file.name + " (" + megabytes(done) +
-                               (total ? " of " + megabytes(total) : std::string()) + " MB)...");
+                if (!status) return;
+                status("Downloading " + file.name + " (" + megabytes(done) +
+                       (total ? " of " + megabytes(total) : std::string()) + " MB)...");
             });
             if (!d.ok) {
                 error = "Could not download " + file.name + " (" + d.error + ").";
@@ -204,6 +204,16 @@ bool install_file(const fs::path& cache, const fs::path& bin64, const PackageFil
         return false;
     }
     return true;
+}
+
+// The same release of the mod: the same id and the same four files.
+bool same_package(const Package& a, const Package& b) {
+    if (a.id != b.id) return false;
+    return std::all_of(std::begin(kPackageFiles), std::end(kPackageFiles), [&](std::string_view name) {
+        const PackageFile* fa = a.file(name);
+        const PackageFile* fb = b.file(name);
+        return fa && fb && fa->sha256 == fb->sha256;
+    });
 }
 
 bool remove_file(const fs::path& p, std::string& error) {
@@ -435,9 +445,16 @@ std::string kit_update_address(const Paths& paths) {
     return text ? clean_label(ini_get(*text, "update", "address").value_or(""), 1024) : std::string();
 }
 
-Catalog load_catalog(const Paths& paths, const Settings& settings, std::stop_token stop) {
+std::string update_address(const Paths& paths, const Settings& settings, std::string_view built_in) {
+    std::string address = settings.update_address;
+    if (address.empty()) address = kit_update_address(paths);
+    if (address.empty()) address = std::string(built_in);
+    return iequals(address, "off") ? std::string() : address;
+}
+
+Catalog load_catalog(const Paths& paths, const std::string& update_address, std::stop_token stop) {
     Catalog catalog;
-    catalog.update_address = settings.update_address.empty() ? kit_update_address(paths) : settings.update_address;
+    catalog.update_address = update_address;
     if (!catalog.update_address.empty()) {
         const std::string list = list_address(catalog.update_address);
         ListText text = read_list(list, stop);
@@ -454,13 +471,27 @@ Catalog load_catalog(const Paths& paths, const Settings& settings, std::stop_tok
         }
     }
 
+    // What is on this PC, newest first by the time its list was written: the kit folder the launcher was started
+    // from, and the packages copied earlier (which keep the launcher working without the kit folder). Newest first
+    // so that a kit unzipped today is used over an older copy, and so that an update fetched yesterday is not undone
+    // by the older kit folder on a day the update address does not answer.
+    struct Local {
+        fs::file_time_type time;
+        Source source;
+    };
+    std::vector<Local> local;
+    auto written = [](const fs::path& p) {
+        std::error_code ec;
+        const fs::file_time_type t = fs::last_write_time(p, ec);
+        return ec ? fs::file_time_type::min() : t;
+    };
     if (!paths.bundle.empty()) {
         const fs::path list = paths.bundle / L"package.txt";
         if (const auto text = read_text(list, kMaxListBytes)) {
             PackageList parsed = parse_packages(*text);
             for (const std::string& p : parsed.problems) catalog.notes.push_back("This kit's package.txt: " + p + ".");
             for (Package& p : parsed.packages) {
-                catalog.sources.push_back({Source::Kind::Kit, std::move(p), path_text(list)});
+                local.push_back({written(list), {Source::Kind::Kit, std::move(p), path_text(list)}});
             }
         } else {
             // A kit folder from before the launcher: the four files, with no word on which game build they are for.
@@ -471,17 +502,12 @@ Catalog load_catalog(const Paths& paths, const Settings& settings, std::stop_tok
             }
             if (p.complete()) {
                 p.id = "kit-" + p.file(kFileAsi)->sha256.substr(0, 12);
-                catalog.sources.push_back({Source::Kind::Kit, std::move(p), path_text(list)});
+                local.push_back({written(paths.bundle / widen(kFileAsi)),
+                                 {Source::Kind::Kit, std::move(p), path_text(list)}});
             }
         }
     }
-
-    // Packages copied earlier, newest first: they keep the launcher working without the kit folder.
-    struct Cached {
-        fs::file_time_type time;
-        Source source;
-    };
-    std::vector<Cached> cached;
+    const size_t kits = local.size();
     std::error_code ec;
     for (fs::directory_iterator it(paths.data / L"packages", ec), end; !ec && it != end; it.increment(ec)) {
         const fs::path list = it->path() / L"package.txt";
@@ -489,23 +515,47 @@ Catalog load_catalog(const Paths& paths, const Settings& settings, std::stop_tok
         if (!text) continue;
         PackageList parsed = parse_packages(*text);
         if (parsed.packages.size() != 1 || widen(parsed.packages[0].id) != it->path().filename().wstring()) continue;
-        std::error_code time_ec;
-        cached.push_back({fs::last_write_time(list, time_ec),
-                          {Source::Kind::Cache, std::move(parsed.packages[0]), path_text(list)}});
+        // The kit folder's own package is taken from the kit, which can also mend a damaged copy.
+        const bool in_kit = std::any_of(local.begin(), local.begin() + static_cast<std::ptrdiff_t>(kits),
+                                        [&](const Local& k) { return k.source.package.id == parsed.packages[0].id; });
+        if (in_kit) continue;
+        local.push_back({written(list), {Source::Kind::Cache, std::move(parsed.packages[0]), path_text(list)}});
     }
-    std::stable_sort(cached.begin(), cached.end(), [](const Cached& a, const Cached& b) { return a.time > b.time; });
-    for (Cached& c : cached) catalog.sources.push_back(std::move(c.source));
+    std::stable_sort(local.begin(), local.end(), [](const Local& a, const Local& b) { return a.time > b.time; });
+    for (Local& l : local) catalog.sources.push_back(std::move(l.source));
     return catalog;
 }
 
 Choice choose(const Catalog& catalog, uint32_t game_pe) {
     for (const Source& s : catalog.sources) {
-        if (s.package.supports(game_pe)) return {&s, true};
+        if (!s.package.supports(game_pe)) continue;
+        if (s.kind == Source::Kind::Update) {
+            for (const Source& k : catalog.sources) {
+                if (k.kind == Source::Kind::Kit && same_package(k.package, s.package)) return {&k, true};
+            }
+        }
+        return {&s, true};
     }
     for (const Source& s : catalog.sources) {
         if (s.package.games.empty()) return {&s, false};
     }
     return {};
+}
+
+bool on_this_pc(const Catalog& catalog, const Source& source) {
+    if (source.kind != Source::Kind::Update) return true;
+    return std::any_of(catalog.sources.begin(), catalog.sources.end(), [&](const Source& s) {
+        return s.kind != Source::Kind::Update && same_package(s.package, source.package);
+    });
+}
+
+bool fetch_package(const Paths& paths, const Source& source, const std::function<void(const std::string&)>& status,
+                   std::stop_token stop, std::string* error) {
+    if (status) status("Getting the mod's files...");
+    std::string why;
+    const bool ok = ensure_cached(paths, source, status, stop, why);
+    if (!ok && error) *error = std::move(why);
+    return ok;
 }
 
 // ------------------------------------------------------------------ downloads
@@ -604,7 +654,7 @@ ReadyResult make_ready(const Paths& paths, const ReadyRequest& request, std::sto
     std::string error;
     if (mod_on) {
         status("Getting the mod's files...");
-        if (!ensure_cached(paths, *request.source, request, stop, error)) return fail(error);
+        if (!ensure_cached(paths, *request.source, request.status, stop, error)) return fail(error);
     }
 
     status("Checking the game folder...");

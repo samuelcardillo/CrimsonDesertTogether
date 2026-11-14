@@ -2,8 +2,11 @@
 // This file is the window only; the work is in launcher_core.cpp and the rules in launcher_logic.h
 // (docs/LAUNCHER.md). Everything a player reads here is in English.
 //
-//   cdmp_launcher.exe                                    normal use, from the kit folder
+//   cdmp_launcher.exe                                    normal use: on its own, or from the kit folder
 //   cdmp_launcher.exe --game-dir <bin64> --data-dir <dir> --bundle <kit folder> --no-launch     for testing
+//   cdmp_launcher.exe --offline                          no update check: only the kit folder and earlier copies
+//   cdmp_launcher.exe ... --press update|play            presses that button once the first look at the PC is done,
+//                                                        so a test needs no mouse (with --no-launch for "play")
 
 #include <windows.h>
 
@@ -22,6 +25,7 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "imgui.h"
@@ -38,6 +42,13 @@ using namespace cdmp::launcher;
 
 constexpr int kWidth = 780, kHeight = 730;  // of the window's inside, before the screen's scale
 constexpr wchar_t kWindowClass[] = L"cdmp_launcher";
+
+// Where the newest build of the mod is looked for when neither the player nor the kit names a place: the releases
+// that the repository's GitHub build publishes (CMakeLists.txt, CDMP_UPDATE_ADDRESS).
+#ifndef CDMP_UPDATE_ADDRESS
+#define CDMP_UPDATE_ADDRESS ""
+#endif
+constexpr char kBuiltInUpdateAddress[] = CDMP_UPDATE_ADDRESS;
 
 const ImVec4 kAccent(0.80f, 0.22f, 0.20f, 1.0f);
 const ImVec4 kAccentHover(0.90f, 0.30f, 0.27f, 1.0f);
@@ -125,6 +136,7 @@ struct Snapshot {
     Catalog catalog;
     int chosen = -1;  // the package to play with: an index in catalog.sources
     bool stated = false;
+    bool have = false;  // its files are on this PC already (nothing to download)
 
     const Source* source() const { return chosen >= 0 ? &catalog.sources[static_cast<size_t>(chosen)] : nullptr; }
 };
@@ -134,6 +146,8 @@ struct App {
     float scale = 1.0f;
     ImFont* bold = nullptr;
     bool no_launch = false;
+    bool offline = false;      // --offline: the update address is not asked
+    std::wstring press;        // --press: the button to press once, for tests ("update" or "play")
     fs::path forced_game_dir;  // --game-dir: not saved
 
     Paths paths;
@@ -186,6 +200,7 @@ void refresh(App& app, bool reload) {
     const Paths paths = app.paths;
     const Settings settings = app.settings;
     const fs::path forced = app.forced_game_dir;
+    const bool offline = app.offline;
     const std::shared_ptr<const Snapshot> old = reload ? nullptr : app.snap;
     start(app, [=](std::stop_token stop, const Status& status) -> std::function<void(App&)> {
         auto snap = std::make_shared<Snapshot>();
@@ -204,13 +219,15 @@ void refresh(App& app, bool reload) {
             snap->game = read_game(bin64);
             Paths look = paths;
             look.bin64 = bin64;
-            status("Looking for the mod's files...");
-            snap->catalog = load_catalog(look, settings, stop);
+            const std::string address = offline ? std::string() : update_address(look, settings, kBuiltInUpdateAddress);
+            status(address.empty() ? "Looking for the mod's files..." : "Checking for updates...");
+            snap->catalog = load_catalog(look, address, stop);
             if (snap->game.found) {
                 const Choice choice = choose(snap->catalog, snap->game.pe.timestamp);
                 if (choice.source) {
                     snap->chosen = static_cast<int>(choice.source - snap->catalog.sources.data());
                     snap->stated = choice.stated;
+                    snap->have = on_this_pc(snap->catalog, *choice.source);
                 }
             }
         }
@@ -224,10 +241,9 @@ void refresh(App& app, bool reload) {
 
 void save(App& app) { save_settings(app.paths, app.settings); }
 
-// The Play button: make the game folder ready for the chosen way of playing, then start the game through Steam.
-void play(App& app) {
-    const std::shared_ptr<const Snapshot> snap = app.snap;
-    if (!snap) return;
+// What both buttons start from: the messages of the last action go, the name as typed is kept, and the way of
+// playing chosen in the window becomes a request (without its package and status, which the worker adds).
+ReadyRequest begin_action(App& app) {
     app.error.clear();
     app.info.clear();
     app.notes.clear();
@@ -240,6 +256,56 @@ void play(App& app) {
     base.player_name = app.settings.player_name;
     base.peer = base.mode == Mode::Join ? app.settings.join_host : base.mode == Mode::Host ? app.settings.host_accept : 0;
     base.recorded_loader = app.settings.installed_loader_sha256;
+    return base;
+}
+
+// The Update button: get the newest package's files and, when the way of playing chosen uses the mod, put them in
+// the game folder now. It never starts the game. With the game running the files are only downloaded: Play
+// installs them next time.
+void update(App& app) {
+    const std::shared_ptr<const Snapshot> snap = app.snap;
+    if (!snap || !snap->source()) return;
+    const ReadyRequest base = begin_action(app);
+    const Paths paths = app.paths;
+    start(app, [=](std::stop_token stop, const Status& status) -> std::function<void(App&)> {
+        const Source& source = *snap->source();
+        std::string error;
+        const bool fetched = fetch_package(paths, source, status, stop, &error);
+        const bool install = fetched && base.mode != Mode::Single;
+        const bool running = install && game_running();
+        ReadyResult result;
+        if (install && !running) {
+            ReadyRequest request = base;
+            request.source = &source;
+            request.status = status;
+            result = make_ready(paths, request, stop);
+        }
+        return [=](App& a) {
+            const std::string& id = snap->source()->package.id;
+            if (!fetched) {
+                a.error = error;
+            } else if (!install) {
+                a.info = "Downloaded " + id + ". It goes into the game folder when you choose Join or Host.";
+            } else if (running) {
+                a.info = "Downloaded " + id + ". Crimson Desert is running, so it is installed the next time you play.";
+            } else if (!result.ok) {
+                a.error = result.error;
+            } else {
+                a.notes = result.notes;
+                a.settings.installed_loader_sha256 = result.recorded_loader;
+                save(a);
+                a.info = "The mod is up to date: " + id + ".";
+            }
+            refresh(a, true);
+        };
+    });
+}
+
+// The Play button: make the game folder ready for the chosen way of playing, then start the game through Steam.
+void play(App& app) {
+    const std::shared_ptr<const Snapshot> snap = app.snap;
+    if (!snap) return;
+    const ReadyRequest base = begin_action(app);
     const Paths paths = app.paths;
     const bool no_launch = app.no_launch;
     start(app, [=](std::stop_token stop, const Status& status) -> std::function<void(App&)> {
@@ -268,7 +334,7 @@ void play(App& app) {
                     a.error = launch_error;
                 }
             }
-            refresh(a, false);
+            refresh(a, true);  // the whole look again: what was downloaded for this is now on this PC
         };
     });
 }
@@ -437,6 +503,9 @@ struct ModLine {
     const ImVec4* color = nullptr;
     std::string detail;  // a second line, may be empty
     bool playable = false;  // Host and Join can go ahead
+    bool update = false;    // the Update button has something to do
+    const char* button = "Update";  // "Install" when the update address did not answer: newer is not known
+    bool replaces = false;  // playing with the mod replaces another version that is in the game folder
 };
 
 std::string game_version(const GameInfo& game) {
@@ -446,7 +515,7 @@ std::string game_version(const GameInfo& game) {
     return buf;
 }
 
-ModLine mod_line(const Snapshot& snap) {
+ModLine mod_line(const Snapshot& snap, Mode mode) {
     ModLine line;
     if (!snap.game.found) {
         line.text = "-";
@@ -455,17 +524,20 @@ ModLine mod_line(const Snapshot& snap) {
     const Source* source = snap.source();
     if (!source) {
         line.color = &kWarn;
-        if (snap.catalog.sources.empty()) {
-            line.text = "The mod's files were not found.";
-            line.detail = "Unzip the whole kit into one folder and start cdmp_launcher.exe from there.";
-        } else {
+        if (!snap.catalog.sources.empty()) {
             std::string made_for;
             for (const GameBuild& g : snap.catalog.sources.front().package.games) {
                 made_for += (made_for.empty() ? "" : ", ") + g.version;
             }
             line.text = "No mod for game version " + game_version(snap.game) + " yet.";
-            line.detail = "The mod here is for " + made_for + ". Steam has probably updated the game: you need a "
-                          "new kit. Until then you can play single-player.";
+            line.detail = "The newest mod is for " + made_for + ". Steam has probably updated the game, and the mod "
+                          "has to be updated for it first. Until then you can play single-player.";
+        } else if (!snap.catalog.update_address.empty() && !snap.catalog.update_ok) {
+            line.text = "The mod could not be downloaded.";
+            line.detail = "Check your internet connection and press \"Check for updates\".";
+        } else {
+            line.text = "The mod's files were not found.";
+            line.detail = "Unzip the whole kit into one folder and start cdmp_launcher.exe from there.";
         }
         if (snap.folder.asi) line.detail += " (The files of an earlier mod are in the game folder.)";
         return line;
@@ -473,17 +545,26 @@ ModLine mod_line(const Snapshot& snap) {
     line.playable = true;
     const PackageFile* asi = source->package.file(kFileAsi);
     const bool current = snap.folder.asi && asi && snap.folder.asi_sha256 == asi->sha256;
-    line.text = source->package.id;
+    const bool with_mod = mode != Mode::Single;
+    line.replaces = with_mod && !current && snap.folder.asi;
+    // Something to download, or (when playing with the mod) something to put in the game folder.
+    line.update = !current && (!snap.have || with_mod);
+    // "Update" brings something newer; with the files here already and nothing known to be newer, it only installs.
+    if (snap.have && !(snap.folder.asi && snap.catalog.update_ok)) line.button = "Install";
     if (current) {
-        line.text += "  -  installed";
+        line.text = source->package.id + (snap.catalog.update_ok ? "  -  installed, up to date" : "  -  installed");
         line.color = &kGood;
-    } else if (snap.folder.asi) {
-        line.text += "  -  another version is installed: it is replaced when you play";
+    } else if (snap.folder.asi && (with_mod || !snap.have)) {
+        // Only an update address that answered knows what the newest is.
+        line.text = snap.catalog.update_ok ? "Update available: " + source->package.id
+                                           : source->package.id + "  -  not the version in the game folder";
+        line.color = &kWarn;
+    } else if (!snap.have) {
+        line.text = source->package.id + "  -  not downloaded yet";
         line.color = &kWarn;
     } else {
-        line.text += "  -  not in the game folder: it is installed when you play";
+        line.text = source->package.id + (with_mod ? "  -  downloaded, not installed yet" : "  -  downloaded");
     }
-    if (source->kind == Source::Kind::Update) line.detail = "From the update address.";
     if (!snap.stated) {
         line.detail = "This kit does not say which game version it is for. If the mod's panel does not appear in "
                       "the game, the kit is for another version.";
@@ -541,13 +622,14 @@ void draw(App& app) {
         return;
     }
     const Snapshot& snap = *held;
-    const ModLine mod = mod_line(snap);
+    const ModLine mod = mod_line(snap, app.settings.mode);
     const ImVec4 dim = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
 
     // ---- what is on this PC
-    if (ImGui::BeginTable("##found", 2)) {
+    if (ImGui::BeginTable("##found", 3)) {
         ImGui::TableSetupColumn("##what", ImGuiTableColumnFlags_WidthFixed, 64 * s);
         ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("##action", ImGuiTableColumnFlags_WidthFixed, 168 * s);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextDisabled("Game");
@@ -561,11 +643,32 @@ void draw(App& app) {
         }
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
         ImGui::TextDisabled("Mod");
         ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
         wrapped(mod.text, mod.color);
         if (!mod.detail.empty()) wrapped(mod.detail, &dim);
         for (const std::string& note : snap.catalog.notes) wrapped(note, &kWarn);
+        ImGui::TableNextColumn();
+        // Update: get the newest mod (and install it, when playing with it). Otherwise: ask the update address again.
+        ImGui::BeginDisabled(app.busy);
+        if (mod.update) {
+            ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kAccentHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, kAccentActive);
+            const bool clicked = ImGui::Button(mod.button, ImVec2(-1, 0));
+            ImGui::PopStyleColor(3);
+            if (clicked) update(app);
+        } else if (snap.game.found && !snap.catalog.update_address.empty()) {
+            if (ImGui::Button("Check for updates", ImVec2(-1, 0))) {
+                app.error.clear();
+                app.info.clear();
+                app.notes.clear();
+                refresh(app, true);
+            }
+        }
+        ImGui::EndDisabled();
         ImGui::EndTable();
     }
     ImGui::Spacing();
@@ -641,6 +744,11 @@ void draw(App& app) {
                              : app.settings.mode == Mode::Host ? "Host a game"
                              : app.settings.join_host          ? "Join " + friend_label(app.settings, app.settings.join_host)
                                                                : "Join a friend";
+    // Playing installs the newest mod first: say so when that replaces the version in the game folder.
+    if (mod.replaces) {
+        play_label[0] = lower(play_label[0]);
+        play_label = "Update and " + play_label;
+    }
     // A friend's name may need the fallback fonts, which only the regular face has.
     const bool ascii = std::all_of(play_label.begin(), play_label.end(), [](char c) { return c > 0; });
     play_label += "##play";
@@ -697,17 +805,22 @@ void draw(App& app) {
         ImGui::TextUnformatted("Updates from");
         ImGui::SameLine(130 * s);
         ImGui::SetNextItemWidth(410 * s);
-        ImGui::InputTextWithHint("##address", "an https:// address or a shared folder (empty: this kit only)",
-                                 app.address, sizeof app.address);
+        ImGui::InputTextWithHint("##address", "empty: the mod's own releases", app.address, sizeof app.address);
         ImGui::SameLine();
         if (ImGui::Button("Check now")) {
             app.settings.update_address = clean_label(app.address, 1024);
             save(app);
             refresh(app, true);
         }
-        if (app.settings.update_address.empty() && !snap.catalog.update_address.empty()) {
-            ImGui::TextDisabled("This kit checks %s", snap.catalog.update_address.c_str());
+        if (app.offline) {
+            wrapped("Started with --offline: updates are not checked.", &dim);
+        } else if (snap.catalog.update_address.empty()) {
+            wrapped("Updates are not checked: only the files on this PC are used.", &dim);
+        } else if (app.settings.update_address.empty()) {
+            wrapped("Checks " + snap.catalog.update_address, &dim);
         }
+        wrapped("Another https:// address or a shared folder with a kit's files can be typed here; \"off\" stops "
+                "the check.", &dim);
     }
     ImGui::EndDisabled();
 
@@ -800,6 +913,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
             const bool more = i + 1 < argc;
             if (arg == L"--no-launch") {
                 app.no_launch = true;
+            } else if (arg == L"--offline") {
+                app.offline = true;
+            } else if (arg == L"--press" && more) {
+                app.press = argv[++i];
             } else if (arg == L"--game-dir" && more) {
                 app.forced_game_dir = argv[++i];
             } else if (arg == L"--data-dir" && more) {
@@ -904,6 +1021,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
 
         const bool was_busy = app.busy;
         drain(app);
+        if (!app.press.empty() && app.snap && !app.busy) {  // --press: the same calls as the buttons make
+            const std::wstring what = std::exchange(app.press, {});
+            if (what == L"update") update(app);
+            if (what == L"play") play(app);
+        }
         if (was_busy != app.busy) frames_owed = 3;
         if (const ULONGLONG now = GetTickCount64(); now - app.running_checked >= 1000) {
             app.running_checked = now;

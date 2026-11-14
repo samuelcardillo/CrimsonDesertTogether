@@ -3,6 +3,7 @@
 
 #include <windows.h>
 
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
@@ -35,6 +36,11 @@ void put(const fs::path& p, std::string_view text) {
 }
 
 std::string get(const fs::path& p) { return read_text(p).value_or("<missing>"); }
+
+// When a package's list was written decides which of the packages on this PC is the newest.
+void set_time(const fs::path& p, int minutes_ago) {
+    fs::last_write_time(p, fs::file_time_type::clock::now() - std::chrono::minutes(minutes_ago));
+}
 
 // The first 4 KB of a 64-bit exe with that PE timestamp.
 std::string fake_exe(uint32_t timestamp, uint32_t image_size = 0x144E9000) {
@@ -412,9 +418,10 @@ struct World {
     Choice choice;
 
     void look() {
-        catalog = load_catalog(paths, settings, {});
+        catalog = load_catalog(paths, update_address(paths, settings), {});
         choice = choose(catalog, read_game(paths.bin64).pe.timestamp);
     }
+    bool have() const { return choice.source && on_this_pc(catalog, *choice.source); }
     ReadyResult ready(Mode mode, uint64_t peer = 0, bool running = false) {
         ReadyRequest request;
         request.mode = mode;
@@ -585,6 +592,7 @@ void test_update_address(const fs::path& tmp) {
     // then the earlier loader, which this launcher installed, is replaced too.
     World w = make_world(tmp / "update");
     const Kit v1 = make_kit(w.paths.bundle, "v1", kPe, "v1");
+    set_time(w.paths.bundle / "package.txt", 60);  // the kit was made an hour ago
     w.look();
     CHECK(w.ready(Mode::Join).ok && get(w.paths.bin64 / "cdmp.asi") == v1.asi);
 
@@ -598,17 +606,34 @@ void test_update_address(const fs::path& tmp) {
     CHECK(r.ok && get(w.paths.bin64 / "cdmp.asi") == v2.asi && get(w.paths.bin64 / "winmm.dll") == v2.loader);
     CHECK(w.settings.installed_loader_sha256 == sha(v2.loader));
 
-    // The address does not answer: a note, and the kit's package is used.
+    // The address does not answer: a note, and the update fetched before stays (the older kit folder does not undo it).
     w.settings.update_address = path_text(tmp / "update" / "gone" / "package.txt");
     w.look();
     CHECK(!w.catalog.update_ok && w.catalog.notes.size() == 1);
-    CHECK(w.choice.source && w.choice.source->kind == Source::Kind::Kit && w.choice.source->package.id == "v1");
+    CHECK(w.choice.source && w.choice.source->kind == Source::Kind::Cache && w.choice.source->package.id == "v2");
+    r = w.ready(Mode::Join);
+    CHECK(r.ok && get(w.paths.bin64 / "cdmp.asi") == v2.asi);
 
-    // The kit can carry the address for players who set none.
-    put(w.paths.bundle / "cdmp_launcher.ini", "[update]\r\naddress=" + path_text(share / "package.txt") + "\r\n");
+    // The kit can carry the address for players who set none; the player's own address comes before it, the
+    // launcher's built-in one after it, and "off" in either stops the check.
+    const std::string kit_address = path_text(share / "package.txt");
+    put(w.paths.bundle / "cdmp_launcher.ini", "[update]\r\naddress=" + kit_address + "\r\n");
     w.settings.update_address.clear();
     w.look();
     CHECK(w.catalog.update_ok && w.choice.source && w.choice.source->package.id == "v2");
+    CHECK(update_address(w.paths, w.settings, "https://built.in/package.txt") == kit_address);
+    w.settings.update_address = "https://mine.example/";
+    CHECK(update_address(w.paths, w.settings, "https://built.in/package.txt") == "https://mine.example/");
+    w.settings.update_address = "OFF";
+    CHECK(update_address(w.paths, w.settings, "https://built.in/package.txt").empty());
+    w.settings.update_address.clear();
+    put(w.paths.bundle / "cdmp_launcher.ini", "[update]\r\naddress=\r\n");
+    CHECK(update_address(w.paths, w.settings, "https://built.in/package.txt") == "https://built.in/package.txt");
+    CHECK(update_address(w.paths, w.settings).empty());
+    put(w.paths.bundle / "cdmp_launcher.ini", "[update]\r\naddress=off\r\n");
+    CHECK(update_address(w.paths, w.settings, "https://built.in/package.txt").empty());
+    w.look();
+    CHECK(w.catalog.update_address.empty() && !w.catalog.update_ok && w.catalog.notes.empty());
 
     // Only https is ever downloaded.
     CHECK(!http_get("http://example.invalid/package.txt", 1024, {}).ok);
@@ -622,9 +647,92 @@ void test_update_address(const fs::path& tmp) {
     CHECK(load_settings(w.paths).friends.size() == 1 && load_settings(w.paths).update_address == saved.update_address);
 }
 
+void test_update_button(const fs::path& tmp) {
+    // The launcher on its own (no kit folder), the newest build at the update address: nothing is on this PC yet.
+    World w = make_world(tmp / "button");
+    const fs::path share = tmp / "button" / "releases";
+    const Kit b1 = make_kit(share, "b1", kPe, "b1");
+    w.settings.update_address = path_text(share);
+    w.look();
+    CHECK(w.choice.source && w.choice.source->kind == Source::Kind::Update && !w.have());
+
+    // Update without the mod in use (single-player): the files come to the launcher's folder, the game folder is
+    // not touched, and from then on nothing has to be downloaded.
+    std::string error, last;
+    CHECK(fetch_package(w.paths, *w.choice.source, [&](const std::string& s) { last = s; }, {}, &error));
+    CHECK(error.empty() && !last.empty());
+    CHECK(get(w.paths.data / "packages" / "b1" / "cdmp.asi") == b1.asi);
+    CHECK(!fs::exists(w.paths.bin64 / "cdmp.asi") && !fs::exists(w.paths.bin64 / "winmm.dll") &&
+          !fs::exists(w.paths.bin64 / "cdmp.ini"));
+    w.look();
+    CHECK(w.choice.source && w.choice.source->kind == Source::Kind::Update && w.have());
+    CHECK(w.ready(Mode::Join).ok && get(w.paths.bin64 / "cdmp.asi") == b1.asi);
+
+    // A newer build is published: it is the one chosen, it is not here yet, and the installed one differs.
+    fs::remove_all(share);
+    const Kit b2 = make_kit(share, "b2", kPe, "b2");
+    w.look();
+    CHECK(w.choice.source && w.choice.source->package.id == "b2" && !w.have());
+    CHECK(folder_state(w.paths.bin64).asi_sha256 != w.choice.source->package.file(kFileAsi)->sha256);
+    // The download is refused when a file is not what the list says, and nothing of it is kept.
+    put(share / "cdmp.asi", "tampered on the way");
+    CHECK(!fetch_package(w.paths, *w.choice.source, {}, {}, &error) && error.find("cdmp.asi") != std::string::npos);
+    CHECK(!fs::exists(w.paths.data / "packages" / "b2" / "cdmp.asi") && get(w.paths.bin64 / "cdmp.asi") == b1.asi);
+    put(share / "cdmp.asi", b2.asi);
+    CHECK(fetch_package(w.paths, *w.choice.source, {}, {}, &error));
+    CHECK(w.ready(Mode::Join).ok && get(w.paths.bin64 / "cdmp.asi") == b2.asi && get(w.paths.bin64 / "winmm.dll") == b2.loader);
+
+    // The update address is for a game build this PC does not have: the newest that is here for this build stays.
+    fs::remove_all(share);
+    make_kit(share, "b3", kOtherPe, "b3");
+    set_time(w.paths.data / "packages" / "b1" / "package.txt", 30);
+    w.look();
+    CHECK(w.catalog.update_ok && w.choice.source && w.choice.source->kind == Source::Kind::Cache &&
+          w.choice.source->package.id == "b2" && w.have());
+
+    // The kit folder holds the very package the update address lists: it is taken from the kit, with no download.
+    World k = make_world(tmp / "button_kit");
+    make_kit(k.paths.bundle, "b1", kPe, "b1");
+    make_kit(tmp / "button_kit" / "releases", "b1", kPe, "b1");
+    k.settings.update_address = path_text(tmp / "button_kit" / "releases");
+    k.look();
+    CHECK(k.catalog.update_ok && k.choice.source && k.choice.source->kind == Source::Kind::Kit && k.have());
+
+    // What is on this PC, newest first: a kit unzipped after the last copy was made is used; an older kit folder
+    // is not. (No update address here.)
+    World o = make_world(tmp / "button_order");
+    make_kit(o.paths.bundle, "v1", kPe, "v1");
+    o.look();
+    CHECK(o.ready(Mode::Join).ok);  // v1 is now also a copy
+    const fs::path copies = o.paths.data / "packages";
+    make_kit(copies / "b5", "b5", kPe, "b5");
+    set_time(o.paths.bundle / "package.txt", 60);
+    set_time(copies / "b5" / "package.txt", 30);
+    o.look();
+    CHECK(o.catalog.sources.size() == 2);  // the kit's own copy is not listed twice
+    CHECK(o.choice.source && o.choice.source->kind == Source::Kind::Cache && o.choice.source->package.id == "b5");
+    set_time(o.paths.bundle / "package.txt", 10);
+    o.look();
+    CHECK(o.choice.source && o.choice.source->kind == Source::Kind::Kit && o.choice.source->package.id == "v1");
+}
+
+// cdmp_tests_launcher --fetch <https address>: downloads it with the launcher's own code and prints its size and
+// SHA-256. Not part of the test run (it needs the network); for trying a release address by hand.
+int fetch_by_hand(const char* url) {
+    const Download d = http_get(url, size_t{128} << 20, {});
+    if (!d.ok) {
+        std::printf("failed: %s\n", d.error.c_str());
+        return 1;
+    }
+    std::printf("%zu bytes, sha256 %s\n", d.body.size(), cdmp::sha256::hex(cdmp::sha256::of(d.body)).c_str());
+    return 0;
+}
+
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 3 && std::string_view(argv[1]) == "--fetch") return fetch_by_hand(argv[2]);
+
     // Only this folder, made here, is removed at the end.
     wchar_t temp[MAX_PATH] = {};
     GetTempPathW(MAX_PATH, temp);
@@ -649,6 +757,7 @@ int main() {
     test_other_peoples_files(tmp);
     test_bad_packages(tmp);
     test_update_address(tmp);
+    test_update_button(tmp);
 
     fs::remove_all(tmp, ec);
     if (g_failures) {

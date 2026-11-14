@@ -41,7 +41,12 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
 - Si cambias `tools/porting/configs/cdmp.3527-2inst-*.ini`, regenera el kit de dos PC: `python tools/porting/make_steam_kit.py`.
 - Launcher de jugadores (`cdmp_launcher.exe`, `docs/LAUNCHER.md`): instala el mod, lanza con o sin él y elige con quién.
   Para probarlo sin tocar el juego: `--game-dir <bin64 falso> --data-dir <carpeta> --bundle <kit> --no-launch`.
-  `scripts\package_coop.ps1 -Suffix 3663-vNN` lo mete en el kit junto con `package.txt`.
+  `scripts\package_coop.ps1 -Suffix 3663-vNN` lo mete en el kit junto con `package.txt`. Otros modificadores de
+  prueba: `--offline` (no pregunta por actualizaciones) y `--press update|play` (pulsa ese botón sin ratón).
+- Los jugadores se actualizan con el botón Update del launcher, que baja la última release de GitHub. La compila y
+  publica `.github/workflows/release.yml` en cada push a `main` que toque el kit (`scripts\ci_release.ps1`; sin
+  `-Publish` solo hace el kit, para probarlo en local). Para qué build del juego es el kit lo dice
+  `kit/coop/game-builds.txt`: cámbialo en el mismo commit que un port.
 - Prueba completa sin juego: arranca `cdmp_peer.exe` y luego `cdmp_host.exe <ruta\cdmp.asi> <segundos>`.
   `LoadLibrary` falla con rutas largas (error 206), así que usa `build\e2e\`.
 - Prueba en el juego: arranca `cdmp_peer`, lanza `steam://rungameid/3321460` y lee `bin64\cdmp.log`.
