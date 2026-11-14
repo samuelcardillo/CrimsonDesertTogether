@@ -31,8 +31,8 @@ inline constexpr uint32_t kMagic = 0x504D4443;  // bytes "CDMP"
 // v8 game traffic contains native IDs and must never be interpreted as logical.
 // 10: PlayerState ends with the character's key and what it stands on (anchor: an actor key and the character's pose
 // local to it), for ship passengers (session2/vehicle_follow.h).
-// Still 10 (2026-11-14): EventKind::Riders is new. No message changed, and a peer without it drops the event as a
-// newer kind (kMaxEventKind), so its ship's crew stays as it was.
+// Still 10 (2026-11-14): EventKind::Riders and EventKind::Vehicles are new. No message changed, and a peer without
+// them drops the events as newer kinds (kMaxEventKind), so its ships and their crews stay as they were.
 inline constexpr uint16_t kVersion = 10;
 // Hello and Welcome start the same in every version from 5 (name, then the
 // rest), so a peer with another version is recognised and reported instead
@@ -79,8 +79,11 @@ enum class EventKind : uint8_t {
                       // u8 n | n x (u32 actor key | u32 anchor key | f32 x, y, z | f32 qx, qy, qz, qw): what each
                       // one hangs from on the sender's client and its pose local to that. Not co-op game data: the
                       // session gives it to its side handler (ClientSession::set_side_handler).
+    Vehicles = 14,    // where the sender has the vehicles its client controls (its ship, the NPCs' ships), ten times
+                      // a second while they move (session2/vehicle_follow.h): u8 n | n x (u32 vehicle actor key |
+                      // f32 x, y, z | f32 qx, qy, qz, qw), world. Side handler too.
 };
-inline constexpr uint8_t kMaxEventKind = 13;  // newer kinds decode; the session drops them
+inline constexpr uint8_t kMaxEventKind = 14;  // newer kinds decode; the session drops them
 
 // Wire: u32 copy key | u64 game clock ms | f32 x, y, z | f32 qx, qy, qz, qw.
 inline constexpr size_t kEnemyPosEventSize = 40;

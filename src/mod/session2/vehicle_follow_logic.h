@@ -248,6 +248,54 @@ inline size_t decode_riders(std::span<const uint8_t> payload, Rider* out) {
     return n;
 }
 
+// ---------------------------------------------------------------- vehicle poses (proto::EventKind::Vehicles)
+// Where a client has a vehicle it controls, for the other client's Track: the game itself tells the other client
+// about once a second (1.0, 1.0, 1.7 s for an NPC's ship, which also changes speed all the time), and a Track fed
+// with that has to guess for most of every second. Wire: u8 n | n x (u32 key | f32 x, y, z | f32 qx, qy, qz, qw).
+struct VehiclePose {
+    uint32_t key = 0;
+    float pos[3]{}, q[4]{0, 0, 0, 1};
+};
+inline constexpr size_t kVehicleWire = 32, kMaxVehiclePoses = 16;
+inline bool vehicle_pose_ok(const VehiclePose& v) {
+    if ((v.key >> 28) != 0xB || !unit_quat(v.q)) return false;
+    for (const float c : v.pos)
+        if (!std::isfinite(c) || std::fabs(c) > 1.0e6f) return false;
+    return !(v.pos[0] == 0 && v.pos[2] == 0);  // the zero of a vehicle that never had a pose
+}
+inline std::vector<uint8_t> encode_vehicles(std::span<const VehiclePose> poses) {
+    std::vector<uint8_t> out(1, 0);
+    for (const VehiclePose& v : poses) {
+        if (out[0] == kMaxVehiclePoses) break;
+        if (!vehicle_pose_ok(v)) continue;
+        const size_t at = out.size();
+        out.resize(at + kVehicleWire);
+        std::memcpy(&out[at], &v.key, 4);
+        std::memcpy(&out[at + 4], v.pos, 12);
+        std::memcpy(&out[at + 16], v.q, 16);
+        ++out[0];
+    }
+    return out;
+}
+// The poses of a payload, into out[kMaxVehiclePoses]; how many. 0 for a payload that is not exactly its count's size
+// or names more than the cap; a pose that is not vehicle_pose_ok, or a key already taken, is skipped.
+inline size_t decode_vehicles(std::span<const uint8_t> payload, VehiclePose* out) {
+    if (payload.empty() || payload[0] > kMaxVehiclePoses || payload.size() != 1 + payload[0] * kVehicleWire) return 0;
+    size_t n = 0;
+    for (size_t i = 0; i < payload[0]; ++i) {
+        const uint8_t* p = payload.data() + 1 + i * kVehicleWire;
+        VehiclePose v;
+        std::memcpy(&v.key, p, 4);
+        std::memcpy(v.pos, p + 4, 12);
+        std::memcpy(v.q, p + 16, 16);
+        if (!vehicle_pose_ok(v)) continue;
+        bool twice = false;
+        for (size_t j = 0; j < n; ++j) twice |= out[j].key == v.key;
+        if (!twice) out[n++] = v;
+    }
+    return n;
+}
+
 inline void to_sector(double world, int16_t hint, float* local, int16_t* sector) {
     const double l = world - hint * 1000.0;
     if (std::fabs(l) < 1000.0) {

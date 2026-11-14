@@ -168,7 +168,7 @@ void ClientSession::on_datagram(std::span<const uint8_t> bytes, uint32_t now_ms)
         ++stats_.events_received;
         if (static_cast<uint8_t>(ev->kind) > proto::kMaxEventKind) {
             ++stats_.unknown_kinds;  // a newer peer's event
-        } else if (ev->kind == proto::EventKind::Riders) {
+        } else if (ev->kind == proto::EventKind::Riders || ev->kind == proto::EventKind::Vehicles) {
             if (side_event_fn_) side_event_fn_(*ev, now_ms);
         } else if (game_event_fn_) {
             game_event_fn_(*ev, now_ms);

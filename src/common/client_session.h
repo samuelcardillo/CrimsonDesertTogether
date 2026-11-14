@@ -62,7 +62,7 @@ public:
         game_event_fn_ = std::move(on_event);
         reliable_fn_ = std::move(on_reliable);
     }
-    // The events that are not co-op game data (EventKind::Riders): their own handler, which setting the game handlers
+    // The events that are not co-op game data (EventKind::Riders, Vehicles): their own handler, which setting the game handlers
     // (a co-op session, a TrocLink) does not replace.
     void set_side_handler(GameEventFn on_event) { side_event_fn_ = std::move(on_event); }
     size_t reliable_pending() const { return reliable_.unacked_fragments(); }

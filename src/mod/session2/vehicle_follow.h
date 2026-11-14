@@ -103,6 +103,12 @@ void vehicle_follow_on_user2_req(uint16_t opcode, std::span<const uint8_t> paylo
 bool vehicle_follow_own_anchor(uint32_t* self_key, uint32_t* anchor, float pos[3], float quat[4]) noexcept;
 // Receiver: the other player's last state. Kept for the listed character with that key; nothing else.
 void vehicle_follow_on_peer_state(uint32_t self_key, uint32_t anchor, const float pos[3], const float quat[4]) noexcept;
+// Vehicle poses (2026-11-14): the game tells the other client where a vehicle is about once a second; each mod sends
+// where its client has the vehicles it controls (its ship, the NPCs' ships and boats) ten times a second while they
+// move (proto::EventKind::Vehicles), and the other mod's follower uses those samples. Sender: the payload (empty:
+// nothing to send now). Receiver: the other mod's event. The mod's network thread.
+std::vector<uint8_t> vehicle_follow_own_vehicles() noexcept;
+void vehicle_follow_on_peer_vehicles(std::span<const uint8_t> payload) noexcept;
 // Riders, sender (the mod's network thread, ten times a second): the payload of a proto::EventKind::Riders event for
 // the actors that ride a ship of this client's user. Empty: none (or the module is off, or a load is going on).
 std::vector<uint8_t> vehicle_follow_own_riders() noexcept;

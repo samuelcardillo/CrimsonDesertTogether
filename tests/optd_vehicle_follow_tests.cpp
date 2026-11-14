@@ -237,6 +237,65 @@ void test_riders() {
     std::memset(&zeroed[1 + 20], 0, 16);  // the first one's rotation is all zeros
     CHECK(decode_riders(zeroed, out) == 1 && out[0].key == b.key);
 }
+void test_vehicle_poses() {
+    VehiclePose a{0xB010000A, {-10372.5f, 350.1f, -6207.25f}, {0, 0.70710678f, 0, 0.70710678f}};
+    VehiclePose b{0xB010157F, {-9991.17f, 353.17f, -6667.79f}, {0, 0, 0, 1}};
+    CHECK(vehicle_pose_ok(a) && vehicle_pose_ok(b));
+    VehiclePose bad = a;
+    bad.key = 0xA0100001;  // a character
+    CHECK(!vehicle_pose_ok(bad));
+    bad = a;
+    bad.pos[0] = bad.pos[2] = 0;  // never had a pose
+    CHECK(!vehicle_pose_ok(bad));
+    bad = a;
+    bad.pos[1] = std::numeric_limits<float>::infinity();
+    CHECK(!vehicle_pose_ok(bad));
+    bad = a;
+    bad.q[1] = bad.q[3] = 0;
+    CHECK(!vehicle_pose_ok(bad));
+
+    const VehiclePose in[] = {a, bad, b};
+    const auto wire = encode_vehicles(in);
+    CHECK(wire.size() == 1 + 2 * kVehicleWire && wire[0] == 2);
+    VehiclePose out[kMaxVehiclePoses];
+    CHECK(decode_vehicles(wire, out) == 2);
+    CHECK(out[0].key == a.key && out[0].pos[0] == a.pos[0] && out[0].pos[2] == a.pos[2] && out[0].q[1] == a.q[1]);
+    CHECK(out[1].key == b.key && out[1].pos[1] == b.pos[1] && out[1].q[3] == 1.0f);
+    // The position survives the float32 on the wire to the millimetre at this world's size.
+    CHECK(std::fabs(static_cast<double>(out[0].pos[0]) - (-10372.5)) < 0.002);
+
+    CHECK(encode_vehicles({}).size() == 1 && decode_vehicles(encode_vehicles({}), out) == 0);
+    std::vector<VehiclePose> many;
+    for (uint32_t i = 0; i < kMaxVehiclePoses + 3; ++i) {
+        VehiclePose v = a;
+        v.key = 0xB0100900 + i;
+        many.push_back(v);
+    }
+    const auto capped = encode_vehicles(many);
+    CHECK(capped[0] == kMaxVehiclePoses && decode_vehicles(capped, out) == kMaxVehiclePoses);
+    auto cut = wire;
+    cut.pop_back();
+    CHECK(decode_vehicles(cut, out) == 0);
+    std::vector<uint8_t> over(1 + (kMaxVehiclePoses + 1) * kVehicleWire, 0);
+    over[0] = static_cast<uint8_t>(kMaxVehiclePoses + 1);
+    CHECK(decode_vehicles(over, out) == 0);
+    auto twice = wire;
+    std::memcpy(&twice[1 + kVehicleWire], &twice[1], kVehicleWire);
+    CHECK(decode_vehicles(twice, out) == 1 && out[0].key == a.key);
+
+    // What they are for: a Track fed ten times a second is always between two samples, never guessing.
+    Track dense(300);
+    for (int i = 0; i <= 20; ++i) dense.push(1000 + i * 100, pose(15.0 * i * 0.1, 0, 5));  // 15 m/s along x
+    Pose at;
+    CHECK(dense.at(3000, &at));  // drawn 300 ms behind: t = 2700, the ship was at 25.5 m then
+    CHECK(near(at.x, 25.5, 0.01));
+    // With one sample a second and a 1.7 s gap the same Track stops at its newest sample after 1 s of guessing.
+    Track sparse(300);
+    sparse.push(1000, pose(0, 0, 5));
+    sparse.push(2000, pose(15, 0, 5));
+    CHECK(sparse.at(3299, &at) && near(at.x, 15 + 15 * 0.999, 0.05));  // still extrapolating
+    CHECK(sparse.at(3400, &at) && near(at.x, 15.0, 1e-9));              // 1.1 s past the newest: back on it
+}
 }  // namespace
 
 int main() {
@@ -251,6 +310,7 @@ int main() {
     test_to_sector();
     test_attach();
     test_riders();
+    test_vehicle_poses();
     if (g_failures) {
         std::printf("%d failure(s)\n", g_failures);
         return 1;

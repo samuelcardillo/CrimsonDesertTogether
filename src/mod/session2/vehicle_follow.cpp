@@ -79,7 +79,7 @@ constexpr Addrs kAddrs3576{0xB03BB0, 0xB03FB0, 0x71C0100, 0x5914D58, 0x15C, 0x18
 // ClientNormalInGameActor (vtable 0x5991108, the one game_errors.cpp reads failed actors by), controlled by the host's
 // user like everything the host's client simulates. The guest got all its records and a MoveActorAck a second with its
 // real position, but drew it from its OWN simulation of that ship, as it did the player's before this module: "the
-// guest couldn't see it". Listed now when at least kNpcShipMinParts vehicle gimmicks hang from it.
+// guest couldn't see it". Listed now, like any ordinary vehicle actor of another user a vehicle gimmick hangs from.
 constexpr Addrs kAddrs3663{0xB39E40, 0xB3A240, 0x72451C0, 0x5990BF0, 0x24C, 0x19, 7, 12, 12, 0x5989550, 0x59C3768,
                            0x5991108};
 const Addrs* g_addrs = nullptr;
@@ -103,10 +103,30 @@ constexpr uint8_t kTypeGimmick = 7, kTypeVehicle = 5, kAttachVehicle = 7;
 // Every vehicle actor of the other user with a vehicle gimmick hanging from it is listed, not only the one with a ship
 // out: the host's stabled horses carry ten-odd each (13-nov, both copies: 0xB0100004/5/7, 9-12 gimmicks) and never get
 // a vehicle request (type 7; on 3663 also 12 from far away). One entry per vehicle actor.
-// NPC vehicles (ordinary actors): only ships, told by how many vehicle gimmicks hang from them (the pirate ship and
-// the player's: 13; the sea turtles and small things of the same table: 1 to 5). Players' vehicles go first in the list.
+// NPC vehicles (ordinary actors): every one a vehicle gimmick hangs from, the nearest to this client's character
+// first, after the players' own. With "ships only" (6 or more vehicle gimmicks, the first version, played by the user
+// on 14-nov 16:35) the big NPC ships were followed and a small boat was not: 0xB0101080, 4 parts, drawn 25 m from
+// where the host had it. What is listed is still followed only while it gets NEAR vehicle requests (position_mid).
 constexpr size_t kMaxVehicles = 24, kMaxFound = 96;
-constexpr uint32_t kNpcShipMinParts = 6;
+// Vehicle poses over the mod's own channel (2026-11-14, the user: an NPC ship "is very laggy" on the guest). The game
+// gives the other client a vehicle's pose about once a second (measured for the pirate ship: 1.0, 1.0, 1.7 s, 84 of
+// 218 gaps over 1.5 s, while it went from 4 to 18 m/s and back), and the track, 300 ms behind, guesses past its newest
+// sample for most of every second and stops dead once the guess is a second old. So each mod sends where its client has
+// the vehicles it controls that a vehicle gimmick hangs from, the kMaxVehiclePoses nearest to a player within
+// kPoseRangeM, ten times a second while they move (twice a second while they do not), and the other mod's track of a
+// listed vehicle takes those samples instead.
+constexpr double kPoseRangeM = 800.0;
+constexpr uint64_t kVehicleChannelFreshMs = 1500, kPoseKeepaliveMs = 500;
+struct OwnVehicle {
+    std::atomic<uint32_t> key{0};
+    std::atomic<uintptr_t> ts{0};
+    // The network thread only: the last pose sent and when.
+    vfl::Pose sent;
+    uint64_t sent_ms = 0;
+};
+std::array<OwnVehicle, vfl::kMaxVehiclePoses> g_own_vehicles;
+std::atomic<uint32_t> g_own_vehicle_count{0};
+std::atomic<uint64_t> g_vehicles_sent{0}, g_vehicle_events{0}, g_vehicle_poses_unlisted{0};
 constexpr ULONGLONG kProbeMs = 100;  // ~6 frames at 60 fps
 constexpr ULONGLONG kScanMs = 3000;  // between two scans of the actor table
 // Set when the other player's character changes what it stands on: the worker rebuilds its chain at once instead of at
@@ -129,6 +149,9 @@ struct Vehicle {
     vfl::Pose drawn;         // under lock: the pose given to the last position request
     uint64_t drawn_ms = 0;   // under lock
     std::atomic<uint64_t> requests{0}, positions{0}, rotations{0}, samples{0};
+    // The other mod's own samples of it (proto::EventKind::Vehicles, ten a second while it moves): when the last one
+    // came, and how many. While they come, the game's ~1 Hz network pose is not put into the track.
+    std::atomic<uint64_t> channel_ms{0}, channel_samples{0};
     std::atomic<uint32_t> last_err_cm{0}, max_err_cm{0};
 };
 std::array<Vehicle, kMaxVehicles> g_vehicles;
@@ -607,8 +630,13 @@ void position_mid(safetyhook::Context& ctx) {
         return;
     }
     v->requests.fetch_add(1, std::memory_order_relaxed);
+    const uint64_t now = now_ms();
+    // The other mod's samples of it, while they come (vehicle_follow_on_peer_vehicles puts them in the track); else
+    // the game's own network pose, about one a second.
+    const uint64_t channel = v->channel_ms.load(std::memory_order_relaxed);
+    const bool from_channel = channel && now - channel < kVehicleChannelFreshMs;
     vfl::Pose net;
-    if (!network_pose(ctx.rcx, &net)) {
+    if (!from_channel && !network_pose(ctx.rcx, &net)) {
         g_unreadable.fetch_add(1, std::memory_order_relaxed);
         return;
     }
@@ -617,11 +645,10 @@ void position_mid(safetyhook::Context& ctx) {
         int16_t sx, sz;
     } arg{};
     if (!game::fast_read(ctx.rdx, &arg, sizeof arg)) return;
-    const uint64_t now = now_ms();
     vfl::Pose out;
     bool have = false;
     AcquireSRWLockExclusive(&v->lock);
-    if (v->track.push(now, net)) v->samples.fetch_add(1, std::memory_order_relaxed);
+    if (!from_channel && v->track.push(now, net)) v->samples.fetch_add(1, std::memory_order_relaxed);
     have = v->track.at(now, &out);
     if (have) {
         v->drawn = out;
@@ -672,7 +699,9 @@ void rotation_mid(safetyhook::Context& ctx) {
 struct Found {
     uint32_t vehicle, gimmick, gimmicks;
     uintptr_t ts;
-    bool npc;  // an ordinary actor (an NPC's vehicle), not a player's
+    bool npc;        // an ordinary actor (an NPC's vehicle), not a player's
+    double dist_m = 0;  // an NPC's: metres from this client's character (its last network pose; 1e18: unknown;
+                        // `far` and `near` are macros of windows.h)
 };
 
 uintptr_t actor_by_key(uintptr_t table, uint32_t key) noexcept {
@@ -693,8 +722,10 @@ uintptr_t actor_by_key(uintptr_t table, uint32_t key) noexcept {
 // The vehicle actors another user controls that a vehicle gimmick hangs from: every type-7 actor with a vehicle
 // component hanging (attach type 7) from a type-5 ChildOnly actor whose controller is not this client's user. One entry
 // per vehicle actor (most are stabled horses with their gear; the one with a ship out is told apart by its requests).
+std::vector<std::pair<uint32_t, uintptr_t>> g_scan_mine;  // worker only: this client's own vehicles of the last scan
 std::vector<Found> scan(uint32_t* own_out, uint32_t* dropped_out) {
     std::vector<Found> out;
+    g_scan_mine.clear();
     const uintptr_t world = rd<uintptr_t>(g_base + g_addrs->world_slot);
     const uintptr_t mgr = world ? rd<uintptr_t>(world + kWorld_Mgr) : 0;
     const uintptr_t table = mgr ? rd<uintptr_t>(mgr + kMgr_Table) : 0;
@@ -730,7 +761,17 @@ std::vector<Found> scan(uint32_t* own_out, uint32_t* dropped_out) {
             const bool npc = g_addrs->vt_normal && vt == g_base + g_addrs->vt_normal;
             if (!pinfo || !(npc || vt == g_base + g_addrs->vt_child_only) || rd<uint8_t>(pinfo + 1) != kTypeVehicle) continue;
             const uint32_t ctl = rd<uint32_t>(p + kActor_Controller);
-            if (!ctl || ctl == own) continue;
+            if (ctl == own) {
+                // One of this client's own: its pose goes to the other mod (own_vehicles_publish).
+                bool noted = false;
+                for (const auto& m : g_scan_mine) noted |= m.first == parent_key;
+                const uintptr_t mcomps = noted ? 0 : rd<uintptr_t>(p + kActor_Comps);
+                const uintptr_t mts = mcomps ? rd<uintptr_t>(mcomps + kComps_TS) : 0;
+                if (mts && rd<uintptr_t>(mts + kTS_Actor) == p && g_scan_mine.size() < kMaxFound)
+                    g_scan_mine.emplace_back(parent_key, mts);
+                continue;
+            }
+            if (!ctl) continue;
             const uintptr_t pcomps = rd<uintptr_t>(p + kActor_Comps);
             const uintptr_t ts = pcomps ? rd<uintptr_t>(pcomps + kComps_TS) : 0;
             if (!ts || rd<uintptr_t>(ts + kTS_Actor) != p) continue;
@@ -741,9 +782,21 @@ std::vector<Found> scan(uint32_t* own_out, uint32_t* dropped_out) {
             out.push_back({parent_key, rd<uint32_t>(a + kActor_Key), 1, ts, npc});
         }
     }
-    // An NPC's vehicle only when it is a ship; the players' first; no more than the list holds.
-    std::erase_if(out, [](const Found& f) { return f.npc && f.gimmicks < kNpcShipMinParts; });
-    std::stable_partition(out.begin(), out.end(), [](const Found& f) { return !f.npc; });
+    // The players' first, then the NPCs' by distance from this client's character; no more than the list holds.
+    {
+        const uintptr_t own_actor = rd<uintptr_t>(mgr + kMgr_OwnActor);
+        const uintptr_t own_comps = own_actor ? rd<uintptr_t>(own_actor + kActor_Comps) : 0;
+        const uintptr_t own_ts = own_comps ? rd<uintptr_t>(own_comps + kComps_TS) : 0;
+        vfl::Pose me;
+        const bool have_me = own_ts && network_pose(own_ts, &me);
+        for (Found& f : out) {
+            vfl::Pose at;
+            f.dist_m = f.npc && have_me && network_pose(f.ts, &at) ? std::hypot(at.x - me.x, at.z - me.z) : f.npc ? 1e18 : 0;
+        }
+    }
+    std::stable_sort(out.begin(), out.end(), [](const Found& a, const Found& b) {
+        return a.npc != b.npc ? !a.npc : a.dist_m < b.dist_m;
+    });
     if (out.size() > kMaxVehicles) {
         *dropped_out += static_cast<uint32_t>(out.size() - kMaxVehicles);
         out.resize(kMaxVehicles);
@@ -991,6 +1044,66 @@ bool on_own_ship(uintptr_t table, uint32_t parent, uint32_t own) noexcept {
         k = up;
     }
     return false;
+}
+
+// After each scan: this client's own vehicles (g_scan_mine) for the other mod, the vfl::kMaxVehiclePoses nearest to
+// a player (this client's character or another player's) within kPoseRangeM.
+void own_vehicles_publish() {
+    std::array<vfl::Pose, 1 + kMaxPlayers> refs{};
+    size_t n_refs = 0;
+    {
+        const uintptr_t world = rd<uintptr_t>(g_base + g_addrs->world_slot);
+        const uintptr_t mgr = world ? rd<uintptr_t>(world + kWorld_Mgr) : 0;
+        const uintptr_t own_actor = mgr ? rd<uintptr_t>(mgr + kMgr_OwnActor) : 0;
+        const uintptr_t own_comps = own_actor ? rd<uintptr_t>(own_actor + kActor_Comps) : 0;
+        const uintptr_t own_ts = own_comps ? rd<uintptr_t>(own_comps + kComps_TS) : 0;
+        if (own_ts && network_pose(own_ts, &refs[n_refs])) ++n_refs;
+        for (size_t s = 0; s < kMaxPlayers; ++s) {
+            const uintptr_t ts = g_passengers[s].key.load() ? g_passengers[s].ts.load() : 0;
+            if (ts && network_pose(ts, &refs[n_refs])) ++n_refs;
+        }
+    }
+    if (!n_refs) return;  // nobody to be near (a load): the list stays
+    std::vector<std::pair<double, std::pair<uint32_t, uintptr_t>>> near_ones;
+    for (const auto& m : g_scan_mine) {
+        vfl::Pose at;
+        float unused[3];
+        if (!ts_pose(m.second, true, &at, unused)) continue;
+        double d = 1e18;
+        for (size_t r = 0; r < n_refs; ++r) d = std::min(d, std::hypot(at.x - refs[r].x, at.z - refs[r].z));
+        if (d <= kPoseRangeM) near_ones.push_back({d, m});
+    }
+    std::sort(near_ones.begin(), near_ones.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    const size_t n = std::min(near_ones.size(), vfl::kMaxVehiclePoses);
+    bool changed = n != g_own_vehicle_count.load();
+    for (size_t i = 0; i < n && !changed; ++i) {
+        bool have = false;
+        for (auto& o : g_own_vehicles) have |= o.key.load() == near_ones[i].second.first;
+        changed = !have;
+    }
+    if (changed) {
+        // (The network thread's last-sent poses stay with their slots: a vehicle that takes another's slot is sent at
+        // once, its pose differs.)
+        for (size_t i = 0; i < vfl::kMaxVehiclePoses; ++i) {
+            g_own_vehicles[i].ts.store(0, std::memory_order_release);
+            g_own_vehicles[i].key.store(i < n ? near_ones[i].second.first : 0, std::memory_order_relaxed);
+            g_own_vehicles[i].ts.store(i < n ? near_ones[i].second.second : 0, std::memory_order_release);
+        }
+        g_own_vehicle_count.store(static_cast<uint32_t>(n));
+        std::string list;
+        for (size_t i = 0; i < n; ++i)
+            list += std::format("{}0x{:08X} ({:.0f} m)", i ? ", " : "", near_ones[i].second.first, near_ones[i].first);
+        log::info("VehicleFollow: {} vehicle(s) this client controls within {:.0f} m of a player{}{}: where it has them "
+                  "goes to the other player's mod ten times a second while they move{}", n, kPoseRangeM,
+                  n ? ": " : "", list,
+                  near_ones.size() > n ? std::format(" ({} more: the nearest {} only)", near_ones.size() - n, n)
+                                       : std::string());
+    } else {
+        // The same vehicles: only their TransformSyncs, in case one changed.
+        for (size_t i = 0; i < n; ++i)
+            for (auto& o : g_own_vehicles)
+                if (o.key.load() == near_ones[i].second.first) o.ts.store(near_ones[i].second.second, std::memory_order_release);
+    }
 }
 
 // Every 3 s: this client's own riders, for the other player's mod: the NPC actors (types 3 and 4, 0xB keys) that hang
@@ -1291,10 +1404,12 @@ void refresh(const std::vector<Found>& found) {
             v.far_only = 0;
             v.far_logged = false;
             v.requests = v.positions = v.rotations = v.samples = 0;
+            v.channel_ms = 0;
+            v.channel_samples = 0;
             v.last_err_cm = v.max_err_cm = 0;
             v.key.store(f.vehicle);
             v.ts.store(f.ts, std::memory_order_release);
-            listed += std::format(" 0x{:08X} ({}{} gimmick{}, e.g. 0x{:08X})", f.vehicle, f.npc ? "an NPC's ship, " : "",
+            listed += std::format(" 0x{:08X} ({}{} gimmick{}, e.g. 0x{:08X})", f.vehicle, f.npc ? "an NPC's, " : "",
                                   f.gimmicks, f.gimmicks == 1 ? "" : "s", f.gimmick);
             break;
         }
@@ -1381,6 +1496,7 @@ DWORD WINAPI worker(LPVOID) {
                     p.chain_state.store(0, std::memory_order_release);
                 }
                 for (auto& r : g_own_riders) r.ts.store(0, std::memory_order_release);
+                for (auto& o : g_own_vehicles) o.ts.store(0, std::memory_order_release);
                 continue;
             }
             const ULONGLONG loop_now = now_ms();
@@ -1401,6 +1517,7 @@ DWORD WINAPI worker(LPVOID) {
                 dropped_logged = true;
             }
             refresh(found);
+            own_vehicles_publish();
             passengers_list();
             riders_list();
             passengers = passengers_tick();
@@ -1456,11 +1573,11 @@ DWORD WINAPI worker(LPVOID) {
                 d = v.drawn;
                 const size_t n = v.track.size();
                 ReleaseSRWLockShared(&v.lock);
-                line += std::format(" | 0x{:08X} (gimmick 0x{:08X}): requests {} followed {}/{} samples {} (kept {}) "
-                                    "drawn ({:.1f}, {:.1f}) error now {:.1f} m max {:.1f} m",
+                line += std::format(" | 0x{:08X} (gimmick 0x{:08X}): requests {} followed {}/{} samples {} (kept {}; {} "
+                                    "of them from the other mod) drawn ({:.1f}, {:.1f}) error now {:.1f} m max {:.1f} m",
                                     v.key.load(), v.gimmick, v.requests.load(), v.positions.load(), v.rotations.load(),
-                                    v.samples.load(), n, d.x, d.z, v.last_err_cm.load() / 100.0,
-                                    v.max_err_cm.load() / 100.0);
+                                    v.samples.load(), n, v.channel_samples.load(), d.x, d.z,
+                                    v.last_err_cm.load() / 100.0, v.max_err_cm.load() / 100.0);
             }
             struct {
                 uint32_t listed = 0, on_part = 0, attached = 0, types = 0, faulted = 0, worst_cm = 0;
@@ -1479,6 +1596,12 @@ DWORD WINAPI worker(LPVOID) {
                 riders.placed += p.placed.load();
                 riders.idle += p.idle_placed.load();
                 riders.cross += p.cross_thread.load();
+            }
+            if (g_vehicles_sent.load() || g_vehicle_events.load()) {
+                total += g_vehicles_sent.load() + g_vehicle_events.load();
+                line += std::format(" | vehicle poses: own ones sent {} times ({} listed now); the other mod's: {} events, "
+                                    "{} poses of vehicles not listed here", g_vehicles_sent.load(),
+                                    g_own_vehicle_count.load(), g_vehicle_events.load(), g_vehicle_poses_unlisted.load());
             }
             if (riders.listed || g_rider_events.load() || g_riders_sent.load()) {
                 total += riders.requests + riders.idle + g_riders_sent.load();
@@ -1575,6 +1698,75 @@ void vehicle_follow_on_peer_state(uint32_t self_key, uint32_t anchor, const floa
         p.channel_ms.store(now_ms(), std::memory_order_relaxed);
         p.channel_states.fetch_add(1, std::memory_order_relaxed);
         return;
+    }
+}
+
+std::vector<uint8_t> vehicle_follow_own_vehicles() noexcept {
+    std::vector<uint8_t> none;
+    if (!g_started.load(std::memory_order_relaxed) || !g_addrs || !g_own_vehicle_count.load(std::memory_order_relaxed) ||
+        !in_world())
+        return none;
+    try {
+        std::array<vfl::VehiclePose, vfl::kMaxVehiclePoses> poses;
+        size_t n = 0;
+        const uint64_t now = now_ms();
+        for (auto& o : g_own_vehicles) {
+            const uint32_t key = o.key.load(std::memory_order_relaxed);
+            const uintptr_t ts = o.ts.load(std::memory_order_acquire);
+            if (!key || !ts) continue;
+            const uintptr_t actor = rd<uintptr_t>(ts + kTS_Actor);
+            if (!actor || rd<uint32_t>(actor + kActor_Key) != key) continue;
+            vfl::Pose p;
+            float unused[3];
+            if (!ts_pose(ts, true, &p, unused) || !vfl::usable(p)) continue;
+            // Only what moved since it was last sent, and a keepalive so the other side keeps taking these.
+            const bool moved = std::fabs(p.x - o.sent.x) > 2e-3 || std::fabs(p.y - o.sent.y) > 2e-3 ||
+                               std::fabs(p.z - o.sent.z) > 2e-3 || std::fabs(p.q[0] - o.sent.q[0]) > 1e-4f ||
+                               std::fabs(p.q[1] - o.sent.q[1]) > 1e-4f || std::fabs(p.q[2] - o.sent.q[2]) > 1e-4f ||
+                               std::fabs(p.q[3] - o.sent.q[3]) > 1e-4f;
+            if (!moved && now - o.sent_ms < kPoseKeepaliveMs) continue;
+            o.sent = p;
+            o.sent_ms = now;
+            vfl::VehiclePose w;
+            w.key = key;
+            w.pos[0] = static_cast<float>(p.x);
+            w.pos[1] = static_cast<float>(p.y);
+            w.pos[2] = static_cast<float>(p.z);
+            std::memcpy(w.q, p.q, sizeof w.q);
+            poses[n++] = w;
+        }
+        if (!n) return none;
+        g_vehicles_sent.fetch_add(1, std::memory_order_relaxed);
+        return vfl::encode_vehicles({poses.data(), n});
+    } catch (...) {
+        return none;
+    }
+}
+
+void vehicle_follow_on_peer_vehicles(std::span<const uint8_t> payload) noexcept {
+    if (!g_started.load(std::memory_order_relaxed) || !g_addrs) return;
+    vfl::VehiclePose poses[vfl::kMaxVehiclePoses];
+    const size_t n = vfl::decode_vehicles(payload, poses);
+    g_vehicle_events.fetch_add(1, std::memory_order_relaxed);
+    const uint64_t now = now_ms();
+    for (size_t i = 0; i < n; ++i) {
+        bool listed = false;
+        for (auto& v : g_vehicles) {
+            if (!v.ts.load(std::memory_order_acquire) || v.key.load(std::memory_order_relaxed) != poses[i].key) continue;
+            vfl::Pose p;
+            p.x = poses[i].pos[0];
+            p.y = poses[i].pos[1];
+            p.z = poses[i].pos[2];
+            std::memcpy(p.q, poses[i].q, sizeof p.q);
+            AcquireSRWLockExclusive(&v.lock);
+            if (v.track.push(now, p)) v.samples.fetch_add(1, std::memory_order_relaxed);
+            ReleaseSRWLockExclusive(&v.lock);
+            v.channel_ms.store(now, std::memory_order_relaxed);
+            v.channel_samples.fetch_add(1, std::memory_order_relaxed);
+            listed = true;
+            break;
+        }
+        if (!listed) g_vehicle_poses_unlisted.fetch_add(1, std::memory_order_relaxed);
     }
 }
 

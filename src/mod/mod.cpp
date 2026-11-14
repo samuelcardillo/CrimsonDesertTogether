@@ -374,6 +374,7 @@ void run_network(const Config& cfg, LocalSource& local) {
     // side handler stays whatever sets the game handlers later (the co-op link, the Troc tunnel).
     session.set_side_handler([](const proto::GameEvent& ev, uint32_t) {
         if (ev.kind == proto::EventKind::Riders) session2::vehicle_follow_on_peer_riders(ev.payload);
+        if (ev.kind == proto::EventKind::Vehicles) session2::vehicle_follow_on_peer_vehicles(ev.payload);
     });
     bool was_connected = false;
     uint64_t last_channel_state = 0;  // session.stats().remote_states at the last divergence_probe publication
@@ -556,6 +557,9 @@ void run_network(const Config& cfg, LocalSource& local) {
             if (connected) {
                 if (auto riders = session2::vehicle_follow_own_riders(); riders.size() > 1)
                     session.send_event(proto::GameEvent{proto::EventKind::Riders, std::move(riders)}, now);
+                // ... and where this client has the vehicles it controls, while they move.
+                if (auto vehicles = session2::vehicle_follow_own_vehicles(); vehicles.size() > 1)
+                    session.send_event(proto::GameEvent{proto::EventKind::Vehicles, std::move(vehicles)}, now);
             }
         }
         if (now - last_state >= state_interval) {
