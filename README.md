@@ -36,6 +36,10 @@ your real save. The guest plays their own save, uploaded to the host when joinin
 progress back with a script after leaving; the host's progress can be brought back too, but that is the least
 tested part. Back up `%LOCALAPPDATA%\Pearl Abyss\CD\save` before you start.
 
+**Achievements.** A guest earns no Steam achievements while in a host's world. This is deliberate: there the
+guest's game holds the host's progress, so the mod blocks achievements for the guest until the game is
+restarted.
+
 The full instructions (installing by hand, mounts, dying, saving progress, leaving in the right order, what to
 send when something goes wrong) are in **[kit/coop/README.txt](kit/coop/README.txt)**, which is also inside
 every release zip.
@@ -64,10 +68,6 @@ on an older version were ported to 3663 but not all were tried again.
 
 ## Known problems
 
-- Steam achievements: a guest earns none while in a host's world, on purpose, until the game is restarted. In
-  the host's world the guest's game holds the host's progress, and in an early session it unlocked all of the
-  host's achievements on the guest's Steam account. That is fixed (the block was seen working in play), but
-  achievements handed out back then cannot be taken away by the game.
 - Quests belong to the host's world. What the guest kills or interacts with can advance the host's quest
   objectives as if the host had done it. The guest also sees and can use the host's discovered Abyss Nexus
   points.

@@ -115,9 +115,6 @@ Checked on the previous version, 1.0.0.3527, with two copies on one PC:
 - The players and their mercenaries do not hurt each other.
 
 KNOWN PROBLEMS
-- STEAM ACHIEVEMENTS: in one session the guest's Steam account got ALL the host's achievements the moment it joined. The
-  guest's game no longer unlocks any Steam achievement once it has joined a host, until it is restarted (so nothing the
-  guest earns in co-op is unlocked on Steam either). The game cannot take back achievements already unlocked.
 - In the host's world the guest sees the HOST's discovered Abyss Nexus points and can travel to them. Do not apply the
   guest's progress from a session (section 6) until it is known whether those points end up in the guest's own save.
 - SWITCHING CHARACTER: seen working in a real session (each player sees the other's new character). Riding a horse as
@@ -164,6 +161,10 @@ KNOWN PROBLEMS
     %LOCALAPPDATA%\Pearl Abyss\CD\save
 - While you play with the mod, what you save goes to a separate folder (cdmp_save_sandbox): your real save does not
   change until you apply your progress by hand (section 6).
+- STEAM ACHIEVEMENTS: the GUEST earns none while in a host's world, on purpose. In the host's world the guest's game
+  holds the host's progress, so the mod blocks achievements for the guest from the moment it joins until the game is
+  restarted. (Before this block existed, a guest's Steam account once received all of the host's achievements; the
+  game cannot take those back.)
 
 
 2. INSTALLING (BOTH PLAYERS)
