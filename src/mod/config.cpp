@@ -221,6 +221,7 @@ Config load_config(const std::wstring& ini_path) {
     c.s2_gimmick_relay = narrow(read_string(ini_path, L"session2", L"gimmick_relay", "0"));
     c.s2_gimmick_relay_states = narrow(read_string(ini_path, L"session2", L"gimmick_relay_states", ""));
     c.s2_gimmick_take = narrow(read_string(ini_path, L"session2", L"gimmick_take", "0"));
+    c.s2_gimmick_take_hold_ms = read_uint(ini_path, L"session2", L"gimmick_take_hold_ms", 0);
     c.s2_focus_follow = read_uint(ini_path, L"session2", L"focus_follow", 1) != 0;
     c.s2_field_leave_guard = read_uint(ini_path, L"session2", L"field_leave_guard", 1) != 0;
     c.s2_docking_dedupe = read_uint(ini_path, L"session2", L"docking_dedupe", 1) != 0;

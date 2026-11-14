@@ -3,6 +3,9 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <limits>
+#include <vector>
 
 #include "mod/session2/vehicle_follow_logic.h"
 
@@ -171,6 +174,69 @@ void test_attach() {
     mul(quarter, quarter, qq);  // two quarter turns: a half turn
     CHECK(near(qq[1], 1.0, 1e-5) && near(qq[3], 0.0, 1e-5));
 }
+void test_riders() {
+    Rider a{0xB01008A8, 0xB01008A6, {1.5f, 0.25f, -3.0f}, {0, 0.70710678f, 0, 0.70710678f}};
+    Rider b{0xB01008A9, 0xB01008A6, {-2.0f, 0.25f, 4.0f}, {0, 0, 0, 1}};
+    CHECK(rider_ok(a) && rider_ok(b));
+    // Not a rider: a player's key, an anchor that is no gimmick, itself as its anchor, a far pose, no rotation.
+    Rider bad = a;
+    bad.key = 0xA0100001;
+    CHECK(!rider_ok(bad));
+    bad = a;
+    bad.anchor = 0;
+    CHECK(!rider_ok(bad));
+    bad = a;
+    bad.anchor = a.key;
+    CHECK(!rider_ok(bad));
+    bad = a;
+    bad.pos[2] = 501.0f;
+    CHECK(!rider_ok(bad));
+    bad = a;
+    bad.pos[0] = std::numeric_limits<float>::quiet_NaN();
+    CHECK(!rider_ok(bad));
+    bad = a;
+    bad.q[3] = 0.0f;
+    bad.q[1] = 0.0f;
+    CHECK(!rider_ok(bad));
+
+    const Rider in[] = {a, bad, b};
+    const auto wire = encode_riders(in);
+    CHECK(wire.size() == 1 + 2 * kRiderWire && wire[0] == 2);  // the bad one is left out
+    Rider out[kMaxRiders];
+    CHECK(decode_riders(wire, out) == 2);
+    CHECK(out[0].key == a.key && out[0].anchor == a.anchor && out[0].pos[2] == -3.0f && out[0].q[1] == a.q[1]);
+    CHECK(out[1].key == b.key && out[1].pos[0] == -2.0f && out[1].q[3] == 1.0f);
+
+    // None: one byte. More than the cap: only the first kMaxRiders go.
+    CHECK(encode_riders({}).size() == 1 && decode_riders(encode_riders({}), out) == 0);
+    std::vector<Rider> many;
+    for (uint32_t i = 0; i < kMaxRiders + 5; ++i) {
+        Rider r = a;
+        r.key = 0xB0100900 + i;
+        many.push_back(r);
+    }
+    const auto capped = encode_riders(many);
+    CHECK(capped[0] == kMaxRiders && capped.size() == 1 + kMaxRiders * kRiderWire);
+    CHECK(decode_riders(capped, out) == kMaxRiders && out[kMaxRiders - 1].key == 0xB0100900 + kMaxRiders - 1);
+
+    // A payload of the wrong size, a count over the cap, an empty one: nothing. A bad or repeated rider: skipped.
+    auto cut = wire;
+    cut.pop_back();
+    CHECK(decode_riders(cut, out) == 0);
+    auto longer = wire;
+    longer.push_back(0);
+    CHECK(decode_riders(longer, out) == 0);
+    std::vector<uint8_t> over(1 + (kMaxRiders + 1) * kRiderWire, 0);
+    over[0] = static_cast<uint8_t>(kMaxRiders + 1);
+    CHECK(decode_riders(over, out) == 0);
+    CHECK(decode_riders({}, out) == 0);
+    auto twice = wire;
+    std::memcpy(&twice[1 + kRiderWire], &twice[1], kRiderWire);  // the second is the first again
+    CHECK(decode_riders(twice, out) == 1 && out[0].key == a.key);
+    auto zeroed = wire;
+    std::memset(&zeroed[1 + 20], 0, 16);  // the first one's rotation is all zeros
+    CHECK(decode_riders(zeroed, out) == 1 && out[0].key == b.key);
+}
 }  // namespace
 
 int main() {
@@ -184,6 +250,7 @@ int main() {
     test_rotation();
     test_to_sector();
     test_attach();
+    test_riders();
     if (g_failures) {
         std::printf("%d failure(s)\n", g_failures);
         return 1;

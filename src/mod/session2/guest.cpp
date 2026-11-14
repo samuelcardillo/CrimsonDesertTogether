@@ -2228,6 +2228,7 @@ std::deque<std::vector<uint8_t>> guest_take_outgoing(size_t link_backlog) {
             create_retry_tick(g_epoch.load(), remote_live_for_keys(), again);
             for (auto& p : again) deliver_body(std::move(p));
         }
+        gimmick_take_tick();  // gimmick_relay.h: a taken sail goes back to its controller (gimmick_take_hold_ms)
     } catch (...) {
     }
     // P8 mounts: events even while the client sends nothing. P8 re-entry (review of c4367f8, 4): with rejoin on, only

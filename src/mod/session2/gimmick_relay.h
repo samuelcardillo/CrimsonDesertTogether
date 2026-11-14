@@ -58,8 +58,11 @@ namespace cdmp::session2 {
 void gimmick_relay_start(const std::string& raw, const std::string& states);
 std::string gimmick_relay_describe();  // atomics only ("" when off)
 
-// The guest's worker start-up. raw = the ini value of gimmick_take.
-void gimmick_take_configure(const std::string& raw);
+// The guest's worker start-up. raw = the ini value of gimmick_take; hold_ms = gimmick_take_hold_ms: how long after
+// the host's last update of a taken gimmick its controller on this client is written back (0: never).
+void gimmick_take_configure(const std::string& raw, uint32_t hold_ms);
+// Guest, the mod's network thread, a few times a second: gives back what has been held long enough.
+void gimmick_take_tick() noexcept;
 // Guest: every packet of the host on its way to the client (logical opcode, payload); the mod's network thread.
 void gimmick_take_on_in(uint16_t opcode, std::span<const uint8_t> payload) noexcept;
 // Guest: a request of the client about to go to the host (guest_send; header + payload, logical opcode). True:

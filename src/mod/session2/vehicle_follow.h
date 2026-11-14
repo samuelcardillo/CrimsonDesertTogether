@@ -70,9 +70,21 @@
 //  - the summary counts the calls made on another thread than the character's own requests (if the game updates
 //    characters on several threads those calls race its update: not known yet).
 
+// Riders (3663, both PCs; 2026-11-14): the crew of a ship is in the same position as a passenger, only worse: NPC
+// actors docked to a part of the hull, for which the server also gives the other player blank Moves, so they stay
+// where the ship was when they appeared and are left behind over the water when it sails. The mod of the ship's
+// controller names them ten times a second (proto::EventKind::Riders: each one's hierarchy parent and local pose) and
+// the receiver draws each on its own copy of that parent, like the other player's character: its own requests are
+// answered (whatever their type) and, while it stands still, it is given one every frame. That holds whether or
+// not the rider has a parent on this client: the game keeps some of the crew attached at the pose of their creation
+// and drops the parent of the others, and a position request is in world coordinates either way.
+// 'VehicleFollow: rider ...' lines, and one part of the summary. An older mod on the other side drops the event:
+// nothing changes for it.
+
 #include <cstdint>
 #include <span>
 #include <string>
+#include <vector>
 
 namespace cdmp::session2 {
 
@@ -91,5 +103,10 @@ void vehicle_follow_on_user2_req(uint16_t opcode, std::span<const uint8_t> paylo
 bool vehicle_follow_own_anchor(uint32_t* self_key, uint32_t* anchor, float pos[3], float quat[4]) noexcept;
 // Receiver: the other player's last state. Kept for the listed character with that key; nothing else.
 void vehicle_follow_on_peer_state(uint32_t self_key, uint32_t anchor, const float pos[3], const float quat[4]) noexcept;
+// Riders, sender (the mod's network thread, ten times a second): the payload of a proto::EventKind::Riders event for
+// the actors that ride a ship of this client's user. Empty: none (or the module is off, or a load is going on).
+std::vector<uint8_t> vehicle_follow_own_riders() noexcept;
+// Riders, receiver (the mod's network thread): the other player's event. A rider not named for 3 s is let go.
+void vehicle_follow_on_peer_riders(std::span<const uint8_t> payload) noexcept;
 
 }  // namespace cdmp::session2

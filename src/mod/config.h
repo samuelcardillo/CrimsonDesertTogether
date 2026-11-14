@@ -298,6 +298,9 @@ struct Config {
     std::string s2_gimmick_relay_states;
     // Guest, the other half of that experiment: 0 | probe | 1 (gimmick_relay.h).
     std::string s2_gimmick_take = "0";
+    // Guest: ms after the host's last update of a taken gimmick at which it goes back to its controller on this client
+    // (0: it stays this client's; gimmick_relay.cpp says why it matters).
+    uint32_t s2_gimmick_take_hold_ms = 0;
     // Host and guest, builds 3527 and 3549 (session2/focus_follow.h): each PC shows the character the other player
     // controls and hides the one left behind.
     bool s2_focus_follow = true;

@@ -370,6 +370,11 @@ void run_network(const Config& cfg, LocalSource& local) {
         session.set_congestion_probe([&transport] { return transport->congested(); });
         session.set_reliable_window(512);
     }
+    // Ships (session2/vehicle_follow.h): who rides the other player's ship besides its character (its crew). The
+    // side handler stays whatever sets the game handlers later (the co-op link, the Troc tunnel).
+    session.set_side_handler([](const proto::GameEvent& ev, uint32_t) {
+        if (ev.kind == proto::EventKind::Riders) session2::vehicle_follow_on_peer_riders(ev.payload);
+    });
     bool was_connected = false;
     uint64_t last_channel_state = 0;  // session.stats().remote_states at the last divergence_probe publication
     uint32_t last_friend_scan = 0;
@@ -388,6 +393,7 @@ void run_network(const Config& cfg, LocalSource& local) {
 
     const uint32_t state_interval = 1000 / cfg.send_rate_hz;
     uint32_t last_state = 0;
+    uint32_t last_riders = 0;
     uint32_t last_report = now_ms();
     // Ctrl+F12 writes a numbered mark in the log: both players press it at the
     // same moment ("now!") so their logs can be lined up afterwards.
@@ -544,6 +550,14 @@ void run_network(const Config& cfg, LocalSource& local) {
         }
         health.mark(Phase::Coop, now_us());
 
+        // Ships: the riders of this client's own ship (its crew), ten times a second while there are any.
+        if (now - last_riders >= 100) {
+            last_riders = now;
+            if (connected) {
+                if (auto riders = session2::vehicle_follow_own_riders(); riders.size() > 1)
+                    session.send_event(proto::GameEvent{proto::EventKind::Riders, std::move(riders)}, now);
+            }
+        }
         if (now - last_state >= state_interval) {
             last_state = now;
             if (auto state = local.sample(now)) session.send_local_state(*state, now);
@@ -1195,7 +1209,7 @@ DWORD WINAPI worker(LPVOID) {
                 session2::ride_null_guard_start(cfg.s2_ride_null_guard, /*guest=*/true);
                 session2::send_trace_start(cfg.s2_send_trace);
                 session2::create_retry_configure(cfg.s2_create_retry, cfg.s2_create_retry_lost);
-                session2::gimmick_take_configure(cfg.s2_gimmick_take);
+                session2::gimmick_take_configure(cfg.s2_gimmick_take, cfg.s2_gimmick_take_hold_ms);
                 session2::focus_follow_start(cfg.s2_focus_follow, /*guest=*/true);
                 session2::field_leave_guard_start(cfg.s2_field_leave_guard, /*guest=*/true);
                 session2::achievement_guard_start(cfg.s2_achievement_guard);

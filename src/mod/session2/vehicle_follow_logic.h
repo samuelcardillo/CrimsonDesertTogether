@@ -11,6 +11,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <span>
+#include <vector>
 
 namespace cdmp::session2::vfl {
 
@@ -193,6 +196,58 @@ private:
 // A world coordinate as the game's TransformSync position argument: a float local to a 1000 m sector plus the sector.
 // The caller's sector (`hint`) is kept when the local value stays within it; else the sector that truncates toward zero
 // (what the game writes: -10384.7 -> sector -10, local -384.7).
+// ---------------------------------------------------------------- riders (proto::EventKind::Riders)
+// Who rides a ship besides the player's character (its crew): the actor, what it hangs from on the sender's client
+// and its pose local to that. Wire: u8 n | n x (u32 key | u32 anchor | f32 x, y, z | f32 qx, qy, qz, qw).
+struct Rider {
+    uint32_t key = 0, anchor = 0;
+    float pos[3]{}, q[4]{0, 0, 0, 1};
+};
+inline constexpr size_t kRiderWire = 36, kMaxRiders = 16;
+// A rider worth sending or using: two 0xB keys (an NPC on a gimmick), a pose a few metres from its anchor, a unit
+// rotation.
+inline bool rider_ok(const Rider& r) {
+    if ((r.key >> 28) != 0xB || (r.anchor >> 28) != 0xB || r.key == r.anchor || !unit_quat(r.q)) return false;
+    for (const float v : r.pos)
+        if (!std::isfinite(v) || std::fabs(v) > 500.0f) return false;
+    return true;
+}
+// The payload for up to kMaxRiders riders (the rest is left out; the ones that are not rider_ok too).
+inline std::vector<uint8_t> encode_riders(std::span<const Rider> riders) {
+    std::vector<uint8_t> out(1, 0);
+    for (const Rider& r : riders) {
+        if (out[0] == kMaxRiders) break;
+        if (!rider_ok(r)) continue;
+        const size_t at = out.size();
+        out.resize(at + kRiderWire);
+        std::memcpy(&out[at], &r.key, 4);
+        std::memcpy(&out[at + 4], &r.anchor, 4);
+        std::memcpy(&out[at + 8], r.pos, 12);
+        std::memcpy(&out[at + 20], r.q, 16);
+        ++out[0];
+    }
+    return out;
+}
+// The riders of a payload, into out[kMaxRiders]; how many. 0 for a payload that is not exactly its count's size or
+// names more than kMaxRiders; a rider that is not rider_ok, or a key already taken from this payload, is skipped.
+inline size_t decode_riders(std::span<const uint8_t> payload, Rider* out) {
+    if (payload.empty() || payload[0] > kMaxRiders || payload.size() != 1 + payload[0] * kRiderWire) return 0;
+    size_t n = 0;
+    for (size_t i = 0; i < payload[0]; ++i) {
+        const uint8_t* p = payload.data() + 1 + i * kRiderWire;
+        Rider r;
+        std::memcpy(&r.key, p, 4);
+        std::memcpy(&r.anchor, p + 4, 4);
+        std::memcpy(r.pos, p + 8, 12);
+        std::memcpy(r.q, p + 20, 16);
+        if (!rider_ok(r)) continue;
+        bool twice = false;
+        for (size_t j = 0; j < n; ++j) twice |= out[j].key == r.key;
+        if (!twice) out[n++] = r;
+    }
+    return n;
+}
+
 inline void to_sector(double world, int16_t hint, float* local, int16_t* sector) {
     const double l = world - hint * 1000.0;
     if (std::fabs(l) < 1000.0) {

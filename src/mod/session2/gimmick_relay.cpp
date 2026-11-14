@@ -375,6 +375,34 @@ void taken_remove(uint32_t key) noexcept {
 void taken_clear() noexcept {
     for (auto& t : g_taken) t.store(0, std::memory_order_relaxed);
 }
+// Giving it back ([session2] gimmick_take_hold_ms; 0: never). Live, 14-nov: the sail's states also change by
+// themselves on the client that controls it (wind, speed: the host's went from one to another and back with nobody
+// touching anything), and a guest that stays the controller of its copy makes transitions of its OWN (two cycles the
+// host never had; each update of the host puts it right again). So, this long after the host's last update of a taken
+// gimmick, its controller on this client is written back: the copy then only changes when the host says so. The
+// network thread only (take_on_ack notes, gimmick_take_tick gives back).
+struct Held {
+    uint32_t key = 0, controller = 0;
+    ULONGLONG ack_ms = 0;
+};
+std::array<Held, 16> g_held{};
+std::atomic<uint32_t> g_hold_ms{0};
+std::atomic<uint64_t> c_take_given_back{0};
+ULONGLONG g_hold_tick_ms = 0;
+uint32_t g_back_lines = 0;
+
+void held_note(uint32_t key, uint32_t controller, ULONGLONG now) {
+    Held* unused = nullptr;
+    for (Held& h : g_held) {
+        if (h.key == key) {
+            h.ack_ms = now;
+            return;
+        }
+        if (!h.key && !unused) unused = &h;
+    }
+    if (unused) *unused = {key, controller, now};
+}
+
 // The mod's network thread only. What a snapshot said about a gimmick's place in its ship, for kVerdictMs (the
 // controllers are read again at every Ack: they are what changes).
 constexpr ULONGLONG kVerdictMs = 30000;
@@ -441,7 +469,10 @@ void take_on_ack(Mode m, std::span<const uint8_t> payload) {
         why = "already this client's";
         // Taken before (its vehicle is another user's): its requests stay withheld.
         const uint32_t vctl = pinfo && rd<uint8_t>(pinfo + 1) == kTypeVehicle ? rd<uint32_t>(p + kActor_Controller) : 0;
-        if (m == Mode::On && (vctl >> 28) == 0x9 && vctl != own) taken_add(key);
+        if (m == Mode::On && (vctl >> 28) == 0x9 && vctl != own) {
+            taken_add(key);
+            held_note(key, vctl, GetTickCount64());  // it was its vehicle's controller that had it
+        }
     }
     else if ((ctl >> 28) != 0x9) why = "its controller is no user";
     else if (!pinfo || rd<uint8_t>(pinfo + 1) != kTypeVehicle) why = "it does not hang directly from a vehicle";
@@ -456,6 +487,7 @@ void take_on_ack(Mode m, std::span<const uint8_t> payload) {
             written = actor_by_key(table, key) == a && rd<uint32_t>(a + kActor_Controller) == ctl &&
                       write_u32(a + kActor_Controller, own);
             if (!written) taken_remove(key);
+            if (written) held_note(key, ctl, GetTickCount64());
             (written ? c_take_written : c_take_failed).fetch_add(1, std::memory_order_relaxed);
         } else {
             c_take_would.fetch_add(1, std::memory_order_relaxed);
@@ -478,7 +510,45 @@ void take_on_ack(Mode m, std::span<const uint8_t> payload) {
 
 }  // namespace
 
-void gimmick_take_configure(const std::string& raw) {
+void gimmick_take_tick() noexcept {
+    const uint32_t hold = g_hold_ms.load(std::memory_order_relaxed);
+    if (!hold || static_cast<Mode>(g_take_mode.load(std::memory_order_relaxed)) != Mode::On) return;
+    try {
+        const ULONGLONG now = GetTickCount64();
+        if (now - g_hold_tick_ms < 250) return;
+        g_hold_tick_ms = now;
+        uintptr_t table = 0;
+        uint32_t own = 0;
+        for (Held& h : g_held) {
+            if (!h.key || now - h.ack_ms < hold) continue;
+            if (!table) {
+                const uintptr_t world = rd<uintptr_t>(g_base + kWorldSlot);
+                const uintptr_t mgr = world ? rd<uintptr_t>(world + kWorld_Mgr) : 0;
+                const uintptr_t user = mgr ? rd<uintptr_t>(mgr + kMgr_User) : 0;
+                table = mgr ? rd<uintptr_t>(mgr + kMgr_Table) : 0;
+                own = user ? rd<uint32_t>(user + kUser_Key) : 0;
+                if (!table || !own) return;  // a load: at the next tick
+            }
+            const uint32_t key = h.key, controller = h.controller;
+            h = {};
+            const uintptr_t a = actor_by_key(table, key);
+            // Still this client's (nobody else changed it), and the one it goes back to is another user.
+            if (!a || rd<uint32_t>(a + kActor_Controller) != own || (controller >> 28) != 0x9 || controller == own) continue;
+            if (!write_u32(a + kActor_Controller, controller)) continue;
+            c_take_given_back.fetch_add(1, std::memory_order_relaxed);
+            g_said.fill({});  // its next take is said again
+            if (g_back_lines < 12) {
+                ++g_back_lines;
+                log::info("GimmickTake: 0x{:08X} goes back to its controller 0x{:08X} on this client, {} ms after the "
+                          "host's last update of it (so far {} given back)", key, controller, hold,
+                          c_take_given_back.load());
+            }
+        }
+    } catch (...) {
+    }
+}
+
+void gimmick_take_configure(const std::string& raw, uint32_t hold_ms) {
     const auto p = u2f::parse_mode(raw.empty() ? std::string_view("0") : std::string_view(raw));
     if (!p.known) {
         log::warn("GimmickTake: gimmick_take='{}' is not 0, probe or 1; it stays off", raw);
@@ -490,10 +560,13 @@ void gimmick_take_configure(const std::string& raw) {
         return;
     }
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    g_hold_ms.store(std::min<uint32_t>(hold_ms, 600000));
     g_take_mode.store(static_cast<uint8_t>(p.mode));
-    log::info("GimmickTake ON ({}; EXPERIMENT): an UpdateGimmickAck for a leaf gimmick that hangs directly from "
+    log::info("GimmickTake ON ({}): an UpdateGimmickAck for a leaf gimmick that hangs directly from "
               "another user's ship (the host's sail) makes this client's user that gimmick's controller on this "
-              "client{}", u2f::mode_name(p.mode), p.mode == Mode::On ? "" : " (probe: logged, not written)");
+              "client{}{}", u2f::mode_name(p.mode), p.mode == Mode::On ? "" : " (probe: logged, not written)",
+              hold_ms ? std::format("; it goes back to its controller {} ms after the host's last update of it", hold_ms)
+                      : std::string("; it stays this client's (gimmick_take_hold_ms=0)"));
 }
 
 void gimmick_take_on_in(uint16_t opcode, std::span<const uint8_t> payload) noexcept {
@@ -503,6 +576,7 @@ void gimmick_take_on_in(uint16_t opcode, std::span<const uint8_t> payload) noexc
         if (opcode == fam::kOpMoveField) {
             g_verdicts.fill({});  // another field: none of those actors
             g_said.fill({});
+            g_held.fill({});
             taken_clear();
             return;
         }
