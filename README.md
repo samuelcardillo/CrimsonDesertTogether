@@ -64,10 +64,13 @@ on an older version were ported to 3663 but not all were tried again.
 
 ## Known problems
 
-- The guest's Steam account once received all of the host's achievements on joining. Since then the guest's
-  game unlocks no achievement at all after joining a host, until it is restarted.
-- Quests can mix: what the guest does can count for the host. The guest also sees and can use the host's
-  discovered Abyss Nexus points.
+- Steam achievements: a guest earns none while in a host's world, on purpose, until the game is restarted. In
+  the host's world the guest's game holds the host's progress, and in an early session it unlocked all of the
+  host's achievements on the guest's Steam account. That is fixed (the block was seen working in play), but
+  achievements handed out back then cannot be taken away by the game.
+- Quests belong to the host's world. What the guest kills or interacts with can advance the host's quest
+  objectives as if the host had done it. The guest also sees and can use the host's discovered Abyss Nexus
+  points.
 - If the host leaves first, or the guest's game crashes, the guest loses that session's progress. Leave in
   order: the guest through the menu, then the host.
 - Merchants, houses and most of the living world exist only around the host; far from the host the guest's
