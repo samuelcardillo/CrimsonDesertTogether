@@ -5,8 +5,11 @@
 //   cdmp_launcher.exe                                    normal use: on its own, or from the kit folder
 //   cdmp_launcher.exe --game-dir <bin64> --data-dir <dir> --bundle <kit folder> --no-launch     for testing
 //   cdmp_launcher.exe --offline                          no update check: only the kit folder and earlier copies
-//   cdmp_launcher.exe ... --press update|play            presses that button once the first look at the PC is done,
-//                                                        so a test needs no mouse (with --no-launch for "play")
+//   cdmp_launcher.exe ... --press update|play|keep       presses that button once the first look at the PC is done,
+//                                                        so a test needs no mouse (with --no-launch for "play");
+//                                                        --press settings opens the last section instead
+//   cdmp_launcher.exe ... --local-dir <dir>              stands in for %LOCALAPPDATA%, where the game's saves and
+//                                                        the mod's copies of them are: a test never sees the real ones
 
 #include <windows.h>
 
@@ -33,6 +36,7 @@
 #include "imgui_impl_win32.h"
 
 #include "launcher_core.h"
+#include "save_core.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -40,7 +44,9 @@ namespace {
 namespace fs = std::filesystem;
 using namespace cdmp::launcher;
 
-constexpr int kWidth = 780, kHeight = 730;  // of the window's inside, before the screen's scale
+constexpr int kWidth = 780, kHeight = 790;  // of the window's inside, before the screen's scale
+// After the game closes, Steam may still be reading the save folder: the saves are looked at this long afterwards.
+constexpr ULONGLONG kAfterGameMs = 10000;
 constexpr wchar_t kWindowClass[] = L"cdmp_launcher";
 
 // Where the newest build of the mod is looked for when neither the player nor the kit names a place: the releases
@@ -137,6 +143,9 @@ struct Snapshot {
     int chosen = -1;  // the package to play with: an index in catalog.sources
     bool stated = false;
     bool have = false;  // its files are on this PC already (nothing to download)
+    SavePaths saves_at;  // where the saves and the mod's copies of them are
+    SaveScan saves;      // the progress of a co-op session that is not in the real save yet
+    bool backups = false;  // the launcher has made a backup of the saves before
 
     const Source* source() const { return chosen >= 0 ? &catalog.sources[static_cast<size_t>(chosen)] : nullptr; }
 };
@@ -147,8 +156,9 @@ struct App {
     ImFont* bold = nullptr;
     bool no_launch = false;
     bool offline = false;      // --offline: the update address is not asked
-    std::wstring press;        // --press: the button to press once, for tests ("update" or "play")
+    std::wstring press;        // --press: the button to press once, for tests ("update", "play" or "keep")
     fs::path forced_game_dir;  // --game-dir: not saved
+    fs::path local_dir;        // --local-dir: instead of %LOCALAPPDATA%
 
     Paths paths;
     Settings settings;
@@ -156,6 +166,12 @@ struct App {
 
     std::string error, info;
     std::vector<std::string> notes;
+    // The saves: what the last "keep" did, and what stops it from being tried over and over.
+    std::string saves_info, saves_error;
+    std::string keep_tried;      // the waiting progress (its signature) that was already tried without being asked
+    bool play_anyway = false;    // the last Play stopped because the progress could not be kept: the next one goes on
+    bool open_settings = false;  // --press settings: the last section is shown open (a test cannot click it)
+    ULONGLONG look_again_at = 0; // when to look at the saves again (after the game closed); 0 = no need
     char name[64] = {}, address[1024] = {}, filter[64] = {}, paste[160] = {}, paste_name[64] = {};
     bool add_for_host = false, open_add = false;
     bool game_is_running = false;
@@ -195,11 +211,11 @@ void start(App& app, Work work) {
 using Status = std::function<void(const std::string&)>;
 
 // Looks at this PC again. `reload` = also Steam, the game and the packages (the update address is asked again);
-// otherwise only what is in the game folder.
+// otherwise only what is in the game folder and the saves.
 void refresh(App& app, bool reload) {
     const Paths paths = app.paths;
     const Settings settings = app.settings;
-    const fs::path forced = app.forced_game_dir;
+    const fs::path forced = app.forced_game_dir, local = app.local_dir;
     const bool offline = app.offline;
     const std::shared_ptr<const Snapshot> old = reload ? nullptr : app.snap;
     start(app, [=](std::stop_token stop, const Status& status) -> std::function<void(App&)> {
@@ -232,6 +248,12 @@ void refresh(App& app, bool reload) {
             }
         }
         snap->folder = bin64.empty() ? FolderState{} : folder_state(bin64);
+        Paths with_game = paths;
+        with_game.bin64 = bin64;
+        snap->saves_at = save_paths(with_game, local);
+        snap->saves = scan_saves(snap->saves_at);
+        std::error_code ec;
+        snap->backups = !snap->saves_at.backups.empty() && fs::is_directory(snap->saves_at.backups, ec);
         return [snap, bin64](App& a) {
             a.snap = snap;
             a.paths.bin64 = bin64;
@@ -301,14 +323,74 @@ void update(App& app) {
     });
 }
 
+std::string joined(const std::vector<std::string>& items) {
+    std::string out;
+    for (size_t i = 0; i < items.size(); ++i) {
+        out += (i == 0 ? "" : i + 1 == items.size() ? " and " : ", ") + items[i];
+    }
+    return out;
+}
+
+// What a "keep" did, for the Saves line.
+void show_kept(App& app, const KeepResult& result) {
+    if (!result.ok) {
+        app.saves_error = result.error;
+    } else if (!result.kept.empty()) {
+        app.saves_error.clear();
+        app.saves_info = "Your co-op progress is in your save now: " + joined(result.kept) +
+                         ". Your saves as they were before are in " + path_text(result.backup) + ".";
+        if (std::exchange(app.play_anyway, false)) app.error.clear();  // what stopped the last Play is solved
+    }
+}
+
+// Puts the progress of the last co-op session into the real save (save_core.h keep_progress). `asked`: the player
+// pressed the button; otherwise the launcher does it on its own after a session, once for what is waiting.
+void keep(App& app, bool asked) {
+    const std::shared_ptr<const Snapshot> snap = app.snap;
+    if (!snap) return;
+    if (asked) app.saves_info.clear();
+    app.saves_error.clear();
+    app.keep_tried = snap->saves.signature();
+    const SavePaths at = snap->saves_at;
+    start(app, [=](std::stop_token, const Status& status) -> std::function<void(App&)> {
+        const KeepResult result = keep_progress(at, game_running, status);
+        return [=](App& a) {
+            show_kept(a, result);
+            refresh(a, false);
+        };
+    });
+}
+
 // The Play button: make the game folder ready for the chosen way of playing, then start the game through Steam.
+// Before that, with the mod: the progress of the last session goes into the real save (the mod's next start would
+// replace the sandbox that holds a host's), and the save folder is backed up.
 void play(App& app) {
     const std::shared_ptr<const Snapshot> snap = app.snap;
     if (!snap) return;
     const ReadyRequest base = begin_action(app);
     const Paths paths = app.paths;
     const bool no_launch = app.no_launch;
+    const bool keep_first = app.settings.keep_progress && !std::exchange(app.play_anyway, false);
+    const SavePaths at = snap->saves_at;
     start(app, [=](std::stop_token stop, const Status& status) -> std::function<void(App&)> {
+        KeepResult kept;
+        kept.ok = true;
+        if (keep_first) kept = keep_progress(at, game_running, status);
+        if (!kept.ok) {
+            return [=](App& a) {
+                show_kept(a, kept);
+                a.error = "The game was not started, so that nothing is lost. Press the button again to start it "
+                          "anyway: the progress of your last session then stays out of your save.";
+                a.play_anyway = true;
+                refresh(a, false);
+            };
+        }
+        BackupResult backup;
+        backup.ok = true;
+        if (base.mode != Mode::Single) {
+            status("Backing up your saves...");
+            backup = backup_saves(at);
+        }
         ReadyRequest request = base;
         request.source = snap->source();
         request.status = status;
@@ -320,7 +402,9 @@ void play(App& app) {
             launched = launch_game(&launch_error);
         }
         return [=](App& a) {
+            show_kept(a, kept);
             a.notes = result.notes;
+            if (!backup.ok) a.notes.push_back("Your saves could not be backed up (" + backup.error + ").");
             if (!result.ok) {
                 a.error = result.error;
             } else {
@@ -596,8 +680,10 @@ void draw(App& app) {
     ImGui::SetNextWindowSize(viewport->Size);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(26 * s, 20 * s));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    // No title bar and no resizing, but a scroll bar when a small screen cannot show everything.
     ImGui::Begin("##launcher", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
     ImGui::PopStyleVar(2);
 
@@ -666,6 +752,48 @@ void draw(App& app) {
                 app.info.clear();
                 app.notes.clear();
                 refresh(app, true);
+            }
+        }
+        ImGui::EndDisabled();
+
+        // ---- the saves: with the mod on the game saves into a separate folder, and a session's progress has to
+        // be put into the real save afterwards
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("Saves");
+        ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
+        const SaveScan& saves = snap.saves;
+        if (!saves.pending.empty()) {
+            std::vector<std::string> slots;
+            for (const SlotChange& c : saves.pending) slots.push_back(slot_label(c.slot) + " (saved " + c.when + ")");
+            wrapped("The progress of your last co-op session is not in your save yet: " + joined(slots) + ".", &kWarn);
+            if (app.game_is_running) wrapped("It can be kept once the game is closed.", &dim);
+        } else if (app.saves_info.empty() && app.saves_error.empty()) {
+            wrapped(!saves.found                  ? "No Crimson Desert saves on this PC yet."
+                    : app.settings.keep_progress ? "Nothing waiting. After a co-op session, your progress is put "
+                                                   "into your save here."
+                                                 : "Nothing waiting.",
+                    &dim);
+        }
+        if (!app.saves_error.empty()) wrapped(app.saves_error, &kBad);
+        if (!app.saves_info.empty()) wrapped(app.saves_info, &kGood);
+        for (const std::string& note : saves.notes) wrapped(note, &kWarn);
+        ImGui::TableNextColumn();
+        ImGui::BeginDisabled(app.busy);
+        if (!saves.pending.empty()) {
+            ImGui::BeginDisabled(app.game_is_running);
+            ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kAccentHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, kAccentActive);
+            const bool clicked = ImGui::Button("Keep progress", ImVec2(-1, 0));
+            ImGui::PopStyleColor(3);
+            ImGui::EndDisabled();
+            if (clicked) keep(app, true);
+        } else if (snap.backups) {
+            if (ImGui::Button("Open backups", ImVec2(-1, 0))) {
+                ShellExecuteW(app.hwnd, L"open", snap.saves_at.backups.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
             }
         }
         ImGui::EndDisabled();
@@ -775,7 +903,8 @@ void draw(App& app) {
     // ---- the rest
     ImGui::Spacing();
     ImGui::BeginDisabled(app.busy);
-    if (ImGui::TreeNodeEx("Game folder and updates",
+    if (std::exchange(app.open_settings, false)) ImGui::SetNextItemOpen(true);
+    if (ImGui::TreeNodeEx("Game folder, updates and saves",
                           ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen)) {
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted("Game folder");
@@ -821,6 +950,17 @@ void draw(App& app) {
         }
         wrapped("Another https:// address or a shared folder with a kit's files can be typed here; \"off\" stops "
                 "the check.", &dim);
+        bool keep_on = app.settings.keep_progress;
+        if (ImGui::Checkbox("Put my co-op progress into my save after each session", &keep_on)) {
+            app.settings.keep_progress = keep_on;
+            app.keep_tried.clear();
+            save(app);
+        }
+        wrapped("With the mod on, the game saves into a separate folder and your real save does not change. After a "
+                "session, with the game closed, the launcher copies your own progress into your real save. It backs "
+                "up your whole save folder first; the last " + std::to_string(kBackupsKept) + " backups are in " +
+                    path_text(snap.saves_at.backups) + ".",
+                &dim);
     }
     ImGui::EndDisabled();
 
@@ -919,6 +1059,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
                 app.press = argv[++i];
             } else if (arg == L"--game-dir" && more) {
                 app.forced_game_dir = argv[++i];
+            } else if (arg == L"--local-dir" && more) {
+                app.local_dir = argv[++i];
             } else if (arg == L"--data-dir" && more) {
                 app.paths.data = argv[++i];
                 own_data = false;
@@ -964,7 +1106,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     MONITORINFO mi{};
     mi.cbSize = sizeof mi;
     GetMonitorInfoW(monitor, &mi);
-    const int w = frame.right - frame.left, h = frame.bottom - frame.top;
+    // Never taller than the screen's work area: on a small screen the window is shorter and its content scrolls.
+    const int w = frame.right - frame.left;
+    const int h = std::min<int>(frame.bottom - frame.top, mi.rcWork.bottom - mi.rcWork.top);
     const int x = mi.rcWork.left + std::max(0L, ((mi.rcWork.right - mi.rcWork.left) - w) / 2);
     const int y = mi.rcWork.top + std::max(0L, ((mi.rcWork.bottom - mi.rcWork.top) - h) / 2);
     app.hwnd = CreateWindowExW(0, kWindowClass, L"Crimson Desert Multiplayer", window_style, x, y, w, h, nullptr,
@@ -1021,18 +1165,33 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
 
         const bool was_busy = app.busy;
         drain(app);
+        if (const ULONGLONG now = GetTickCount64(); now - app.running_checked >= 1000) {
+            app.running_checked = now;
+            const bool running = game_running();
+            if (running != app.game_is_running) {
+                frames_owed = 3;
+                // The game closed: what its session left is looked for once Steam is done with the save folder.
+                if (!running) app.look_again_at = now + kAfterGameMs;
+            }
+            app.game_is_running = running;
+        }
         if (!app.press.empty() && app.snap && !app.busy) {  // --press: the same calls as the buttons make
             const std::wstring what = std::exchange(app.press, {});
             if (what == L"update") update(app);
             if (what == L"play") play(app);
+            if (what == L"keep") keep(app, true);
+            if (what == L"settings") app.open_settings = true;
+        }
+        if (app.look_again_at && app.snap && !app.busy && GetTickCount64() >= app.look_again_at) {
+            app.look_again_at = 0;
+            if (!app.game_is_running) refresh(app, false);
+        }
+        // A session's progress is waiting and the player wants it kept without being asked: once for what waits.
+        if (app.settings.keep_progress && app.snap && !app.busy && !app.game_is_running && !app.look_again_at &&
+            !app.snap->saves.pending.empty() && app.snap->saves.signature() != app.keep_tried) {
+            keep(app, false);
         }
         if (was_busy != app.busy) frames_owed = 3;
-        if (const ULONGLONG now = GetTickCount64(); now - app.running_checked >= 1000) {
-            app.running_checked = now;
-            const bool running = game_running();
-            if (running != app.game_is_running) frames_owed = 3;
-            app.game_is_running = running;
-        }
 
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();

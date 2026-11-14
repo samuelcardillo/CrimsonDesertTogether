@@ -115,8 +115,10 @@ Checked on the previous version, 1.0.0.3527, with two copies on one PC:
 - The players and their mercenaries do not hurt each other.
 
 KNOWN PROBLEMS
-- In the host's world the guest sees the HOST's discovered Abyss Nexus points and can travel to them. Do not apply the
-  guest's progress from a session (section 6) until it is known whether those points end up in the guest's own save.
+- In the host's world the guest sees the HOST's discovered Abyss Nexus points and can travel to them. It is not known
+  yet whether those points end up in the guest's own save. The launcher now puts the guest's progress into their save
+  after a session (section 6): if you would rather not have that, untick its box there. Either way the launcher keeps
+  a copy of your saves from before.
 - SWITCHING CHARACTER: seen working in a real session (each player sees the other's new character). Riding a horse as
   the new character is not synced.
   In one session where both players switched to Damiane, the guest's game crashed about a minute later, right after
@@ -157,10 +159,11 @@ KNOWN PROBLEMS
 - The guest needs a save of their own: they join with the most recent one and its character. Joining with no save at
   all has not been tested.
 - Two players only: one host and one guest.
-- BACK UP YOUR SAVES first: copy this whole folder somewhere else.
+- YOUR SAVES ARE BACKED UP by the launcher each time it starts the game with the mod (section 6 says where). If you
+  install by hand instead, back them up yourself first: copy this whole folder somewhere else.
     %LOCALAPPDATA%\Pearl Abyss\CD\save
 - While you play with the mod, what you save goes to a separate folder (cdmp_save_sandbox): your real save does not
-  change until you apply your progress by hand (section 6).
+  change during the game. After the session your progress is put into it: the launcher does that for you (section 6).
 - STEAM ACHIEVEMENTS: the GUEST earns none while in a host's world, on purpose. In the host's world the guest's game
   holds the host's progress, so the mod blocks achievements for the guest from the moment it joins until the game is
   restarted. (Before this block existed, a guest's Steam account once received all of the host's achievements; the
@@ -183,8 +186,11 @@ there is one, the "Mod" line says "Update available" and the Update button next 
 keeps what it downloads, so cdmp_launcher.exe also works on its own, without the rest of this zip. If the line says
 "Could not check for updates", it carries on with the newest version already on your PC.
 If the mod is for another version of the game, the launcher says so instead of starting a game with the mod off.
+YOUR SAVES: the launcher backs them up before it starts the game with the mod, and after a session it puts your
+progress into your real save (section 6). Leave it open while you play, or open it again before you play next.
 Checked so far: finding the game, and updating from GitHub, installing, writing the settings and removing on a COPY
-of the game folder. Not checked yet: starting the real game from it. If it does anything odd, install by hand as
+of the game folder; the saves part on COPIES of save folders only. Not checked yet: starting the real game from it,
+and the saves part on a real save folder. If it does anything odd, install by hand as
 below and tell us. Windows may warn that cdmp_launcher.exe comes from an unknown publisher (it is not signed):
 More info > Run anyway. The cdmp.ini you had before is kept as cdmp.ini.before-launcher.
 
@@ -249,6 +255,28 @@ LEAVE IN THIS ORDER: first the GUEST, through the menu, and once the guest's gam
 The guest takes their progress on exit. If the host leaves first, or the guest's game crashes or is force-closed, the
 guest loses that session's progress.
 
+WITH THE LAUNCHER (new on 14 November). Tried on COPIES of save folders only (one of them with a real hosted
+session's saves), NOT yet on a real save folder nor after a session played from the launcher: tell us what the
+"Saves" line says after your first sessions.
+Start the game from the launcher and leave the launcher open, or open it again before you play next. Once the game
+is closed it puts your progress into your real save by itself, and its "Saves" line says what it did:
+    THE GUEST   your character as the host's game last saved it, into the slot you joined with.
+    THE HOST    the slots your own saves went to during the session (autosaves and manual saves).
+Before it changes anything it copies your whole save folder to
+    %LOCALAPPDATA%\cdmp_launcher\save_backups\<date-time>\save
+(the last 10 copies are kept; "Open backups" in the launcher shows them). TO GO BACK to one: close the game and
+replace the folder %LOCALAPPDATA%\Pearl Abyss\CD\save with that "save" folder.
+It leaves a slot alone when it cannot be sure the save in it is yours and whole, and says why: for example when you
+played without the mod after the session (your newer save stays), or when the game closed while it was saving.
+To decide each time yourself: "Game folder, updates and saves" > untick "Put my co-op progress into my save after
+each session". The "Saves" line then shows a "Keep progress" button instead.
+THE HOST: a session's progress is kept only if the launcher runs before the game is next started with the mod. If you
+start the game straight from Steam, that start sets the session's saves aside in bin64\cdmp_save_exports, and the
+steps below are then the only way to bring them back.
+A host's save made while a guest was in the world has not been loaded again by anyone yet. If yours looks wrong
+after a session, go back to the backup and tell us.
+
+BY HAND, WITHOUT THE LAUNCHER
 THE GUEST, with the game closed (it makes a backup first and checks the save). Run it from the zip folder:
     powershell -ExecutionPolicy Bypass -File apply-guest-progress.ps1
 

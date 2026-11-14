@@ -32,9 +32,12 @@ friends. No IP addresses and no ports: the connection goes through Steam.
 A panel at the top left says who you are and the state of the session (F8 hides it).
 
 **Your saves.** While the mod is loaded the game saves into a separate folder (`cdmp_save_sandbox`), not into
-your real save. The guest plays their own save, uploaded to the host when joining, and takes the session's
-progress back with a script after leaving; the host's progress can be brought back too, but that is the least
-tested part. Back up `%LOCALAPPDATA%\Pearl Abyss\CD\save` before you start.
+your real save. The guest plays their own save, uploaded to the host when joining, and the host's game sends
+the guest's progress back. After a session, with the game closed, the launcher puts each player's own progress
+into their real save, and backs up the whole save folder first (launchers from the releases after `b2`; tried
+on copies of save folders, not yet on a real one). With an older launcher, or without one, that is done with
+two scripts and you back up `%LOCALAPPDATA%\Pearl Abyss\CD\save` yourself. A host's save made with a guest in
+the world is the least tested part.
 
 **Achievements.** A guest earns no Steam achievements while in a host's world. This is deliberate: there the
 guest's game holds the host's progress, so the mod blocks achievements for the guest until the game is

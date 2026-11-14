@@ -27,6 +27,7 @@ struct Paths {
 std::string narrow(std::wstring_view w);
 std::wstring widen(std::string_view s);
 std::string path_text(const std::filesystem::path& p);  // UTF-8, for the window
+std::string error_text(unsigned long code);             // Windows' own words for an error code
 std::optional<std::vector<uint8_t>> read_file(const std::filesystem::path& p, size_t max_bytes);
 std::optional<std::string> read_text(const std::filesystem::path& p, size_t max_bytes = size_t{16} << 20);
 // Through a temporary file next to it, so a failure leaves the old file whole.

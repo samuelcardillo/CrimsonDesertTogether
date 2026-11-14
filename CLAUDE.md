@@ -41,10 +41,13 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
   compilación (`docs/research/objetos-obsoletos-msbuild.md`; así se rompió la release b1). `-Clean` lo recompila todo.
 - Instalar en el juego: `.\scripts\deploy.ps1`; desinstalar con `-Remove`. Falla si el juego está abierto.
 - Si cambias `tools/porting/configs/cdmp.3527-2inst-*.ini`, regenera el kit de dos PC: `python tools/porting/make_steam_kit.py`.
-- Launcher de jugadores (`cdmp_launcher.exe`, `docs/LAUNCHER.md`): instala el mod, lanza con o sin él y elige con quién.
-  Para probarlo sin tocar el juego: `--game-dir <bin64 falso> --data-dir <carpeta> --bundle <kit> --no-launch`.
+- Launcher de jugadores (`cdmp_launcher.exe`, `docs/LAUNCHER.md`): instala el mod, lanza con o sin él, elige con quién
+  y, con el juego cerrado, pasa a la partida real el progreso de la sesión (con copia de seguridad antes).
+  Para probarlo sin tocar el juego **ni las partidas**:
+  `--game-dir <bin64 falso> --data-dir <carpeta> --bundle <kit> --local-dir <carpeta> --no-launch`.
+  Sin `--local-dir` (hace de `%LOCALAPPDATA%`) mira las partidas reales y escribe en ellas si hay progreso esperando.
   `scripts\package_coop.ps1 -Suffix 3663-vNN` lo mete en el kit junto con `package.txt`. Otros modificadores de
-  prueba: `--offline` (no pregunta por actualizaciones) y `--press update|play` (pulsa ese botón sin ratón).
+  prueba: `--offline` (no pregunta por actualizaciones) y `--press update|play|keep|settings` (pulsa ese botón sin ratón).
 - Los jugadores se actualizan con el botón Update del launcher, que baja la última release de GitHub. Las releases
   se hacen siempre desde este PC (en GitHub no se compila nada): con el commit ya subido,
   `.\scripts\publish_release.ps1 -Publish` compila, pasa los tests, hace el kit y publica; sin `-Publish` solo hace

@@ -35,7 +35,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $kHeader = 'cdmp host save generation (P8 S35 phase E)'
-$kBuilds = @{ '1.0.0.2976' = '0x6AB28F00'; '1.0.0.3527' = '0x6AEA07A6'; '1.0.0.3549' = '0x6AEB7D59' }
+$kBuilds = @{ '1.0.0.2976' = '0x6AB28F00'; '1.0.0.3527' = '0x6AEA07A6'; '1.0.0.3549' = '0x6AEB7D59'
+              '1.0.0.3576' = '0x6AED2E85'; '1.0.0.3663' = '0x6AF5D198' }
 $saveRoot = Join-Path $env:LOCALAPPDATA 'Pearl Abyss\CD\save'
 
 function Refuse([string]$why) {
@@ -116,7 +117,7 @@ foreach ($l in $lines[1..($lines.Count - 1)]) {
     }
 }
 if (-not $kBuilds.ContainsKey([string]$meta['game_build']) -or $kBuilds[[string]$meta['game_build']] -ne $meta['pe_timestamp']) {
-    Refuse "the generation is for build $($meta['game_build']) / $($meta['pe_timestamp']); this script knows only 1.0.0.2976, 1.0.0.3527 and 1.0.0.3549."
+    Refuse "the generation is for build $($meta['game_build']) / $($meta['pe_timestamp']); this script knows only $(($kBuilds.Keys | Sort-Object) -join ', ')."
 }
 if ($meta['generation'] -ne $genName) { Refuse "the manifest names generation '$($meta['generation'])', the folder is '$genName'." }
 

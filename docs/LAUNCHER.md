@@ -1,9 +1,10 @@
 # Launcher de jugadores (`cdmp_launcher.exe`)
 
-Hecho el 2026-11-14; el mismo día se le añadió la actualización desde GitHub. Instala o actualiza el mod en la
-carpeta del juego, arranca el juego con el mod o sin él y escribe con quién se juega. No tiene código del juego ni
-ganchos: solo descarga y copia archivos, escribe `cdmp.ini` y lanza `steam://rungameid/3321460`. Lo que ve el jugador
-está en inglés.
+Hecho el 2026-11-14; el mismo día se le añadieron la actualización desde GitHub y las partidas (copia de seguridad y
+progreso de la sesión, [más abajo](#las-partidas-copia-de-seguridad-y-progreso-de-la-sesión)). Instala o actualiza
+el mod en la carpeta del juego, arranca el juego con el mod o sin él, escribe con quién se juega y, con el juego
+cerrado, pasa a la partida real lo que el jugador avanzó en una sesión. No tiene ganchos ni toca el juego: descarga
+y copia archivos, escribe `cdmp.ini` y lanza `steam://rungameid/3321460`. Lo que ve el jugador está en inglés.
 
 ## Dónde está
 
@@ -11,6 +12,8 @@ está en inglés.
 |---|---|
 | Reglas, sin Windows (se prueban solas) | `tools/launcher/launcher_logic.h` |
 | Archivos, registro, descarga | `tools/launcher/launcher_core.cpp` |
+| Reglas de las partidas (qué progreso se pasa y cuál no) | `tools/launcher/save_logic.h` |
+| Partidas: copia de seguridad, búsqueda y cambio de ranura | `tools/launcher/save_core.cpp` |
 | Ventana (Dear ImGui sobre Direct3D 11) | `tools/launcher/main.cpp` |
 | Pruebas | `tests/launcher_tests.cpp` (ctest `launcher`) |
 | En el kit | `scripts/package_coop.ps1` mete el exe, `package.txt` y `kit/coop/cdmp_launcher.ini` |
@@ -21,7 +24,12 @@ Para probarlo sin tocar el juego real:
 `cdmp_launcher.exe --game-dir <bin64 falso> --data-dir <carpeta> --bundle <carpeta del kit> --no-launch`.
 Un `bin64` falso sirve con los primeros 4 KB del `CrimsonDesert.exe` real (de ahí lee la build). `--offline` no
 pregunta a la dirección de actualizaciones (para probar un kit local más nuevo que la última release) y
-`--press update|play` pulsa ese botón en cuanto termina de mirar el PC, para pruebas sin ratón.
+`--press update|play|keep` pulsa ese botón en cuanto termina de mirar el PC, para pruebas sin ratón
+(`--press settings` abre la última sección, que una prueba no puede pulsar).
+
+**En una prueba pon siempre `--local-dir <carpeta>`**: hace de `%LOCALAPPDATA%`. Sin él el launcher mira las
+partidas reales del PC (`%LOCALAPPDATA%\Pearl Abyss\CD\save`) y, si hay progreso de una sesión esperando, lo pasa a
+ellas sin preguntar (es lo que hace para un jugador).
 
 ## De dónde sale el mod: se publica desde el PC de desarrollo, el launcher descarga
 
@@ -90,6 +98,73 @@ cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está e
    puede limitar quién entra (su `peer_steamid`; vacío = cualquier amigo jugando). La lista de nombres sale de la
    caché local de Steam (`userdata\<cuenta>\config\localconfig.vdf`, bloque `friends`): no dice quién está jugando
    y puede traer gente que no es amiga. También se puede pegar un SteamID64 o un enlace `/profiles/<id>`.
+
+## Las partidas: copia de seguridad y progreso de la sesión
+
+**El problema.** Con el mod puesto (`save_guard=redirect`) el juego guarda en una caja y la carpeta real
+(`%LOCALAPPDATA%\Pearl Abyss\CD\save`) no se escribe nunca. Lo que un jugador avanza en una sesión queda fuera:
+
+- **Anfitrión**: sus guardados están en la caja, `...\CD\cdmp_save_sandbox`. El siguiente arranque con el mod la
+  rehace desde la carpeta real (la anterior va a `bin64\cdmp_save_exports`, `docs/research/s25/s35-fase-e-guardado.md`).
+- **Invitado**: su personaje lo guarda el juego del anfitrión y vuelve por el túnel como generaciones en
+  `%LOCALAPPDATA%\cdmp\guest_progress\<SteamID64 del anfitrión>\incoming\gen<n>\`
+  (`docs/research/noche/progreso-invitado.md`).
+
+Hasta el 14-11 pasarlo a la partida real era cosa del jugador, con dos scripts de PowerShell del kit
+(`apply-guest-progress.ps1`, `host_save_restore.ps1`) y una copia de seguridad a mano. En la práctica nadie lo
+hacía: en este PC la carpeta real seguía con fecha del 2 al 4 de noviembre tras dos semanas de sesiones.
+
+**Qué hace el launcher** (siempre con el juego cerrado; `save_core.cpp`):
+
+1. **Copia de seguridad**: la carpeta `save` entera a `%LOCALAPPDATA%\cdmp_launcher\save_backups\<fecha-hora>\save`,
+   con `backup.txt` (tamaño y SHA-256 de cada archivo), comprobando cada copia. No repite una copia si la carpeta es
+   igual que la última; quedan las 10 más nuevas. La hace antes de arrancar el juego con el mod (Join / Host) y antes
+   de escribir nada en la carpeta real; sin copia comprobada no escribe.
+2. **Busca el progreso que espera**: al abrirse, 10 s después de que el juego se cierre (deja terminar a Steam) y
+   antes de arrancar el juego.
+   - *Del anfitrión*: cada ranura 0-2 / 100-108 de la caja que no sea igual que la real. Solo si la caja la hizo un
+     juego anfitrión: tiene que existir el diario de esa sesión (`cdmp_save_exports\runs\`, el que escribe
+     `host_save=probe`) con el id de carpeta de la caja. La ranura se pasa si **todos** los guardados que fueron a
+     ella son del anfitrión con identidad positiva y resultado 0, los dos archivos tienen cabecera válida y se
+     escribieron juntos (10 s), no hay restos `slotN_new` / `slotN_backup` y la ranura real no se ha escrito después
+     de empezar esa sesión (si el jugador siguió sin el mod, su partida nueva se queda). Si no, se deja y la línea
+     "Saves" dice por qué.
+   - *Del invitado*: de cada anfitrión, la generación más nueva que encaja en su ranura, con la regla de línea de
+     `apply-guest-progress.ps1` (solo sobre la partida de la que viene, una generación suya o una ranura vacía, y
+     nunca hacia atrás) y con sus dos archivos comprobados contra el manifiesto. Si la ranura tiene ya otra partida
+     no se dice nada: el jugador siguió por su cuenta. Las carpetas que no son un SteamID64 (`unknown-host`, de las
+     pruebas sin Steam de este PC) no se miran.
+   - Si esperan las dos cosas para la misma ranura, vale la más reciente.
+3. **Lo pasa**: monta la ranura nueva en `...\CD\cdmp_launcher_staging\slotN` (al lado de `save`, mismo volumen),
+   la comprueba, saca la vieja y mete la nueva con dos renombrados y relee lo que quedó; si algo falla la ranura
+   vuelve a estar como estaba. Nunca crea nombres `slotN_new` ni `slotN_backup` dentro de `save` (el juego los toma
+   por un guardado suyo a medias). Para el invitado escribe `applied.txt` como el script (el mod se lo dice al
+   anfitrión). Cada cosa hecha queda en `%LOCALAPPDATA%\cdmp_launcher\saves.log`.
+4. **Sin preguntar**, por defecto (`keep_progress=1` en sus ajustes; casilla "Put my co-op progress into my save
+   after each session"). Con la casilla quitada la línea "Saves" lo dice y ofrece el botón "Keep progress".
+5. **Al pulsar Play**: primero pasa lo que espere. Si no puede (un archivo en uso, sin sitio para la copia), no
+   arranca el juego y lo dice; al pulsar otra vez arranca sin pasarlo.
+
+**En qué se aparta de los scripts.**
+
+- El del anfitrión exigía Steam cerrado; el launcher no (arranca el juego por Steam). **[NV]** qué hace Steam Cloud
+  con una ranura cambiada con Steam abierto y el juego cerrado.
+- El del anfitrión partía de una generación de `cdmp_save_exports` y de su veredicto `probe`. El launcher lee la
+  caja directamente (tiene que actuar antes del arranque que la exporta) y no usa `candidate`: ese veredicto pide
+  que no haya ningún Flush diferido, y **así se escribe todo autoguardado** (el "flush timer" 5 s después). En las
+  33 generaciones de este PC, las 47 ranuras cambiadas salieron `unknown` por ese motivo y ninguna `candidate`. La
+  regla del launcher (`judge_host_slot`) acepta el Flush diferido si es del anfitrión con identidad positiva.
+- El script `host_save_restore.ps1` solo conocía las builds 2976, 3527 y 3549 y rechazaba las generaciones de 3663:
+  corregido el 14-11 (3576 y 3663 añadidas).
+
+**Lo que no está demostrado** (por eso hay copia de seguridad antes de cada cambio, y la casilla):
+
+- No se ha ejecutado contra la carpeta real ni en una sesión jugada: solo los tests, con carpetas falsas.
+- Nadie ha cargado todavía en el juego una partida de anfitrión guardada durante una sesión con invitado. La
+  auditoría S34 §5 deja abierto que el mundo guardado sea coherente (M2); el diario prueba quién guardó, no eso.
+- Si el anfitrión arranca el juego desde Steam sin pasar por el launcher, la caja se rehace y el progreso de la
+  sesión anterior se queda fuera (en `cdmp_save_exports`, para el script).
+- En el mundo del anfitrión el invitado ve los puntos Abyss Nexus del anfitrión: no se sabe si acaban en su partida.
 
 ## Reglas que conviene conocer
 
@@ -167,13 +242,31 @@ Comprobado el 2026-11-14:
   `optd_guest_save_b` (`parse_slot_dir(L"slot1")`, `tests/optd_guest_save_b_tests.cpp:708`): es un fallo de ese
   compilador (`docs/research/msvc-14.51-miscompila.md`).
 
+- **Las partidas** (14-11, tarde). En ctest (`launcher`), con carpetas falsas: la regla de línea del invitado, la
+  del anfitrión con diarios hechos con el código del mod, las copias de seguridad (no repetir, las 10 más nuevas, una
+  copia a la que le falta un archivo no cuenta), pasar ranuras de anfitrión y de invitado, `applied.txt`, lo que se
+  deja fuera (guardado del invitado en una ranura del anfitrión, partida real más nueva que la sesión, archivo
+  cortado, pareja escrita a destiempo, restos `slotN_new` / `slotN_backup`, dos cuentas, caja sin diario) y la
+  vuelta atrás con un archivo de la ranura abierto por otro proceso (la ranura queda igual y no queda nada en la
+  carpeta de preparación).
+- **Ensayo con la ventana real sobre copias de los datos de este PC** (`--local-dir`): copia de `save`, copia de
+  `cdmp_save_sandbox_prev` (la caja tal como la dejó la sesión de anfitrión del 14-11 a las 16:31, con autoguardados
+  en `slot0` y `slot1`) y el diario real de esa sesión. La línea "Saves" dijo `slot 0 (saved 14 Nov 16:34) and
+  slot 1 (saved 14 Nov 16:49)`; con "Keep progress", y también solo (ajuste por defecto), las dos ranuras de la copia
+  quedaron byte a byte como las de la sesión, las otras tres sin tocar, `slot204` fuera, la copia de seguridad igual
+  que la carpeta de antes y la carpeta de preparación vacía. Con un archivo de `slot0` abierto, Play no arrancó ni
+  instaló nada y lo dijo; al repetir sin el archivo abierto pasó las ranuras, hizo la copia e instaló el mod. La
+  carpeta real no se tocó (su archivo más nuevo sigue siendo del 8-11).
+
 Sin comprobar:
-- **Una publicación entera con `publish_release.ps1 -Publish`** (compilar, kit y release en un solo paso).
+- **Las partidas contra la carpeta real y en una sesión jugada**: que el juego cargue la ranura pasada (la del
+  anfitrión no se ha cargado nunca después de una sesión con invitado), qué hace Steam Cloud, y el camino del
+  invitado con generaciones de verdad (en este PC solo las hay de pruebas sin Steam, que el launcher no mira).
 - **Pulsar los botones contra el juego real y arrancarlo** (`steam://`), y una sesión jugada desde el launcher.
 - El paso de una release a la siguiente bajada de GitHub (solo hay una; con una carpeta sí se probó).
 - Otro PC: otra escala de pantalla, Steam en otra ruta, SmartScreen o el antivirus con el exe sin firmar.
 
-Fuera de esta versión: que el launcher se actualice a sí mismo (hay que bajar el exe nuevo de la release a mano),
-saber qué amigos están jugando ahora (haría falta abrir la API de Steam con el AppID del juego desde el launcher:
-sin probar), un historial de versiones para volver a una anterior, y los pasos de después de la sesión
-(`apply-guest-progress.ps1`, `host_save_restore.ps1`).
+Fuera de esta versión: que el launcher se actualice a sí mismo (hay que bajar el exe nuevo de la release a mano;
+un launcher viejo tampoco tiene lo de las partidas), saber qué amigos están jugando ahora (haría falta abrir la API
+de Steam con el AppID del juego desde el launcher: sin probar), un historial de versiones para volver a una
+anterior, y volver a una copia de seguridad de las partidas desde la ventana (se hace a mano: copiar la carpeta).

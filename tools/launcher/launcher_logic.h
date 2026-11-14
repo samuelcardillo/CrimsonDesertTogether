@@ -720,6 +720,9 @@ struct Settings {
     uint64_t host_accept = 0;              // 0 = any friend who is playing
     std::string update_address;            // empty = the kit's (cdmp_launcher.ini), if it has one
     std::string installed_loader_sha256;   // the winmm.dll this launcher put in the game folder
+    // After a co-op session the progress is put into the real save without asking (save_logic.h). Off: only when
+    // the player presses "Keep progress".
+    bool keep_progress = true;
     std::vector<Contact> friends;          // the people the player has picked before
 
     const Contact* friend_by_id(uint64_t id) const {
@@ -745,6 +748,7 @@ inline Settings parse_settings(std::string_view text) {
     s.host_accept = id("host_accept");
     s.update_address = clean_label(get("update_address"), 1024);
     s.installed_loader_sha256 = normal_sha256(get("installed_loader_sha256"));
+    s.keep_progress = get("keep_progress") != "0";  // on unless the player turned it off
     for (const auto& [key, value] : ini_entries(text, "friends")) {
         const auto fid = parse_u64(key);
         if (!fid || !valid_steamid(*fid) || s.friend_by_id(*fid)) continue;
@@ -766,6 +770,7 @@ inline std::string format_settings(const Settings& s) {
     line("host_accept", std::to_string(s.host_accept));
     line("update_address", clean_label(s.update_address, 1024));
     line("installed_loader_sha256", s.installed_loader_sha256);
+    line("keep_progress", s.keep_progress ? "1" : "0");
     out += "\r\n[friends]\r\n";
     for (const Contact& c : s.friends) line(std::to_string(c.id), clean_label(c.name));
     return out;

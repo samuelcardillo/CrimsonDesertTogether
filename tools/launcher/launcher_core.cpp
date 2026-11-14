@@ -22,17 +22,6 @@ constexpr size_t kMaxListBytes = size_t{1} << 20;
 constexpr size_t kMaxFileBytes = size_t{128} << 20;  // cdmp.asi is about 16 MB
 constexpr wchar_t kExeName[] = L"CrimsonDesert.exe";
 
-std::string error_text(DWORD code) {
-    wchar_t buf[512] = {};
-    const DWORD n = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, buf,
-                                   ARRAYSIZE(buf), nullptr);
-    std::string text = narrow(std::wstring_view(buf, n));
-    while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '.')) {
-        text.pop_back();
-    }
-    return text.empty() ? "error " + std::to_string(code) : text;
-}
-
 struct File {
     HANDLE h = INVALID_HANDLE_VALUE;
     ~File() {
@@ -244,6 +233,17 @@ std::wstring widen(std::string_view s) {
 }
 
 std::string path_text(const fs::path& p) { return narrow(p.wstring()); }
+
+std::string error_text(unsigned long code) {
+    wchar_t buf[512] = {};
+    const DWORD n = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, buf,
+                                   ARRAYSIZE(buf), nullptr);
+    std::string text = narrow(std::wstring_view(buf, n));
+    while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '.')) {
+        text.pop_back();
+    }
+    return text.empty() ? "error " + std::to_string(code) : text;
+}
 
 std::optional<std::vector<uint8_t>> read_file(const fs::path& p, size_t max_bytes) {
     const File f = open_for_reading(p);

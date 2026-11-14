@@ -283,10 +283,12 @@ target_link_libraries(cdmp_probe PRIVATE cdmp_common)
 add_executable(cdmp_launcher WIN32
     tools/launcher/main.cpp
     tools/launcher/launcher_core.cpp
+    tools/launcher/save_core.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
 )
-set_source_files_properties(tools/launcher/main.cpp tools/launcher/launcher_core.cpp PROPERTIES COMPILE_OPTIONS /W4)
+set_source_files_properties(tools/launcher/main.cpp tools/launcher/launcher_core.cpp tools/launcher/save_core.cpp
+    PROPERTIES COMPILE_OPTIONS /W4)
 target_include_directories(cdmp_launcher PRIVATE src tools/launcher)
 target_link_libraries(cdmp_launcher PRIVATE imgui d3d11 winhttp version shell32 ole32 advapi32)
 # Where the launcher looks for the newest build of the mod when neither the player nor the kit names a place: the
@@ -303,7 +305,8 @@ target_link_libraries(cdmp_debug_watch PRIVATE dbghelp)
 # Tests.
 enable_testing()
 # The launcher's rules and its work on files, against fake kit, game and data folders in %TEMP%.
-add_executable(cdmp_tests_launcher tests/launcher_tests.cpp tools/launcher/launcher_core.cpp)
+add_executable(cdmp_tests_launcher tests/launcher_tests.cpp tools/launcher/launcher_core.cpp
+    tools/launcher/save_core.cpp)
 cdmp_strict(cdmp_tests_launcher)
 target_include_directories(cdmp_tests_launcher PRIVATE src tools/launcher)
 target_link_libraries(cdmp_tests_launcher PRIVATE winhttp version shell32 advapi32)

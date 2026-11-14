@@ -1,5 +1,6 @@
-// The launcher (tools/launcher): its rules (launcher_logic.h) and its work on files (launcher_core.cpp) against fake
-// kit, game and data folders in %TEMP%. Not tested here: the window, Steam's registry and the https download.
+// The launcher (tools/launcher): its rules (launcher_logic.h, save_logic.h) and its work on files (launcher_core.cpp,
+// save_core.cpp) against fake kit, game, data and save folders in %TEMP%. Not tested here: the window, Steam's
+// registry and the https download. Nothing here reads or writes the PC's real save folder.
 
 #include <windows.h>
 
@@ -8,12 +9,14 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "common/sha256.h"
 #include "launcher_core.h"
+#include "save_core.h"
 
 using namespace cdmp::launcher;
 namespace fs = std::filesystem;
@@ -716,6 +719,499 @@ void test_update_button(const fs::path& tmp) {
     CHECK(o.choice.source && o.choice.source->kind == Source::Kind::Kit && o.choice.source->package.id == "v1");
 }
 
+// ------------------------------------------------------------------ the saves (save_logic.h, save_core.cpp)
+// A file the game would load: the 0x80-byte header and `data` bytes after it.
+std::string fake_save(std::string_view tag, size_t data = 400) {
+    std::string b(0x80 + data, '\0');
+    auto u16 = [&](size_t o, uint32_t v) { b[o] = static_cast<char>(v), b[o + 1] = static_cast<char>(v >> 8); };
+    auto u32 = [&](size_t o, uint32_t v) { u16(o, v), u16(o + 2, v >> 16); };
+    b[0] = 'S', b[1] = 'A', b[2] = 'V', b[3] = 'E';
+    u16(4, 2);
+    u16(6, 0x80);
+    u32(0x12, static_cast<uint32_t>(data * 3));
+    u32(0x16, static_cast<uint32_t>(data));
+    for (size_t i = 0; i < data; ++i) b[0x80 + i] = tag[i % tag.size()];
+    return b;
+}
+
+std::string lobby_of(std::string_view tag) { return fake_save("lobby of " + std::string(tag), 60); }
+std::string save_of(std::string_view tag) { return fake_save("save of " + std::string(tag)); }
+
+void put_slot(const fs::path& dir, std::string_view tag, int minutes_ago) {
+    put(dir / "lobby.save", lobby_of(tag));
+    put(dir / "save.save", save_of(tag));
+    set_time(dir / "lobby.save", minutes_ago);
+    set_time(dir / "save.save", minutes_ago);
+}
+
+bool slot_is(const fs::path& dir, std::string_view tag) {
+    return get(dir / "lobby.save") == lobby_of(tag) && get(dir / "save.save") == save_of(tag);
+}
+
+// "2026-11-14 16:58:25.479", this PC's time that many minutes ago: a run journal's start.
+std::string local_time_text(int minutes_ago) {
+    FILETIME now{};
+    GetSystemTimeAsFileTime(&now);
+    ULARGE_INTEGER t;
+    t.LowPart = now.dwLowDateTime, t.HighPart = now.dwHighDateTime;
+    t.QuadPart -= static_cast<uint64_t>(minutes_ago) * 60 * 10000000ull;
+    const FILETIME then{t.LowPart, t.HighPart};
+    SYSTEMTIME utc{}, local{};
+    FileTimeToSystemTime(&then, &utc);
+    SystemTimeToTzSpecificLocalTime(nullptr, &utc, &local);
+    char buf[40];
+    std::snprintf(buf, sizeof buf, "%04u-%02u-%02u %02u:%02u:%02u.%03u", local.wYear, local.wMonth, local.wDay,
+                  local.wHour, local.wMinute, local.wSecond, local.wMilliseconds);
+    return buf;
+}
+
+// A folder's identity as the mod writes it in a run journal.
+std::string folder_id(const fs::path& p) {
+    const HANDLE h = CreateFileW(p.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                 nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    BY_HANDLE_FILE_INFORMATION info{};
+    if (h != INVALID_HANDLE_VALUE) {
+        GetFileInformationByHandle(h, &info);
+        CloseHandle(h);
+    }
+    char buf[40];
+    std::snprintf(buf, sizeof buf, "%08lX:%08lX%08lX", info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow);
+    return buf;
+}
+
+// The journal lines of one save as the mod writes them: the Save, and the "flush timer" that writes it to disk.
+std::string journal_save(uint32_t slot, gsv::Owner owner = gsv::Owner::Host, bool positive = true, int32_t result = 0) {
+    hsv::SaveEvent s;
+    s.seq = 1;
+    s.time = "t";
+    s.owner = owner;
+    s.positive_host = positive;
+    s.caller = "autosave";
+    s.asked = s.written = slot;
+    s.action = "pass";
+    s.result_read = true;
+    s.result = result;
+    hsv::FlushEvent f;
+    f.seq = 2;
+    f.time = "t";
+    f.owner = owner;
+    f.positive_host = positive;
+    f.caller = "flush timer";
+    f.pending_read = true;
+    f.pending = static_cast<int32_t>(slot);
+    f.result_read = true;
+    f.result = 0;
+    return hsv::journal_save_line(s) + hsv::journal_flush_line(f);
+}
+
+hsv::Journal journal_of(const std::string& events, bool hooks = true) {
+    const std::string text = hsv::journal_header_text({"run", "2026-11-14 16:31:42.137", "id", "0x1", "probe"}) +
+                             (hooks ? hsv::journal_hooks_line(true, true) : std::string()) + events;
+    return hsv::parse_journal(text).value_or(hsv::Journal{});
+}
+
+GuestGeneration generation(uint32_t number, uint32_t slot, uint64_t time, std::string_view tag, std::string_view root,
+                           std::string_view base) {
+    GuestGeneration g;
+    g.number = number;
+    g.manifest.gen = number;
+    g.manifest.host_id = kFriend;
+    g.manifest.slot = slot;
+    g.manifest.reason = 3;
+    g.manifest.time_unix = time;
+    g.manifest.received_utc = "2026-11-14T02:44:23Z";
+    const std::string lobby = lobby_of(tag), save = save_of(tag);
+    g.manifest.files[0] = {static_cast<uint32_t>(lobby.size()), cdmp::sha256::of(bytes(lobby))};
+    g.manifest.files[1] = {static_cast<uint32_t>(save.size()), cdmp::sha256::of(bytes(save))};
+    if (!root.empty()) g.manifest.root = cdmp::sha256::of(bytes(save_of(root)));
+    if (!base.empty()) g.manifest.base = cdmp::sha256::of(bytes(save_of(base)));
+    return g;
+}
+
+void test_save_rules() {
+    // A guest's generations continue ONE save. "a" was uploaded in the first session, which made g1; the second
+    // session uploaded g1's save and made g2 and g3.
+    const std::vector<GuestGeneration> gens = {generation(1, 2, 100, "g1", "a", "a"), generation(2, 2, 200, "g2", "a", "g1"),
+                                               generation(3, 2, 300, "g3", "a", "g1")};
+    const auto in_slot = [](std::string_view tag) { return std::optional<std::string>(sha(save_of(tag))); };
+    CHECK(line_problem(gens[2], gens, {}, in_slot("a")) == LineProblem::None);        // the save it all came from
+    CHECK(line_problem(gens[2], gens, {}, in_slot("g1")) == LineProblem::None);       // an older generation of it
+    CHECK(line_problem(gens[2], gens, {}, in_slot("g2")) == LineProblem::None);
+    CHECK(line_problem(gens[2], gens, {}, std::nullopt) == LineProblem::None);        // no save in the slot
+    CHECK(line_problem(gens[2], gens, {}, in_slot("g3")) == LineProblem::AlreadyThere);
+    CHECK(line_problem(gens[1], gens, {}, in_slot("g3")) == LineProblem::AlreadyThere);  // never backwards
+    CHECK(line_problem(gens[0], gens, {}, in_slot("g1")) == LineProblem::AlreadyThere);
+    CHECK(line_problem(gens[2], gens, {}, in_slot("mine")) == LineProblem::OtherSave);   // played on alone since
+    CHECK(line_problem(gens[2], gens, {}, std::optional<std::string>("")) == LineProblem::OtherSave);  // unreadable
+    CHECK(line_problem(generation(4, 2, 400, "g4", "", ""), gens, {}, in_slot("a")) == LineProblem::NoLine);
+    // The slot holds a generation that is no longer on disk, but the record of what was applied names it.
+    const std::vector<GuestGeneration> later = {gens[2]};
+    CHECK(line_problem(gens[2], later, {}, in_slot("g0")) == LineProblem::OtherSave);
+    const AppliedRecord record{7, sha(save_of("a")), sha(save_of("g0"))};
+    CHECK(line_problem(gens[2], later, record, in_slot("g0")) == LineProblem::None);
+    // A generation older than the ones made from the save in the slot.
+    const std::vector<GuestGeneration> mixed = {generation(1, 2, 100, "g1", "a", "x"), generation(2, 2, 200, "g2", "a", "a")};
+    CHECK(line_problem(mixed[0], mixed, {}, in_slot("a")) == LineProblem::Older);
+    CHECK(line_problem(mixed[1], mixed, {}, in_slot("a")) == LineProblem::None);
+
+    std::vector<GuestGeneration> order = {gens[0], gens[2], gens[1], generation(9, 2, 200, "g9", "a", "a")};
+    newest_first(order);
+    CHECK(order[0].number == 3 && order[1].number == 9 && order[2].number == 2 && order[3].number == 1);
+
+    // applied.txt: what the launcher writes is what it (and the mod) reads.
+    const auto applied = parse_applied(format_applied(gens[1], "2026-11-14T10:00:00Z", "C:\\from", "C:\\backup"));
+    CHECK(applied && applied->generation == 2 && applied->root == sha(save_of("a")) && applied->save == sha(save_of("g2")));
+    CHECK(!parse_applied("slot=2\r\n"));
+    const auto manifest = gsw::parse_incoming_manifest(gsw::incoming_manifest_text(gens[1].manifest));
+    GuestGeneration read_back;
+    if (manifest) read_back.manifest = *manifest;
+    CHECK(manifest && manifest->slot == 2 && read_back.base() == sha(save_of("g1")) && read_back.root() == sha(save_of("a")));
+
+    // A host's slot: kept only when every save that went to it was the host's own and worked.
+    HostSlotFacts f;
+    f.slot = 0;
+    f.lobby = f.save = f.changed = f.start_known = true;
+    const hsv::Journal own = journal_of(journal_save(0) + journal_save(204, gsv::Owner::User2, false));
+    CHECK(judge_host_slot(f, own).verdict == HostVerdict::Keep);
+    const auto left_out = [&](const HostSlotFacts& facts, const hsv::Journal& j) {
+        const HostDecision d = judge_host_slot(facts, j);
+        return d.verdict == HostVerdict::LeftOut && !d.why.empty();
+    };
+    CHECK(left_out(f, journal_of(journal_save(0) + journal_save(0, gsv::Owner::User2, false))));  // the guest's too
+    CHECK(left_out(f, journal_of(journal_save(0, gsv::Owner::Unidentified, false))));
+    CHECK(left_out(f, journal_of(journal_save(0, gsv::Owner::Host, false))));   // "host" only for lack of a guest
+    CHECK(left_out(f, journal_of(journal_save(0, gsv::Owner::Host, true, 5)))); // the save failed
+    CHECK(left_out(f, journal_of(journal_save(1))));                            // changed, but no save to it was seen
+    CHECK(left_out(f, journal_of(journal_save(0), false)));                     // nobody watched the saves
+    CHECK(left_out(f, journal_of(journal_save(0) + "save|3|cut")));             // the journal ends in a cut line
+    HostSlotFacts g = f;
+    g.changed = false;
+    CHECK(judge_host_slot(g, own).verdict == HostVerdict::Unchanged);
+    g = f, g.slot = 204;  // the guest's slot on the host: never the host's
+    CHECK(judge_host_slot(g, journal_of(journal_save(204))).verdict == HostVerdict::Unchanged);
+    g = f, g.slot = 3;    // CrossSave
+    CHECK(judge_host_slot(g, journal_of(journal_save(3))).verdict == HostVerdict::Unchanged);
+    g = f, g.save = false;
+    CHECK(left_out(g, own));
+    g = f, g.save_check = gsv::HeaderCheck::FileSize;
+    CHECK(left_out(g, own));
+    g = f, g.leftovers = true;
+    CHECK(left_out(g, own));
+    g = f, g.subfolders = true;
+    CHECK(left_out(g, own));
+    g = f, g.real_newer = true;
+    CHECK(left_out(g, own));
+    g = f, g.start_known = false;
+    CHECK(left_out(g, own));
+    g = f, g.pair_gap_ms = 11000;
+    CHECK(left_out(g, own));
+    g = f, g.slot = 100;  // a manual save
+    CHECK(judge_host_slot(g, journal_of(journal_save(100))).verdict == HostVerdict::Keep);
+
+    const auto t = parse_local_time("2026-11-14 16:58:25.479");
+    CHECK(t && t->year == 2026 && t->month == 11 && t->day == 14 && t->hour == 16 && t->minute == 58 && t->second == 25 &&
+          t->millisecond == 479);
+    CHECK(parse_local_time("2026-11-14 16:58:25") && !parse_local_time("2026-11-14") && !parse_local_time("") &&
+          !parse_local_time("2026-13-14 16:58:25") && !parse_local_time("2026-11-14T16:58:25Z"));
+
+    // Backups: only the launcher's own names, the newest ten stay.
+    CHECK(backup_name("20261114-165825") && backup_name("20261114-165825-2") && !backup_name("20261114-165825.partial") &&
+          !backup_name("save") && !backup_name("20261114-165825-0") && !backup_name("2026111-4165825"));
+    std::vector<std::string> names = {"other", "20261114-165825-2", "20261114-165825"};
+    for (int day = 1; day <= 12; ++day) names.push_back("202610" + std::string(day < 10 ? "0" : "") + std::to_string(day) + "-120000");
+    const auto ordered = newest_backups_first(names);
+    CHECK(ordered.size() == 14 && ordered[0] == "20261114-165825-2" && ordered[1] == "20261114-165825" &&
+          ordered.back() == "20261001-120000");
+    const auto gone = backups_to_remove(names);
+    CHECK(gone.size() == 4 && gone[0] == "20261004-120000" && gone[3] == "20261001-120000");
+    CHECK(backups_to_remove({"20261114-165825", "x"}).empty());
+    const std::vector<hsv::TreeFile> tree = {{"1\\slot0\\save.save", 528, kH1}, {"user_input.save", 9, kH2}};
+    const auto listed = parse_backup_list(format_backup_list("2026-11-14 18:00:00", tree));
+    CHECK(listed && hsv::same_tree(*listed, tree));
+    std::string unfinished = format_backup_list("x", tree);
+    unfinished.resize(unfinished.find("state="));
+    CHECK(!parse_backup_list(unfinished) && !parse_backup_list("") && !parse_backup_list("something else\r\nstate=complete\r\n"));
+}
+
+constexpr char kAccount[] = "40000007";  // a made-up account folder: the game names it after the account's number
+
+struct SaveWorld {
+    Paths paths;
+    SavePaths at;
+    fs::path real(int slot) const { return at.save / kAccount / ("slot" + std::to_string(slot)); }
+    fs::path boxed(int slot) const { return at.sandbox / kAccount / ("slot" + std::to_string(slot)); }
+};
+
+SaveWorld make_save_world(const fs::path& root) {
+    SaveWorld w;
+    w.paths.bin64 = root / "game" / "bin64";
+    w.paths.data = root / "data";
+    put(w.paths.bin64 / "CrimsonDesert.exe", fake_exe(kPe));
+    w.at = save_paths(w.paths, root / "local");
+    return w;
+}
+
+// What the mod does when the game starts: the sandbox is a new copy of the real folder, with the files' times.
+void start_session(const SaveWorld& w, const std::string& events, bool hosting = true, int minutes_ago = 30) {
+    fs::remove_all(w.at.sandbox);
+    for (const auto& entry : fs::recursive_directory_iterator(w.at.save)) {
+        if (!entry.is_regular_file()) continue;
+        const fs::path to = w.at.sandbox / fs::relative(entry.path(), w.at.save);
+        fs::create_directories(to.parent_path());
+        fs::copy_file(entry.path(), to);
+        fs::last_write_time(to, fs::last_write_time(entry.path()));
+    }
+    if (!hosting) return;  // a guest's game keeps no journal
+    static int run = 0;
+    const std::string name = "20261114-1631" + std::to_string(10 + ++run) + "-p1";
+    put(w.at.exports / "runs" / (name + ".txt"),
+        hsv::journal_header_text({name, local_time_text(minutes_ago), folder_id(w.at.sandbox), "0x1", "probe"}) +
+            hsv::journal_hooks_line(true, true) + events);
+}
+
+size_t count_dirs(const fs::path& dir) {
+    std::error_code ec;
+    size_t n = 0;
+    for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) n += it->is_directory() ? 1 : 0;
+    return n;
+}
+
+void test_backups(const fs::path& tmp) {
+    SaveWorld w = make_save_world(tmp / "backups");
+    CHECK(w.at.save == tmp / "backups" / "local" / "Pearl Abyss" / "CD" / "save");
+    CHECK(w.at.exports == w.paths.bin64 / "cdmp_save_exports" && w.at.backups == w.paths.data / "save_backups");
+    // Nothing to back up is not a failure.
+    BackupResult b = backup_saves(w.at);
+    CHECK(b.ok && !b.made && b.dir.empty() && !fs::exists(w.at.backups));
+
+    put_slot(w.real(0), "zero", 60);
+    put_slot(w.real(100), "manual", 90);
+    put(w.at.save / "user_input.save", "keys");
+    b = backup_saves(w.at);
+    CHECK(b.ok && b.made && backup_name(path_text(b.dir.filename())));
+    CHECK(slot_is(b.dir / "save" / kAccount / "slot0", "zero") && slot_is(b.dir / "save" / kAccount / "slot100", "manual"));
+    CHECK(get(b.dir / "save" / "user_input.save") == "keys" && fs::exists(b.dir / "backup.txt"));
+    CHECK(fs::last_write_time(b.dir / "save" / kAccount / "slot0" / "save.save") == fs::last_write_time(w.real(0) / "save.save"));
+    const fs::path first = b.dir;
+
+    // The folder is as the newest backup has it: no second copy.
+    b = backup_saves(w.at);
+    CHECK(b.ok && !b.made && b.dir == first && count_dirs(w.at.backups) == 1);
+    // A file changed: a new backup; the earlier one keeps the earlier file.
+    put_slot(w.real(0), "zero again", 5);
+    b = backup_saves(w.at);
+    CHECK(b.ok && b.made && b.dir != first && count_dirs(w.at.backups) == 2);
+    CHECK(slot_is(b.dir / "save" / kAccount / "slot0", "zero again") && slot_is(first / "save" / kAccount / "slot0", "zero"));
+    // A backup that lost a file is not taken for a copy of the folder.
+    fs::remove(b.dir / "save" / kAccount / "slot100" / "save.save");
+    const fs::path damaged = b.dir;
+    b = backup_saves(w.at);
+    CHECK(b.ok && b.made && b.dir != damaged);
+
+    // Only the newest ten stay; a folder that is not a backup is never removed.
+    for (int day = 1; day <= 12; ++day) {
+        put(w.at.backups / ("202601" + std::string(day < 10 ? "0" : "") + std::to_string(day) + "-120000") / "backup.txt", "old");
+    }
+    put(w.at.backups / "my own copy" / "x.txt", "mine");
+    put_slot(w.real(0), "zero once more", 1);
+    b = backup_saves(w.at);
+    CHECK(b.ok && b.made && fs::exists(b.dir) && fs::exists(first) && fs::exists(w.at.backups / "my own copy" / "x.txt"));
+    CHECK(count_dirs(w.at.backups) == 11);  // ten backups and the player's folder
+    CHECK(!fs::exists(w.at.backups / "20260101-120000") && fs::exists(w.at.backups / "20260112-120000"));
+}
+
+void test_keep_host(const fs::path& tmp) {
+    SaveWorld w = make_save_world(tmp / "host");
+    put_slot(w.real(0), "zero", 300);
+    put_slot(w.real(1), "one", 200);
+    put_slot(w.real(2), "two", 100);
+    put(w.at.save / kAccount / "steam_autocloud.vdf", "cloud");
+    put(w.at.save / "user_input.save", "keys");
+
+    // A hosted session: the host's autosaves went to slot 0 and slot 1, the guest's character to slot 204, and one
+    // save of the guest's landed in slot 2 (it must never be taken for the host's).
+    start_session(w, journal_save(0) + journal_save(1) + journal_save(204, gsv::Owner::User2, false) +
+                         journal_save(2, gsv::Owner::User2, false));
+    put_slot(w.boxed(0), "zero after co-op", 0);
+    put_slot(w.boxed(1), "one after co-op", 0);
+    put_slot(w.boxed(2), "the guest in two", 0);
+    put_slot(w.boxed(204), "the guest", 0);
+
+    SaveScan scan = scan_saves(w.at);
+    CHECK(scan.found && scan.pending.size() == 2 && scan.notes.size() == 1);
+    CHECK(scan.pending.size() == 2 && scan.pending[0].slot == 0 && scan.pending[1].slot == 1 && !scan.pending[0].from_guest &&
+          scan.pending[0].account == kAccount && !scan.pending[0].when.empty());
+    CHECK(scan.notes.size() == 1 && scan.notes[0].find("slot 2") != std::string::npos);
+    CHECK(slot_is(w.real(0), "zero"));  // looking changes nothing
+
+    // While the game runs nothing is written.
+    KeepResult r = keep_progress(w.at, [] { return true; });
+    CHECK(!r.ok && !r.error.empty() && slot_is(w.real(0), "zero") && !fs::exists(w.at.backups));
+
+    // A file of the slot is open somewhere (Steam, an antivirus): that slot is left exactly as it was, and the
+    // game was not started in between.
+    {
+        const HANDLE held = CreateFileW((w.real(0) / "save.save").c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                        OPEN_EXISTING, 0, nullptr);
+        CHECK(held != INVALID_HANDLE_VALUE);
+        r = keep_progress(w.at, [] { return false; });
+        CloseHandle(held);
+        CHECK(!r.ok && r.error.find("slot 0") != std::string::npos && r.kept.empty());
+        CHECK(slot_is(w.real(0), "zero") && slot_is(w.real(1), "one"));
+        CHECK(count_dirs(w.at.staging) == 0);
+    }
+
+    std::string last;
+    r = keep_progress(w.at, [] { return false; }, [&](const std::string& s) { last = s; });
+    CHECK(r.ok && r.error.empty() && r.kept.size() == 2 && !last.empty());
+    CHECK(slot_is(w.real(0), "zero after co-op") && slot_is(w.real(1), "one after co-op"));
+    CHECK(slot_is(w.real(2), "two") && !fs::exists(w.real(204)));
+    CHECK(get(w.at.save / kAccount / "steam_autocloud.vdf") == "cloud" && get(w.at.save / "user_input.save") == "keys");
+    CHECK(fs::last_write_time(w.real(0) / "save.save") == fs::last_write_time(w.boxed(0) / "save.save"));
+    // The folder as it was is in the backup, nothing is left in the staging folder, and nothing the game would
+    // read as its own interrupted save was ever in the save folder.
+    CHECK(slot_is(r.backup / "save" / kAccount / "slot0", "zero") && slot_is(r.backup / "save" / kAccount / "slot1", "one"));
+    CHECK(count_dirs(w.at.staging) == 0 && count_dirs(w.at.save / kAccount) == 3);
+    CHECK(get(w.paths.data / "saves.log").find("kept slot 0") != std::string::npos);
+    // Nothing waits any more; the slot that was left out is still said.
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.empty() && scan.notes.size() == 1);
+    r = keep_progress(w.at, [] { return false; });
+    CHECK(r.ok && r.kept.empty() && r.backup.empty());
+
+    // The next session saves to a new slot (a manual save) and to slot 0 again: a new slot is made, an old one replaced.
+    start_session(w, journal_save(100) + journal_save(0), true, 0);
+    put_slot(w.boxed(100), "manual", 0);
+    put_slot(w.boxed(0), "zero, third", 0);
+    r = keep_progress(w.at, [] { return false; });
+    CHECK(r.ok && r.kept.size() == 2 && slot_is(w.real(100), "manual") && slot_is(w.real(0), "zero, third"));
+    CHECK(slot_is(r.backup / "save" / kAccount / "slot0", "zero after co-op") && !fs::exists(r.backup / "save" / kAccount / "slot100"));
+
+    // The player went on alone, without the mod, after a hosted session nobody kept: their newer save stays.
+    start_session(w, journal_save(1), true, 30);
+    put_slot(w.boxed(1), "one, hosted", 20);
+    put_slot(w.real(1), "one, alone afterwards", 5);
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.empty() && scan.notes.size() == 1 && scan.notes[0].find("newer") != std::string::npos);
+    CHECK(keep_progress(w.at, [] { return false; }).ok && slot_is(w.real(1), "one, alone afterwards"));
+
+    // What the game left half done is its own to repair; a save that is not whole is not kept either.
+    put_slot(w.real(1), "one", 200);
+    start_session(w, journal_save(0) + journal_save(1) + journal_save(2), true, 0);
+    put_slot(w.boxed(0), "zero, fourth", 0);
+    put_slot(w.boxed(1), "one, fourth", 0);
+    put_slot(w.boxed(2), "two, fourth", 0);
+    fs::create_directories(w.at.save / kAccount / "slot0_new");
+    put(w.boxed(1) / "save.save", save_of("one, fourth").substr(0, 300));  // cut while it was written
+    put(w.boxed(2) / "lobby.save", lobby_of("two, fourth"));
+    set_time(w.boxed(2) / "lobby.save", 9);  // not written with its save.save
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.empty() && scan.notes.size() == 3);
+    fs::remove(w.at.save / kAccount / "slot0_new");
+
+    // A session as a guest (or any sandbox no hosting game made): nothing of it is taken for the host's progress.
+    start_session(w, "", false);
+    put_slot(w.boxed(0), "played alone with the mod on", 0);
+    scan = scan_saves(w.at);
+    CHECK(scan.found && scan.pending.empty() && scan.notes.empty());
+    // The journal of another sandbox does not speak for this one.
+    put(w.at.exports / "runs" / "20261114-999999-p1.txt",
+        hsv::journal_header_text({"x", local_time_text(30), "00000000:0000000000000000", "0x1", "probe"}) +
+            hsv::journal_hooks_line(true, true) + journal_save(0));
+    CHECK(scan_saves(w.at).pending.empty());
+
+    // cdmp.ini can name another folder for the host's journals, as the mod reads it.
+    put(w.paths.bin64 / "cdmp.ini", "[session2]\r\nhost_save_dir=\"D:\\exports\"\r\n");
+    CHECK(save_paths(w.paths, tmp).exports == fs::path("D:\\exports"));
+    put(w.paths.bin64 / "cdmp.ini", "[session2]\r\nhost_save_dir=kept\\here\r\n");
+    CHECK(save_paths(w.paths, tmp).exports == w.paths.bin64 / "kept" / "here");
+    CHECK(!scan_saves(save_paths(Paths{}, tmp / "nothing here")).found);
+}
+
+void put_generation(const fs::path& host_dir, const GuestGeneration& g, std::string_view tag) {
+    const fs::path dir = host_dir / "incoming" / ("gen" + std::to_string(g.number));
+    put(dir / "lobby.save", lobby_of(tag));
+    put(dir / "save.save", save_of(tag));
+    put(dir / "manifest.txt", gsw::incoming_manifest_text(g.manifest));
+}
+
+void test_keep_guest(const fs::path& tmp) {
+    SaveWorld w = make_save_world(tmp / "guest");
+    put_slot(w.real(2), "mine", 300);
+    put_slot(w.real(0), "another character", 400);
+    const fs::path host = w.at.progress / std::to_string(kFriend);
+    const uint64_t now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+                                                   std::chrono::system_clock::now().time_since_epoch()).count());
+    // One session with a friend: the host's game saved the guest's character twice and sent both back.
+    put_generation(host, generation(1, 2, now - 600, "after an hour", "mine", "mine"), "after an hour");
+    put_generation(host, generation(2, 2, now - 60, "at the end", "mine", "mine"), "at the end");
+    // The developers' own tests without Steam leave such a folder: never used.
+    put_generation(w.at.progress / "unknown-host", generation(9, 2, now, "a test", "mine", "mine"), "a test");
+
+    SaveScan scan = scan_saves(w.at);
+    CHECK(scan.found && scan.pending.size() == 1 && scan.notes.empty());
+    CHECK(scan.pending.size() == 1 && scan.pending[0].from_guest && scan.pending[0].slot == 2 &&
+          scan.pending[0].generation.number == 2 && scan.pending[0].save_sha256 == sha(save_of("at the end")));
+    KeepResult r = keep_progress(w.at, [] { return false; });
+    CHECK(r.ok && r.kept.size() == 1 && slot_is(w.real(2), "at the end") && slot_is(w.real(0), "another character"));
+    CHECK(slot_is(r.backup / "save" / kAccount / "slot2", "mine") && count_dirs(w.at.staging) == 0);
+    // The record the mod reads at the next join, so that the host sends nothing older.
+    const auto applied = parse_applied(get(host / "applied.txt"));
+    CHECK(applied && applied->generation == 2 && applied->root == sha(save_of("mine")) &&
+          applied->save == sha(save_of("at the end")));
+    CHECK(scan_saves(w.at).pending.empty());
+
+    // The next session continues that save; its newest generation arrived damaged, so the one before it is kept.
+    put_generation(host, generation(3, 2, now - 30, "second session", "mine", "at the end"), "second session");
+    put_generation(host, generation(4, 2, now - 10, "cut on the way", "mine", "at the end"), "something else");
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.size() == 1 && scan.pending[0].generation.number == 3);
+    r = keep_progress(w.at, [] { return false; });
+    CHECK(r.ok && slot_is(w.real(2), "second session"));
+    // A generation without its manifest did not arrive whole.
+    put(host / "incoming" / "gen5" / "save.save", save_of("no manifest"));
+    CHECK(scan_saves(w.at).pending.empty());
+
+    // The player went on alone in that slot: what a host sends back for the old save never replaces it.
+    put_slot(w.real(2), "alone since", 1);
+    put_generation(host, generation(6, 2, now - 20, "late", "mine", "second session"), "late");
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.empty() && scan.notes.empty());
+    CHECK(keep_progress(w.at, [] { return false; }).ok && slot_is(w.real(2), "alone since"));
+
+    // A slot with no save takes the generation; a second host's generations for another slot are kept as well.
+    fs::remove_all(w.real(2));
+    const fs::path host2 = w.at.progress / std::to_string(kFriend2);
+    put_generation(host2, generation(1, 0, now, "with another friend", "another character", "another character"),
+                   "with another friend");
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.size() == 2 && scan.pending[0].slot == 0 && scan.pending[1].slot == 2);
+    r = keep_progress(w.at, [] { return false; });
+    CHECK(r.ok && r.kept.size() == 2 && slot_is(w.real(2), "late") && slot_is(w.real(0), "with another friend"));
+    CHECK(parse_applied(get(host2 / "applied.txt")).has_value());
+
+    // The game's own interrupted save next to the slot: left to the game, and said.
+    put_generation(host, generation(7, 2, now - 5, "latest", "mine", "late"), "latest");
+    fs::create_directories(w.at.save / kAccount / "slot2_backup");
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.empty() && scan.notes.size() == 1);
+    fs::remove(w.at.save / kAccount / "slot2_backup");
+    // Two accounts' saves on one PC: a generation does not say whose it is.
+    put_slot(w.at.save / "777" / "slot0", "somebody else", 50);
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.empty() && scan.notes.size() == 1);
+    fs::remove_all(w.at.save / "777");
+    CHECK(scan_saves(w.at).pending.size() == 1);
+
+    // A session as a guest, then one as the host that saved to the same slot: the later one is what is kept.
+    start_session(w, journal_save(2), true, 0);
+    put_slot(w.boxed(2), "hosted afterwards", 0);
+    scan = scan_saves(w.at);
+    CHECK(scan.pending.size() == 1 && !scan.pending[0].from_guest);
+    r = keep_progress(w.at, [] { return false; });
+    CHECK(r.ok && slot_is(w.real(2), "hosted afterwards") && scan_saves(w.at).pending.empty());
+}
+
 // cdmp_tests_launcher --fetch <https address>: downloads it with the launcher's own code and prints its size and
 // SHA-256. Not part of the test run (it needs the network); for trying a release address by hand.
 int fetch_by_hand(const char* url) {
@@ -758,6 +1254,10 @@ int main(int argc, char** argv) {
     test_bad_packages(tmp);
     test_update_address(tmp);
     test_update_button(tmp);
+    test_save_rules();
+    test_backups(tmp);
+    test_keep_host(tmp);
+    test_keep_guest(tmp);
 
     fs::remove_all(tmp, ec);
     if (g_failures) {
