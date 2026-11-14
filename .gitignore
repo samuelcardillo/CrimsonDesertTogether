@@ -23,5 +23,7 @@ __pycache__/
 
 # Output of the live-test scripts (tools/porting/livetest): screenshots, pids, launch logs
 tools/porting/livetest/shots/
+tools/porting/livetest/shops/
 tools/porting/livetest/pids.txt
 tools/porting/livetest/launchX.txt
+tools/porting/livetest/joinV.txt

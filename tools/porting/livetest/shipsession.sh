@@ -21,6 +21,12 @@ tp() {  # pid role : fast travel to the Vellua nexus, three attempts
   done
   return 1
 }
+past_wagon() {  # pid : from the Vellua nexus to (-10485, -6140), north of the market wagon that stands at
+  # (-10501.8, -6145.6) some days: on 14-nov 14:20 the straight run to (-10480, -6150) put the character on its bed,
+  # between its sacks, where W does nothing (only another fast travel got it out)
+  timeout 280 python -I goto3576.py $1 -10516 -6140 3 40 2>&1 | tail -1
+  timeout 240 python -I walk.py $1 -s 1.0 -n 14 -10508 -6137 -10495 -6137 -10485 -6140 2>&1 | grep "^at" | tail -1
+}
 board() {  # pid : swim to the port side, climb the ladder (the point and the heading are taken in the ship's frame)
   local P=$1; local UU="pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $P"
   timeout 280 python -I walk.py $P -s 1.5 -n 8 -10455.5 -6186 -10430 -6196 -10402 -6203 2>&1 | grep "^at" | tail -1
@@ -51,7 +57,7 @@ if from hopkins; then
   if [ "$STAGE" = "launch" ]; then
     sleep 6; tp $H host || { echo "STAGE host tp FAILED: $(python -I posnow.py $H)"; exit 1; }
     sleep 6
-    timeout 280 python -I goto3576.py $H -10480 -6150 3 40 2>&1 | tail -1
+    past_wagon $H
     timeout 200 python -I walk.py $H -s 0.7 -n 8 -10476.5 -6142.8 -10475.5 -6139.6 -10472.5 -6138.5 2>&1 | grep "^at" | tail -1
   fi
   # the stance: x between -10472.0 and -10471.4 at z -6138.3 (the prompt is white there); the aim, then strafes east
@@ -94,7 +100,8 @@ if from join; then
     [ $ok = 1 ] || { echo "STAGE guest join FAILED"; exit 1; }; echo "STAGE guest join: in the world after all at $(date +%T)";; esac
   sleep 4; tp $G guest || { echo "STAGE guest tp FAILED: $(python -I posnow.py $G)"; exit 1; }
   sleep 6
-  timeout 280 python -I goto3576.py $G -10480 -6150 3 40 2>&1 | tail -1
+  past_wagon $G
+  timeout 200 python -I walk.py $G -s 1.2 -n 10 -10480 -6150 2>&1 | grep "^at" | tail -1
   timeout 280 python -I walk.py $G -s 1.5 -n 8 -10463 -6148 -10457 -6160 -10457.5 -6176 2>&1 | grep "^at" | tail -1
   echo "STAGE guest on the quay at $(date +%T): $(python -I posnow.py $G | cut -c1-40)"
 fi

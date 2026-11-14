@@ -95,6 +95,7 @@ def target_px(c, scale):
 def map_open():
     """The map's parchment covers half the screen or more (0.5-0.69 on maps, at most 0.04 in the world, 7-nov); the old
     test of the key-hint bar's brightness failed over a coast (dark sea under the bar, Vellua Village)."""
+    os.makedirs(os.path.join(SP, 'shops'), exist_ok=True)  # a fresh checkout has no such folder
     shot = os.path.join(SP, 'shops', f'mt_open_{role}.png')
     ui('-Do', 'shot', '-Out', shot)
     from PIL import Image

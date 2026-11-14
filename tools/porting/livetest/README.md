@@ -35,7 +35,8 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   cada copia mirando a la arboladura; la clave de la vela sale de la captura del anfitrión y `boat/branchfind.py`
   dice dónde vive el estado en las dos copias. Paso 4, solo si el invitado no tomó la vela por sí mismo: se le pone
   de controlador a mano (`boat/setctl.py --write`) y se repite la primera marcha. Capturas `shots/sail_*.png`.
-  **Sin ejecutar todavía.**
+  Ejecutado el 14-nov por la tarde: los pasos sirven, pero LSHIFT no siempre engrana a la primera (ver abajo) y las
+  capturas «mirando arriba» no llegan a enseñar las velas (la cámara del timonel apenas sube).
 - `statdump.py pid`: las entradas de estadísticas del personaje propio tal como las recorre `PlayerReader` (id,
   actual, máximo, regeneración). En 3663 el lector encuentra la vida (id 0) pero no el aguante (id 22 hasta 3576: el
   panel dice «Stamina 0/0»); `sailtest.sh` lo vuelca al final para dar con el id nuevo.
@@ -52,6 +53,14 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   (-9, -7,7), luego (-5,3, -4,3), mirar a (-3, -4,21) y W 3,5 s + 3 s. Cubierta: (-2,9, -1,2) → escalera (-2,85, 0,6)
   → cubierta de popa (-2,78, 2,27); timón en (0, 1,85): desde ahí, un paso hacia el timón y E. Al timón: LSHIFT 1,5 s
   = una marcha (3,4 m/s; dos, hasta 13 m/s), A/D giran, ALT frena. El barco encalla con facilidad al sur de Vellua.
+- **Las marchas no siempre entran:** el 14-nov a las 14:55, recién tomado el timón, LSHIFT 1,5 s y 2,5 s movieron
+  el barco (2 m/s) sin que la vela cambiara de estado; tras soltar el timón (R) y volver a tomarlo (E), LSHIFT 1,5 s
+  dio la primera marcha (3,5 m/s y los estados de la vela). Si a los 10 s no hay cambio de rama de la vela, R, E y
+  otra vez. La vela es el hijo directo del vehículo con local (0, 0, 0): `0xB010089A` por la mañana, `0xB01013CA`
+  por la tarde (casco + 0xA). Sus estados cambian también solos (viento, velocidad), sin tocar nada.
+- **Un carro del mercado de Vellua** aparca algunos días en (-10501,8, -6145,6), justo en la recta del nexo al muelle:
+  el personaje corriendo se sube a su caja y no sale (W no hace nada; solo otro viaje rápido lo saca).
+  `shipsession.sh` pasa ahora por el norte (`past_wagon`).
 - **Hernand:** nexo en (-10626,4, -3813,3). A Delkin (mostrador (-10655,4, -3877,2), mirar a (-10650,0, -3881,5))
   se va por el arco: (-10637,0, -3823,5) → (-10641,5, -3827,0) → (-10645,6, -3831,6) → (-10650,1, -3835,2) →
   (-10655,6, -3840,2) → (-10661,7, -3845,7) → (-10663,2, -3856,9) → (-10662,5, -3869,3). En línea recta desde el

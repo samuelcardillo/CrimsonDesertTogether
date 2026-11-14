@@ -71,6 +71,22 @@ Las capturas `.bin` de `bin64` guardan los paquetes ENTEROS con los códigos NAT
 - `recnames.py captura.bin clave_lo clave_hi [t0 t1]`: de cada registro 2005 de esas claves, su tipo, controlador,
   nombre (longitud y texto) y las dos copias del padre que van DESPUÉS del nombre (`+0xB9` / `+0xD7`), junto a lo
   que hay en `+0xF5` / `+0x113` fijos (lo mismo solo si el nombre tiene 13 caracteres).
+- `npcmon.py anfitrión invitado segundos [periodo] [raíz]`: los actores que van en el barco del anfitrión sin ser
+  piezas suyas (la tripulación: tipo 4, clave 0xB, colgados de una pieza del casco), tal como los tiene cada copia: en
+  el anfitrión su padre y su posición local; en el invitado si está, de qué cuelga allí y a cuántos metros lo dibuja
+  de su sitio (la copia del invitado del padre del anfitrión, compuesta con la local del anfitrión). Así se midió que
+  con el barco a 2 m/s el invitado dejaba a casi toda la tripulación sin padre, a 12–31 m de su sitio.
+- `vehcmp.py anfitrión invitado [min_piezas]` y `vehwatch.py anfitrión invitado segundos [periodo]`: cada barco del
+  mundo del anfitrión (vehículo de tipo 5 con 6 o más gimmicks colgando) tal como lo tiene cada copia: si es de un
+  jugador o de la IA, a qué velocidad va, a cuántos metros está la copia del invitado y a cuántos su última pose de
+  red. `vehwatch` lo apunta cada pocos segundos (sirve mientras alguien juega: solo lee memoria).
+- `movedump.py captura.bin clave[-clave] [t0 t1] [max]`: los `MoveActorAck` de un actor, descifrados (padre, posición
+  local, posición del mundo). Los de la tripulación llegan al invitado EN BLANCO (identidad, sin padre), uno por
+  segundo.
+- `reqsample.py pid segundos [clave]`: muestrea a toda velocidad la petición de posición pendiente del
+  `TransformSync` del personaje propio (o de un actor) y la imprime junto a su padre y su posición local. Con el
+  invitado de pie en la cubierta (padre = el casco) se ve que sus peticiones de tipo 12 llevan la posición del MUNDO:
+  una petición sirve igual para un actor con padre que sin él.
 - `cr_extract.py captura.bin salida.stream` y `cr_replay.cpp` (`cr_replay salida.stream delay_ms [on] [fail=K,..]
   [lost=K,..] [budget=N]`; cómo compilarlo, en su cabecera): los 2005 / 2516 / 2174 reales de una captura del
   invitado por la lógica de `create_retry` (`src/mod/session2/create_retry_logic.h`, tal cual), contra un modelo del

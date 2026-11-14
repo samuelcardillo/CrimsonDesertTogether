@@ -30,8 +30,10 @@ shots() {  # tag [dy] : the guest first (it is on deck on foot), then the host; 
 }
 hostbin() { ls -t "$B"/cdmp_packets.host_*.bin | head -1; }
 guestbin() { ls -t "$B"/cdmp_packets.guest_*.bin | head -1; }
-sailkey() {  # the key of the newest GimmickBranchStateReq of the host's client with the "first gear set" hash
-  python -I "$T/pktdump.py" "$(hostbin)" GimmickBranchStateReq 0 0 1e12 400 2>/dev/null | grep -i "4d d9 5d be" | tail -1 |
+sailkey() {  # the key of the newest GimmickBranchStateReq of the host's client with a "gear set" hash (first or
+  # second: the first hold can go straight to the second state). The whole capture is read (a minute for 1 GB): with
+  # the first 400 requests only, as before, a sail set late in a session was never found (14-nov 14:55).
+  python -I "$T/pktdump.py" "$(hostbin)" GimmickBranchStateReq 0 0 1e12 4000000 2>/dev/null | grep -i -E "4d d9 5d be|e4 80 ff 9b" | tail -1 |
     sed -E 's/.*\| ([0-9a-f]{2}) ([0-9a-f]{2}) ([0-9a-f]{2}) ([0-9a-f]{2}) .*/\4\3\2\1/'
 }
 hn=$(wc -l < "$HL"); gn=$(wc -l < "$GL")
@@ -59,7 +61,16 @@ shots g1
 since
 K=$(sailkey)
 echo "  the sail's key from the host's capture: ${K:-NOT FOUND}"
-[ -z "$K" ] && { echo "no branch request with the first-gear hash: stopping (the ship did not set sail?)"; exit 1; }
+if [ -z "$K" ]; then
+  # The gear does not always go in right after taking the wheel (14-nov): let go (R), take it again (E), once more.
+  echo "  no gear in the host's capture: wheel released and taken again, LSHIFT once more"
+  $UH -Do key -Keys R -HoldMs 150 >/dev/null 2>&1; sleep 3
+  $UH -Do key -Keys E -HoldMs 150 >/dev/null 2>&1; sleep 4
+  $UH -Do hold -Keys LSHIFT -HoldMs 1500 >/dev/null 2>&1; sleep 12
+  K=$(sailkey)
+  echo "  the sail's key from the host's capture: ${K:-NOT FOUND}"
+fi
+[ -z "$K" ] && { echo "no branch request with a gear hash: stopping (the ship did not set sail?)"; exit 1; }
 python -I "$T/branchfind.py" $H $G $K 2>&1 | grep -E "==|=" | cut -c1-260 | head -24
 python -I "$T/setctl.py" $G $K 2>&1 | tail -1
 alive || { echo "a copy is gone after step 1: stopping"; exit 1; }
