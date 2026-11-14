@@ -51,7 +51,10 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
 - Los jugadores se actualizan con el botón Update del launcher, que baja la última release de GitHub. Las releases
   se hacen siempre desde este PC (en GitHub no se compila nada): con el commit ya subido,
   `.\scripts\publish_release.ps1 -Publish` compila, pasa los tests, hace el kit y publica; sin `-Publish` solo hace
-  el kit (`docs/LAUNCHER.md`). Publicar una release entrega código a los jugadores: pide permiso, como un push.
+  el kit (`docs/LAUNCHER.md`). Publicar una release entrega código a los jugadores: pide permiso antes.
+- Commits y push: el trabajo terminado y comprobado se guarda en `main` y se sube **sin preguntar** (lo pidió el
+  dueño el 2026-11-14). Antes de subir, mira en silencio que no vaya nada de `backups/` ni datos suyos (correo,
+  SteamID64, el número de cuenta que da nombre a la carpeta de partidas).
   Para qué build del juego es el kit lo dice `kit/coop/game-builds.txt`: cámbialo en el mismo commit que un port.
 - Prueba completa sin juego: arranca `cdmp_peer.exe` y luego `cdmp_host.exe <ruta\cdmp.asi> <segundos>`.
   `LoadLibrary` falla con rutas largas (error 206), así que usa `build\e2e\`.
