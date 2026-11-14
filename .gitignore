@@ -20,3 +20,8 @@ third_party/ultimate-asi-loader/v9.7.4/dinput8.dll
 # Python caches
 __pycache__/
 *.pyc
+
+# Output of the live-test scripts (tools/porting/livetest): screenshots, pids, launch logs
+tools/porting/livetest/shots/
+tools/porting/livetest/pids.txt
+tools/porting/livetest/launchX.txt

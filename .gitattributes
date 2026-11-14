@@ -1,0 +1,12 @@
+# Text files are checked out exactly as they are stored, on every machine. Without this, Git for Windows' default
+# (core.autocrlf=true) rewrites LF files to CRLF at checkout, which breaks the bash scripts under
+# tools/porting/livetest. Files already stored with CRLF stay as they are (nothing is renormalized).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.zip binary
+*.dll binary
+*.exe binary
+*.asi binary
+*.bin binary
+*.dmp binary

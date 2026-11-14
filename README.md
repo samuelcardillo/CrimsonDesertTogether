@@ -95,3 +95,12 @@ names and short byte signatures of the game executable, as needed to hook it.
 GPL v3: see [LICENSE](LICENSE). `third_party/safetyhook-patch` keeps its own license (BSL-1.0).
 
 Author: **ByJunter**.
+
+## History of this repository
+
+**CrimsonDesertTogether** continues this project from
+[samuelcardillo/CrimsonDesertMultiplayer-NativeServer](https://github.com/samuelcardillo/CrimsonDesertMultiplayer-NativeServer)
+(branch `port-3527-3549-3576`), a fork of ByJunter's original
+[CrimsonDesertMultiplayer-NativeServer](https://github.com/ByJunter/CrimsonDesertMultiplayer-NativeServer). The commit
+history of both is kept here. The tag `kit-3663-v23` marks the source of the last kit verified in live play (game
+build 1.0.0.3663); what follows it on `main` is work in progress: see [docs/ESTADO-3527.md](docs/ESTADO-3527.md).
