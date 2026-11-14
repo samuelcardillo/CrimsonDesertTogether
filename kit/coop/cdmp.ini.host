@@ -48,6 +48,9 @@ attack_probe=0
 ; here too (not tested).
 ; probe = measure only; 0 = off.
 vehicle_follow=1
+; SHIPS, the sails (session2/gimmick_relay.h; checked live on 14 November): the host's sail changes go to the guest,
+; whose copy of the sail then follows them. 0 = the guest's sails stay furled.
+gimmick_relay=1
 ; The press-time interaction check (build 3549): a guest key; probe here logs the host's own presses.
 interact_gate=0
 interact_gate_errors=

@@ -76,12 +76,27 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
   * A crash of the guest's game while joining with the host's ship out (it happened once in seven joins) now has a
     guard. The guard is in place but has not had to act yet; if the guest's game still closes while joining, join
     again.
-  BOTH PCs need this same kit: v23 changes how the two mods talk to each other, so a PC with v22 and a PC with v23
-  will not play together.
-  Not covered yet: the sails look the same for both only by chance (their state is not sent). The guest's own ship as
-  the host sees it: not tested.
+  NEW after v23 (checked on 14 November, afternoon, two copies on one PC):
+  * The sails. When the host sets or lowers its sails, the guest's copy of the ship now does the same (before, the
+    guest's sails stayed furled). Measured: the guest's sail followed each change within about a tenth of a second.
+    Small differences can still show for a few seconds: the game also trims the sails by itself with the wind.
+  * The crew. The ship's ten crew members used to be left behind over the water on the guest's screen as soon as the
+    ship moved (10 to 30 m behind at a slow 2 to 4 m/s). The host's mod now tells the guest's where each one stands,
+    and they stay at their posts: within about 0.2 m while sailing.
+  * The stern lantern and other fittings. Parts of the host's ship that the guest's game failed to create when
+    joining (the lit lantern at the stern, most often) are now given to it again a few seconds later.
+  * Other ships (pirates, merchants). The guest used to see an AI ship somewhere else than the host did, sometimes
+    hundreds of metres away, so a sea battle looked one-sided. They are now drawn where the host has them. Big ships
+    were checked in play. Also new, and NOT played yet: small boats are covered too, and every ship's position now
+    goes from the host's mod to the guest's ten times a second (the game itself sends one a second, which looked
+    jerky on AI ships).
+  BOTH PCs need the same kit, as always (the panel says so when they differ). A PC with an older kit still
+  connects, but sails, crew, lanterns and other ships stay as they were for it.
+  Not covered yet: the guest's own ship as the host sees it (not tested). The name tag over the other player can sit
+  a few metres off while you stand on a ship.
   To turn all of it off: [session2] vehicle_follow=0 in the GUEST's cdmp.ini (and in the HOST's for the "both on
-  board" part).
+  board", crew and smoother-position parts). The sails alone: gimmick_relay=0 (HOST) and gimmick_take=0 (GUEST).
+  The lanterns alone: create_retry=0 (GUEST).
   If the guest's game crashes near the house, set the HOST's cdmp.ini, [session2]: housing_share_drop_gimmicks=waiting
   (the guest then loses the door, the shutters and the furniture: the doorway looks like a wall), or
   housing_share_rekey=0 (no walls at all). If it crashes when the host changes the house, set the GUEST's cdmp.ini,
@@ -121,8 +136,9 @@ KNOWN PROBLEMS
   housing_share=0 (the guest then sees its own houses, as before).
 - SHIPS: if the guest's game misbehaves near the host's ship, set the GUEST's cdmp.ini, [session2]: vehicle_follow=0
   (the guest then sees its own copy of the ship, as before: it stays behind or drifts away).
-- SHIPS: on the guest, two of the ship's mast lanterns can stay floating in the air where the ship was moored after
-  the host sails away (seen at dusk). They belong to the guest's own copy of the ship, which stays there. Cosmetic.
+- SHIPS: on the guest, a lantern of the ship can still stay floating in the air where the ship was moored after the
+  host sails away (seen at dusk with older kits; this kit gives the guest's game the missing parts again, which
+  fixed it in the sessions tried). Cosmetic.
 - SHIPS: boarding is only checked at the mooring. If the guest falls through the deck or cannot climb the ladder of a
   ship that is already under way, wait for the host to stop.
 - One HOST crash while a guest was joining (2026-11-06, two copies on one PC): inside the game's own drawing of static

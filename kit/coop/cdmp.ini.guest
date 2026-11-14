@@ -58,6 +58,15 @@ interact_gate_types=3,4,7
 ; it 3 m above the deck), and the host standing on the ship (at the wheel) is drawn on this game's copy of the ship.
 ; probe = measure only; 0 = off.
 vehicle_follow=1
+; SHIPS, the sails (session2/gimmick_relay.h; checked live on 14 November): this copy of the host's sail follows the
+; changes the host's mod sends. 0 = the sails stay furled here.
+gimmick_take=1
+; ... and the sail goes back to the host's control 3 s after each change, so it only moves when the host's does
+gimmick_take_hold_ms=3000
+; SHIPS, the lanterns and other fittings (session2/create_retry.h; checked live on 14 November): a part of the host's
+; ship that this game failed to create at the join is given to it again. probe = only logged, 0 = off.
+create_retry=1
+create_retry_lost=8
 ; Houses (3576, 2026-11-07): when the host changes its house in the construction mode, this game rebuilds the house
 ; right away (the host's housing_share_edits=1 sends the changes). 0 = the changes show when the guest joins again.
 housing_redraw=1
