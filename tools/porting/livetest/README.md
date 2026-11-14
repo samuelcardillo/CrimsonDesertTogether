@@ -26,6 +26,19 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
 - `shipsession.sh [etapa] [H G]`: de cero a «anfitrión al timón, invitado en la cubierta de popa» (~25 min): lanzar,
   Vellua, Hopkins, sacar el barco (2600, no queda guardado), unir al invitado, subir los dos por la escala de babor.
   Etapas: `launch` (todo), `hopkins`, `join`, `guestboard`, `hostboard`. `hop.sh H`: solo apuntar a Hopkins y R.
+- `sailtest.sh H G` (tras `SAIL_EXP=1 bash shipsession.sh`, que lanza con `profiles/host-sail-exp.ini` y
+  `profiles/guest-sail-exp.ini`: los perfiles del kit más los experimentos): los experimentos de la vela y los
+  faroles del 14-nov. Perfiles: el del anfitrión con `gimmick_relay=1` (y `send_trace=2609,2758`), el del invitado
+  con `gimmick_take=1`, `create_retry=1` y `create_retry_lost=8`. Paso 0: piezas del barco en las dos copias (`boat/shiptree.py`) y lo que apuntó `create_retry`;
+  pasos 1 a 3: primera marcha (LSHIFT 1,5 s), segunda, y recoger (ALT 2,5 s), cada uno con lo que reenvió el
+  anfitrión, lo que hizo el invitado (tomar el control, peticiones retenidas, errores del juego) y una captura de
+  cada copia mirando a la arboladura; la clave de la vela sale de la captura del anfitrión y `boat/branchfind.py`
+  dice dónde vive el estado en las dos copias. Paso 4, solo si el invitado no tomó la vela por sí mismo: se le pone
+  de controlador a mano (`boat/setctl.py --write`) y se repite la primera marcha. Capturas `shots/sail_*.png`.
+  **Sin ejecutar todavía.**
+- `statdump.py pid`: las entradas de estadísticas del personaje propio tal como las recorre `PlayerReader` (id,
+  actual, máximo, regeneración). En 3663 el lector encuentra la vida (id 0) pero no el aguante (id 22 hasta 3576: el
+  panel dice «Stamina 0/0»); `sailtest.sh` lo vuelca al final para dar con el id nuevo.
 - `shopsession.sh`: de cero a «el invitado compra una Water a Delkin y un saco en el puesto de al lado» (Hernand,
   ~25 min): lanzar, anfitrión al nexo de Hernand y a la calle de las tiendas, unir al invitado, llevarlo al
   mostrador, R, comprar, salir, y E mantenida en el puesto. No vende nada (vender exige mirar antes la pantalla).

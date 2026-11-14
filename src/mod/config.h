@@ -282,6 +282,22 @@ struct Config {
     // Host and guest, build 3663 (session2/ride_null_guard.h): a riding character's update with no mount on this
     // client goes on as if on foot, instead of closing the game (a join with the other player's ship out).
     bool s2_ride_null_guard = true;
+    // Host and guest, development (session2/send_trace.h): a list of logical opcodes; the first packets of each that
+    // this client sends are logged with the return addresses on the sender's stack. Empty: off.
+    std::string s2_send_trace;
+    // Guest, build 3663 (session2/create_retry.h): 0 | probe | 1. Gimmick records that reach the client before what
+    // they dock to and fail to be created (the host's ship's stern lantern) are given to it again. Empty: probe.
+    std::string s2_create_retry;
+    // Guest: create_retry_lost = N (default 0). Up to N kept records per conversation that never appear on the client
+    // although their parent is there (no error reported) are given again too (create_retry_logic.h).
+    uint32_t s2_create_retry_lost = 0;
+    // Host, build 3663, EXPERIMENT (session2/gimmick_relay.h): 0 | probe | 1. The host client's UpdateGimmickReq of
+    // its own vehicles' gimmicks (a ship's sail) go to user 2 as UpdateGimmickAck.
+    std::string s2_gimmick_relay = "0";
+    // Host: the gimmick states it relays, hex hashes or * (empty: the sail's four; gimmick_relay.h).
+    std::string s2_gimmick_relay_states;
+    // Guest, the other half of that experiment: 0 | probe | 1 (gimmick_relay.h).
+    std::string s2_gimmick_take = "0";
     // Host and guest, builds 3527 and 3549 (session2/focus_follow.h): each PC shows the character the other player
     // controls and hides the one left behind.
     bool s2_focus_follow = true;

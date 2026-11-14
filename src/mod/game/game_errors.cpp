@@ -84,6 +84,38 @@ std::atomic<uint64_t> g_create_failed_value{0};
 // P8 session 9 (child_reannounce): every failure's value in order (0 when none had the owner/actor form); its
 // count is the failure count.
 SeqRing<16> g_fail_ring;
+// Build 3663: the actor's post-process of its creation failed (the protected section's report call returns to
+// exe+0x8E03AF5 in every session of 13 and 14 November). The message has no format values: what the hook reads as
+// "values" is whatever lies in those stack slots, seen as (the vtable of pa::DontUseThisAlwaysAttacher...<0>, a heap
+// object, a handle, 0): the attach to its parent is what failed. The failed actor is looked for among those values
+// and one pointer level below them: an object whose vtable is a client actor's (ClientNormalInGameActor /
+// ClientChildOnlyInGameActor) with an actor key at +0x60. 0 when none is found.
+constexpr uintptr_t kPostCreateFailedFrom3663 = 0x8E03AF5;
+constexpr uintptr_t kVtClientNormalActor3663 = 0x5991108, kVtClientChildOnlyActor3663 = 0x5990BF0;
+constexpr uint32_t kClientActorKey = 0x60;
+SeqRing<32> g_post_fail_ring;
+
+uint32_t client_actor_key_3663(uintptr_t obj) noexcept {
+    uintptr_t vt = 0;
+    uint32_t key = 0;
+    if (obj < 0x10000 || (obj & 7) || !fast_read(obj, &vt, sizeof vt)) return 0;
+    if (vt != g_base + kVtClientNormalActor3663 && vt != g_base + kVtClientChildOnlyActor3663) return 0;
+    if (!fast_read(obj + kClientActorKey, &key, sizeof key)) return 0;
+    return (key >> 28) == 0xA || (key >> 28) == 0xB ? key : 0;
+}
+uint32_t failed_actor_key_3663(const uint64_t* values, size_t n) noexcept {
+    for (size_t i = 0; i < n; ++i)
+        if (const uint32_t k = client_actor_key_3663(static_cast<uintptr_t>(values[i]))) return k;
+    for (size_t i = 0; i < n; ++i) {
+        const auto obj = static_cast<uintptr_t>(values[i]);
+        if (obj < 0x10000 || (obj & 7) || (obj >= g_base && obj - g_base < 0x20000000)) continue;
+        uintptr_t inner[16];
+        if (!fast_read(obj, inner, sizeof inner)) continue;
+        for (const uintptr_t p : inner)
+            if (const uint32_t k = client_actor_key_3663(p)) return k;
+    }
+    return 0;
+}
 std::atomic<bool> g_installed{false};
 
 void on_error(safetyhook::Context& ctx) {
@@ -101,6 +133,10 @@ void on_error(safetyhook::Context& ctx) {
             }
         }
         g_fail_ring.push(found);  // its index from its own fetch_add (seq_ring.h)
+    }
+    if (g_base && current_build() == Build::v3663 && e.caller == g_base + kPostCreateFailedFrom3663) {
+        const uint64_t vals[] = {e.extra[0], e.value, e.extra[1], e.extra[2]};
+        g_post_fail_ring.push(failed_actor_key_3663(vals, 4));
     }
     if (!TryAcquireSRWLockExclusive(&g_lock)) {
         ++g_lost;
@@ -221,6 +257,11 @@ uint64_t game_errors_actor_create_failures(uint64_t* last_value) {
 size_t game_errors_actor_create_failures_since(uint64_t& cursor, uint64_t* values, size_t max, uint64_t* lost) {
     return g_fail_ring.read(cursor, values, max, lost);
 }
+
+size_t game_errors_post_create_failures_since(uint64_t& cursor, uint64_t* keys, size_t max, uint64_t* lost) {
+    return g_post_fail_ring.read(cursor, keys, max, lost);
+}
+uint64_t game_errors_post_create_failures() { return g_post_fail_ring.count(); }
 
 bool game_errors_installed() { return g_installed.load(std::memory_order_acquire); }
 

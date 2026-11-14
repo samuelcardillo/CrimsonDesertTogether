@@ -11,11 +11,20 @@ la petición del vehículo es de tipo 7 (el 12 es de lejos) y el timón no flota
 `dist/cdmp-coop-20261114-3663-v23.zip` (`cdmp.asi` `534d441d…`, protocolo 10: los dos PC con el mismo kit),
 104/104 pruebas. Una caída del invitado al unirse en siete uniones (`exe+0x620B1D`, la de 3576): guardia nueva
 `ride_null_guard`. **Tiendas y puestos comprobados en 3663** esa misma mañana (Delkin: menú, compra y venta; dos
-puestos de Hernand), con el mismo kit. Sin
-subir al fork. Detalle y lo que falta (velas, faroles, el barco del invitado): `docs/research/port-3663.md`,
+puestos de Hernand), con el mismo kit. El código de v23 está en el fork desde esa mañana (`cfa0831`, rama
+`port-3527-3549-3576`). Detalle y lo que falta (velas, faroles, el barco del invitado): `docs/research/port-3663.md`,
 «Barco en 3663» (también: el servidor manda `Move` en blanco de quien anda por una cubierta, y por eso la
 posición en el barco va ahora por el canal del mod). Lo que dicen las entradas del 13-nov de abajo sobre «el invitado no puede subir al barco» no se
 había probado y no es así.
+
+**14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; nada de esto está en el kit ni
+en el fork). El jugador que probó v23 pidió las VELAS. En el árbol de trabajo: el endurecimiento de `vehicle_follow`
+tras una revisión independiente; `create_retry` (invitado: vuelve a dar a su cliente las piezas del barco que no
+llegó a crear, los faroles); `gimmick_relay` + `gimmick_take` (el anfitrión reenvía los cambios de estado de la vela
+y el invitado los aplica a su copia); `send_trace` (desarrollo). Todo pasó una segunda y una tercera revisión
+independiente y sus correcciones. `build/bin`: `cdmp.asi` `ed4e4e2d`, 105/105 pruebas. Para probarlo:
+`SAIL_EXP=1 bash tools/porting/livetest/shipsession.sh` y luego `sailtest.sh H G` (~40 min, dos copias). Detalle:
+`docs/research/port-3663.md`, «Barco, mañana del 14-nov».
 
 Última actualización: 2026-11-05. **La build instalada es ahora 1.0.0.3549: ver su apartado.** Las pruebas son con dos copias del juego en un mismo PC
 (`scripts/launch-2inst.ps1`) y la red por loopback. **La prueba entre dos PC por Steam sigue pendiente:** necesita el

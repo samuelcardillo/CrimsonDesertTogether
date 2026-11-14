@@ -28,11 +28,18 @@
 
 //
 // Request types (3663, live 2026-11-14): 7 every frame while this client is near the ship (as on 3576), 12 a few times a
-// second while it is far away; both are followed on 3663 (3576: 7 only, the far one was never looked at).
+// second while it is far away; both are followed on 3663 (3576: 7 only, the far one was never looked at). The far type
+// is also the type of a character's own per-frame request, and the list holds the other user's mounts too, so a far
+// request is followed only for a vehicle that has been seen with the NEAR type (a ship this client has been near): a
+// mount that moves like a character is left to the game ('... gets far-type position requests ...' says so once).
+// Before that (kit v23) a listed non-ship vehicle was followed once in a live session.
+// The drawn pose: time from the performance counter (GetTickCount64 steps by 10-16 ms: a stutter above ~64 fps); past
+// the newest sample the velocity is taken over at least 500 ms of samples and capped at 40 m/s (two ~1 Hz samples that
+// arrive a frame apart, a resent packet, would otherwise read as hundreds of m/s for a second).
 // The ship's parts (3663 only): a gimmick attached by a socket under a followed vehicle (the ship's wheel on its mount)
 // is created on the other client with its offset from the vehicle instead of from its parent (the wheel floats 2.9 m
 // above the deck). Its controller's local position arrives in its MoveActorAck (vehicle_follow_on_in, guest side); when
-// the part's scene object is more than 0.25 m off, the position is written once into the scene object
+// the part's scene object is more than 0.5 m off, the position is written once into the scene object
 // ([[comps+0x30]+0x18]-0x28, local transform at +0x1D0). 'VehicleFollow: part ...' lines; probe: logged only.
 // Passengers (3663 only, both PCs): the client draws the other player's character at the world pose of its Moves, never
 // attached to this client's copy of what it stands on: a passenger standing still on a sailing ship stays behind in
@@ -47,6 +54,18 @@
 // Moves (vehicle_follow_on_in on the guest, vehicle_follow_on_user2_req on the host) are only the fallback when no
 // channel state came in the last 2 s.
 // 'VehicleFollow: character ...' lines. The host needs vehicle_follow=1 too for this.
+// After the review of 2026-11-14 (none of it seen to fail on one PC; all of it could on two):
+//  - a character or a chain pointer can outlive its actor for a worker tick: every use checks that the TransformSync
+//    still belongs to the actor with the expected key, and the calls into the game's setters also ask the actor table;
+//  - during a load the passengers' pointers are dropped, and a setter that faulted once is never called again for
+//    that character;
+//  - the chain of what the character stands on is published whole (two slots), and while the chain of a NEW part is
+//    not built yet the character stays where it was drawn on the part before (it used to show at the game's own
+//    stale pose for up to 250 ms at every step from part to part); the worker is woken at once by a change;
+//  - a passenger standing still gets a request EVERY frame (it got one every 30 ms: every other frame at 60 fps, a
+//    0.2 m sawtooth against the deck at full sail);
+//  - the summary counts the calls made on another thread than the character's own requests (if the game updates
+//    characters on several threads those calls race its update: not known yet).
 
 #include <cstdint>
 #include <span>

@@ -3,6 +3,9 @@
 #   stages: launch (default: everything), hopkins, join, guestboard, hostboard. A later stage needs the pids.
 #   deploy + launch, host to Vellua, Hopkins (R held 2 s at the tested spot), ship retrieved, guest joins and boards by
 #   the port ladder, host boards and takes the wheel. Each stage prints one line; stops at the first that fails.
+#   SAIL_EXP=1 in the environment: the two copies start with profiles/host-sail-exp.ini and profiles/guest-sail-exp.ini
+#   (the kit's profiles plus the sail and lantern experiments of 2026-11-14: gimmick_relay, send_trace, gimmick_take,
+#   create_retry, create_retry_lost), what sailtest.sh expects.
 cd "$(dirname "$0")"
 B="D:/SteamLibrary/steamapps/common/Crimson Desert/bin64"
 SP="$(cygpath -w "$(pwd)")"
@@ -33,7 +36,9 @@ board() {  # pid : swim to the port side, climb the ladder (the point and the he
 
 if from launch; then
   rm -f pids.txt launchX.txt
-  pwsh -NoProfile -ExecutionPolicy Bypass -File "$SP\launch_house.ps1" > launchX.txt 2>&1 < /dev/null &
+  INI=()
+  [ -n "$SAIL_EXP" ] && INI=(-HostIni "$SP\\profiles\\host-sail-exp.ini" -GuestIni "$SP\\profiles\\guest-sail-exp.ini")
+  pwsh -NoProfile -ExecutionPolicy Bypass -File "$SP\launch_house.ps1" "${INI[@]}" > launchX.txt 2>&1 < /dev/null &
   for i in $(seq 1 200); do grep -q "host in world" launchX.txt 2>/dev/null && break; grep -q -E "launch failed|is gone|Exception" launchX.txt 2>/dev/null && { tail -c 800 launchX.txt; exit 1; }; sleep 2; done
   H=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\1/p' pids.txt); G=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\2/p' pids.txt)
   echo "STAGE launch: pids $H $G; host in world at $(date +%T); asi $(certutil -hashfile "$B/cdmp.asi" SHA256 | sed -n 2p | cut -c1-8)"

@@ -56,3 +56,29 @@ Ver `docs/research/port-3663.md`, «Barco en 3663». Usan `../livetest/cdbuild.p
   se vio que el servidor solo conserva el padre «soporte del timón» y manda en blanco los de cubierta). `ackdump.py`:
   un `MoveActorAck` con padre y otro sin él, campo a campo. `../livetest/shipinv.py pid [x z]`: pose del barco y un
   punto del mundo en su sistema.
+
+## 14-nov (mañana): capturas `.bin`, piezas del barco, velas
+
+Las capturas `.bin` de `bin64` guardan los paquetes ENTEROS con los códigos NATIVOS de la build (3663: tabla
+`kEntries3663` de `src/common/native_opcode_table.inc`); el `.log` solo trae el principio de cada paquete.
+
+- `keyhist.py captura.bin clave_lo clave_hi [t0 t1] [x]`: mensajes por clave (los que empiezan por esa clave), por
+  dirección, con primera y última hora; con el sexto argumento, sin los `Move`.
+- `pktdump.py captura.bin Nombre clave [t0 t1] [max] [uniq]`: los paquetes de un mensaje con sus bytes.
+- `gimevents.py captura.bin clave_lo clave_hi`: por gimmick, cada par (evento, parámetro) de sus `UpdateGimmickReq`
+  con cuántos y cuándo, y cuántos 2609 / 3082 / 2779 mandó. Así se ve que la vela y los cañones comparten eventos y
+  difieren en el estado (el parámetro).
+- `recnames.py captura.bin clave_lo clave_hi [t0 t1]`: de cada registro 2005 de esas claves, su tipo, controlador,
+  nombre (longitud y texto) y las dos copias del padre que van DESPUÉS del nombre (`+0xB9` / `+0xD7`), junto a lo
+  que hay en `+0xF5` / `+0x113` fijos (lo mismo solo si el nombre tiene 13 caracteres).
+- `hashrefs.py [hex8...]`: dónde aparece en el `.exe` en disco (3663) un valor de 4 bytes tal como va en el paquete,
+  con la instrucción que lo lleva. Los hashes de estado de la vela no aparecen: salen de los datos del juego.
+- `loadrecs.py captura.bin clave_lo clave_hi [t0 t1]`: los registros del `ActorLoadDataAck` de esas claves, por lote,
+  con la familia de su cola. `recdiff.py captura.bin claveA claveB [t0 t1] [dump]`: dos registros byte a byte.
+- `shiptree.py pid_anfitrión pid_invitado [raíz]`: todo lo que cuelga del vehículo en las dos copias, lado a lado
+  (tipo, padre, enganche, posición local, y en cuál falta). `actorinfo.py pid clave...`: un actor por su clave.
+- `branchfind.py pid_anfitrión pid_invitado clave [hash...]`: componentes del actor con su clase y dónde aparece cada
+  hash de estado de rama (por defecto, los de la vela).
+- `setctl.py pid clave [own | controlador] [--write]`: el controlador de un actor en una copia; con `--write`, lo
+  cambia (EXPERIMENTO: escribe en la memoria del juego).
+- `weatherdump.py pid [pid2]`: los bloques del clima en crudo, o lo que difiere entre dos copias.

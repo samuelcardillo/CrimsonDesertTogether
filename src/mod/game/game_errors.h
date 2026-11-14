@@ -23,6 +23,13 @@ uint64_t game_errors_actor_create_failures(uint64_t* last_value = nullptr);
 // ones are skipped and counted in *lost. Lock-free (the hook writes, one reader).
 size_t game_errors_actor_create_failures_since(uint64_t& cursor, uint64_t* values, size_t max,
                                                uint64_t* lost = nullptr);
+// Build 3663 (session2 create_retry, 2026-11-14): "Actor AsyncPostProcessForCreate failed" is reported from
+// exe+0x8E03AF5; the hook looks for the failed client actor among the report's stack values (and one pointer below
+// them) and reads its key there and then, while the object still exists (never checked in the game yet: 0 when no
+// actor is found). The keys from `cursor` on, in order, as above
+// (the last 31 only; older ones are counted in *lost). Lock-free (the hook writes, one reader).
+size_t game_errors_post_create_failures_since(uint64_t& cursor, uint64_t* keys, size_t max, uint64_t* lost = nullptr);
+uint64_t game_errors_post_create_failures();
 // The hook is in (game_errors_install succeeded; it needs the sniffer, mod.cpp late_init).
 bool game_errors_installed();
 

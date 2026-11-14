@@ -75,6 +75,7 @@ uint64_t g_truncated = 0;
 LARGE_INTEGER g_qpc_freq;
 std::atomic<uint64_t> g_first_packet_us{0};  // the text capture's t = 0 (sniffer_first_packet_us)
 std::atomic<PacketTap> g_tap{nullptr};        // sniffer_set_tap: called on the writer thread
+std::atomic<PostProbe> g_post_probes[4];  // sniffer_add_post_probe: called in the PostPacket hook
 std::atomic<RecvRewrite> g_rewrite{nullptr};  // sniffer_set_recv_rewrite: called in the OnRecvPacket hook
 std::atomic<RecvExtra> g_extra{nullptr};      // sniffer_set_recv_extra: called in the OnRecvPacket hook
 std::atomic<uint64_t> g_extra_delivered{0}, g_extra_faulted{0}, g_extra_refused{0};
@@ -193,8 +194,20 @@ void on_post_packet(safetyhook::Context& ctx) {
         return;
     }
     const uint32_t packed = 0x80000000u | (static_cast<uint32_t>(flags) << 8) | channel;
-    if (const auto logical = native_opcode::decode(game::current_build(), op))
+    if (const auto logical = native_opcode::decode(game::current_build(), op)) {
         g_post_args[*logical].store(packed, std::memory_order_relaxed);
+        if (g_post_probes[0].load(std::memory_order_acquire)) {
+            uint16_t size = 0;
+            if (guarded_copy(&size, reinterpret_cast<const void*>(ctx.rsp + off::kHookArgSizeStackOffset),
+                             sizeof size)) {
+                for (auto& slot : g_post_probes) {
+                    const PostProbe probe = slot.load(std::memory_order_acquire);
+                    if (!probe) break;
+                    probe(*logical, reinterpret_cast<const uint8_t*>(ctx.r9), size, ctx.rsp);
+                }
+            }
+        }
+    }
     g_post_args_any.store(packed, std::memory_order_relaxed);
 
     // Our own packets go in before this real one, on the same thread.
@@ -783,6 +796,15 @@ bool sniffer_inject_c2s(std::vector<uint8_t> packet) {
 uint64_t sniffer_first_packet_us() noexcept { return g_first_packet_us.load(std::memory_order_relaxed); }
 
 void sniffer_set_tap(PacketTap tap) noexcept { g_tap.store(tap, std::memory_order_release); }
+bool sniffer_add_post_probe(PostProbe probe) noexcept {
+    if (!probe) return false;
+    for (auto& slot : g_post_probes) {
+        PostProbe none = nullptr;
+        if (slot.load(std::memory_order_acquire) == probe) return true;
+        if (slot.compare_exchange_strong(none, probe, std::memory_order_acq_rel)) return true;
+    }
+    return false;
+}
 
 bool sniffer_set_recv_rewrite(RecvRewrite fn) noexcept {
     if (!g_hooks_in.load(std::memory_order_acquire)) return false;

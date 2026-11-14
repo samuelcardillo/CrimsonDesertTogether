@@ -97,6 +97,8 @@ public:
     static constexpr uint64_t kDefaultDelayMs = 300;
     static constexpr uint64_t kMaxExtrapMs = 1000;  // past the newest sample, at most this much of its velocity
     static constexpr double kTeleportM = 60.0;   // a bigger step between two samples is not interpolated
+    static constexpr uint64_t kVelocityBaseMs = 500;  // the extrapolation's velocity: over at least this much time
+    static constexpr double kMaxSpeedMps = 40.0;      // and never faster than this (a ship at full sail: ~14 m/s)
 
     explicit Track(uint64_t delay_ms = kDefaultDelayMs) : delay_ms_(delay_ms) {}
     void set_delay(uint64_t delay_ms) { delay_ms_ = delay_ms; }
@@ -146,19 +148,33 @@ public:
                 return true;
             }
         }
-        // Past the newest sample: keep moving with the last segment's velocity for a short while.
-        const Sample& a = get(n_ - 2);
+        // Past the newest sample: keep moving with the latest velocity for a short while. The samples are stamped when
+        // they ARRIVE: two of the ~1 Hz poses can land a frame apart (a resent packet, a hitch), and the last segment
+        // alone would then read as hundreds of m/s. So the velocity is taken over at least kVelocityBaseMs of samples
+        // (as far back as there are, the time never counted shorter than that) and capped at kMaxSpeedMps.
         const Sample& b = get(n_ - 1);
         const uint64_t over = t - b.t;
-        if (over > kMaxExtrapMs || dist_xz(a.p, b.p) > kTeleportM) {
+        if (over > kMaxExtrapMs || dist_xz(get(n_ - 2).p, b.p) > kTeleportM) {
             *out = b.p;
             return true;
         }
-        const double k = static_cast<double>(over) / static_cast<double>(b.t - a.t);
+        size_t j = n_ - 2;
+        while (j > 0 && b.t - get(j).t < kVelocityBaseMs && dist_xz(get(j - 1).p, get(j).p) <= kTeleportM) --j;
+        const Sample& a = get(j);
+        const double span_s = static_cast<double>(std::max<uint64_t>(b.t - a.t, kVelocityBaseMs)) / 1000.0;
+        double vx = (b.p.x - a.p.x) / span_s, vy = (b.p.y - a.p.y) / span_s, vz = (b.p.z - a.p.z) / span_s;
+        const double speed = std::sqrt(vx * vx + vy * vy + vz * vz);
+        if (speed > kMaxSpeedMps) {
+            const double s = kMaxSpeedMps / speed;
+            vx *= s;
+            vy *= s;
+            vz *= s;
+        }
+        const double k = static_cast<double>(over) / 1000.0;
         Pose r = b.p;
-        r.x += (b.p.x - a.p.x) * k;
-        r.y += (b.p.y - a.p.y) * k;
-        r.z += (b.p.z - a.p.z) * k;
+        r.x += vx * k;
+        r.y += vy * k;
+        r.z += vz * k;
         *out = r;
         return true;
     }

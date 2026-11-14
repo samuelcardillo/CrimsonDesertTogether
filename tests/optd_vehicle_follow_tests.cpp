@@ -100,6 +100,29 @@ void test_track_ring_and_clock() {
     CHECK(t.at(1000000, &out) && near(out.x, -10500.0));
 }
 
+// Samples are stamped at arrival: two ~1 Hz poses that land a frame apart (a resent packet, a hitch) must not be read
+// as 812 m/s and extrapolated for a second (a review finding of 14-nov; a loopback test never delivers them so).
+void test_track_bursty_samples() {
+    Track t;
+    t.push(10000, pose(-10380.0, 350.0, -6300.0));
+    t.push(11000, pose(-10380.0, 350.0, -6313.0));  // 13 m/s
+    t.push(11016, pose(-10380.0, 350.0, -6326.0));  // the next pose, 16 ms later
+    Pose out;
+    // 11816 local -> 11516: 500 ms past the newest. Velocity over the 1016 ms of samples (25.6 m/s): 12.8 m on.
+    CHECK(t.at(11816, &out) && out.z < -6326.0 && out.z > -6326.0 - 13.0);
+    // Only two samples, 10 ms apart, 50 m: counted over kVelocityBaseMs (100 m/s) and capped at kMaxSpeedMps.
+    Track u;
+    u.push(10000, pose(-10380.0, 350.0, -6300.0));
+    u.push(10010, pose(-10380.0, 350.0, -6350.0));
+    CHECK(u.at(10010 + 300 + 1000, &out) && near(out.z, -6350.0 - Track::kMaxSpeedMps, 1e-6));
+    // A teleport inside the base time is not part of the velocity.
+    Track w;
+    w.push(10000, pose(-10380.0, 350.0, -5000.0));
+    w.push(10900, pose(-10380.0, 350.0, -6300.0));  // 1300 m: a teleport
+    w.push(11000, pose(-10380.0, 350.0, -6301.0));  // 1 m in 100 ms after it
+    CHECK(w.at(11000 + 300 + 500, &out) && out.z > -6303.0 && out.z < -6301.0);
+}
+
 void test_rotation() {
     float a[4] = {0, -0.166f, 0, 0.98613f}, b[4] = {0, 0.166f, 0, 0.98613f}, out[4];
     nlerp(a, b, 0.5, out);
@@ -157,6 +180,7 @@ int main() {
     test_track_default_delay_extrapolates();
     test_track_teleport_not_interpolated();
     test_track_ring_and_clock();
+    test_track_bursty_samples();
     test_rotation();
     test_to_sector();
     test_attach();

@@ -59,6 +59,8 @@
 #include "mod/session2/door_trace.h"
 #include "mod/session2/p8_probes.h"
 #include "mod/session2/preload_release_logic.h"
+#include "mod/session2/create_retry.h"
+#include "mod/session2/gimmick_relay.h"
 #include "mod/session2/reannounce_logic.h"
 #include "mod/session2/rejoin_logic.h"
 #include "mod/session2/remote_interp.h"
@@ -1145,6 +1147,7 @@ int* __fastcall guest_send(void* self, int* res, void* pbv) {
                     // its controller); probe counts it.
                     const bool withheld = mount_sync_guest_outgoing(p.data(), p.size()) ||
                                           docked_gimmicks_guest_withhold(p.data(), p.size()) ||
+                                          gimmick_take_withhold(p.data(), p.size()) ||
                                           docking_withhold(p.data(), p.size()) ||
                                           guest_shop_withhold(p.data(), p.size());
                     // P8 S25 phase B (guest_save_guest.h, guest_own_save=1): the 3093 waits for the host's SAVE_ACK
@@ -2074,6 +2077,10 @@ void deliver_body(std::vector<uint8_t>&& packet) {
     if (v) remote_interp_on_host_packet(v->opcode, v->payload);
     // The other player's ship parts (vehicle_follow.h): their controller's local positions; off: nothing.
     if (v) vehicle_follow_on_in(v->opcode, v->payload);
+    // Gimmick records that arrive before what they dock to (create_retry.h): kept for a retry; off: nothing.
+    if (v) create_retry_on_in(v->opcode, v->payload, g_epoch.load());
+    // EXPERIMENT (gimmick_relay.h, gimmick_take): the host's relayed sail updates; off: nothing.
+    if (v) gimmick_take_on_in(v->opcode, v->payload);
     // P8 session 9, D1 (ride_filter.h): the host character's mount/dismount actions -> native locomotion, in
     // place, before the client gets the packet; probe: counted only. Off: nothing.
     if (v && ride_filter_active()) ride_filter_on_guest_packet(packet, g_epoch.load());
@@ -2214,6 +2221,13 @@ std::deque<std::vector<uint8_t>> guest_take_outgoing(size_t link_backlog) {
         rejoin_tick();
         reannounce_tick();
         ms_release();  // P8 mounts: a hold whose Commit never came ends here (timeout)
+        {
+            // create_retry.h: the records of fittings the client could not create, given to it again (the same path
+            // as the host's own packets, on this thread).
+            std::vector<std::vector<uint8_t>> again;
+            create_retry_tick(g_epoch.load(), remote_live_for_keys(), again);
+            for (auto& p : again) deliver_body(std::move(p));
+        }
     } catch (...) {
     }
     // P8 mounts: events even while the client sends nothing. P8 re-entry (review of c4367f8, 4): with rejoin on, only
@@ -2363,7 +2377,7 @@ std::string guest_describe() {
            (guest_actor_diag_wanted() ? guest_actor_diag_describe() : std::string()) + guest_s3_describe() +
            guest_stage_diag_describe() + guest_scene_diag_describe() + guest_seq_route_describe() + guest_bodyanim_diag_describe() + guest_seq_play_describe() +
            guest_sched_load_describe() + guest_seq_restore_describe() + load_trip_describe() + guest_diag_worker_describe() +
-           actor_create_failures_text() + reannounce_describe() + guest_save_guest_describe() + rejoin_describe();
+           actor_create_failures_text() + reannounce_describe() + create_retry_describe() + gimmick_relay_describe() + guest_save_guest_describe() + rejoin_describe();
 }
 
 }  // namespace cdmp::session2

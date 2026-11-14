@@ -208,6 +208,9 @@ add_library(cdmp_mod SHARED
     src/mod/session2/manager_probe.cpp
     src/mod/session2/pivot_guard.cpp
     src/mod/session2/ride_null_guard.cpp
+    src/mod/session2/send_trace.cpp
+    src/mod/session2/create_retry.cpp
+    src/mod/session2/gimmick_relay.cpp
     src/mod/session2/seq_marker.cpp
     src/mod/session2/user2_funnels.cpp
     src/mod/session2/fast_travel.cpp
@@ -436,6 +439,11 @@ add_executable(cdmp_tests_optd_vehicle_follow tests/optd_vehicle_follow_tests.cp
 cdmp_strict(cdmp_tests_optd_vehicle_follow)
 target_include_directories(cdmp_tests_optd_vehicle_follow PRIVATE src)
 add_test(NAME optd_vehicle_follow COMMAND cdmp_tests_optd_vehicle_follow)
+
+add_executable(cdmp_tests_optd_create_retry tests/optd_create_retry_tests.cpp)
+cdmp_strict(cdmp_tests_optd_create_retry)
+target_include_directories(cdmp_tests_optd_create_retry PRIVATE src)
+add_test(NAME optd_create_retry COMMAND cdmp_tests_optd_create_retry)
 
 add_executable(cdmp_tests_optd_achievement_guard tests/optd_achievement_guard_tests.cpp)
 cdmp_strict(cdmp_tests_optd_achievement_guard)

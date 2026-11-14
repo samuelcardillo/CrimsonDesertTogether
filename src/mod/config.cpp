@@ -215,6 +215,12 @@ Config load_config(const std::wstring& ini_path) {
     c.s2_seq_marker_trace = read_uint(ini_path, L"session2", L"seq_marker_trace", 0) != 0;
     c.s2_change_pivot_guard = read_uint(ini_path, L"session2", L"change_pivot_guard", 1) != 0;
     c.s2_ride_null_guard = read_uint(ini_path, L"session2", L"ride_null_guard", 1) != 0;
+    c.s2_send_trace = narrow(read_string(ini_path, L"session2", L"send_trace", ""));
+    c.s2_create_retry = narrow(read_string(ini_path, L"session2", L"create_retry", "probe"));
+    c.s2_create_retry_lost = read_uint(ini_path, L"session2", L"create_retry_lost", 0);
+    c.s2_gimmick_relay = narrow(read_string(ini_path, L"session2", L"gimmick_relay", "0"));
+    c.s2_gimmick_relay_states = narrow(read_string(ini_path, L"session2", L"gimmick_relay_states", ""));
+    c.s2_gimmick_take = narrow(read_string(ini_path, L"session2", L"gimmick_take", "0"));
     c.s2_focus_follow = read_uint(ini_path, L"session2", L"focus_follow", 1) != 0;
     c.s2_field_leave_guard = read_uint(ini_path, L"session2", L"field_leave_guard", 1) != 0;
     c.s2_docking_dedupe = read_uint(ini_path, L"session2", L"docking_dedupe", 1) != 0;

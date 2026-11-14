@@ -79,6 +79,9 @@
 #include "mod/session2/manager_probe.h"
 #include "mod/session2/pivot_guard.h"
 #include "mod/session2/ride_null_guard.h"
+#include "mod/session2/create_retry.h"
+#include "mod/session2/gimmick_relay.h"
+#include "mod/session2/send_trace.h"
 #include "mod/session2/seq_marker.h"
 #include "mod/session2/ui_pause.h"
 #include "mod/session2/user2_funnels.h"
@@ -1190,6 +1193,9 @@ DWORD WINAPI worker(LPVOID) {
                 session2::seq_marker_start(cfg.s2_seq_marker_guard, /*guest=*/true, cfg.s2_seq_marker_trace);
                 session2::pivot_guard_start(cfg.s2_change_pivot_guard, /*guest=*/true);
                 session2::ride_null_guard_start(cfg.s2_ride_null_guard, /*guest=*/true);
+                session2::send_trace_start(cfg.s2_send_trace);
+                session2::create_retry_configure(cfg.s2_create_retry, cfg.s2_create_retry_lost);
+                session2::gimmick_take_configure(cfg.s2_gimmick_take);
                 session2::focus_follow_start(cfg.s2_focus_follow, /*guest=*/true);
                 session2::field_leave_guard_start(cfg.s2_field_leave_guard, /*guest=*/true);
                 session2::achievement_guard_start(cfg.s2_achievement_guard);
@@ -1290,6 +1296,8 @@ DWORD WINAPI worker(LPVOID) {
         if (session2) session2::seq_marker_start(cfg.s2_seq_marker_guard, /*guest=*/false, cfg.s2_seq_marker_trace);
         if (session2) session2::pivot_guard_start(cfg.s2_change_pivot_guard, /*guest=*/false);
         if (session2) session2::ride_null_guard_start(cfg.s2_ride_null_guard, /*guest=*/false);
+        if (session2) session2::send_trace_start(cfg.s2_send_trace);
+        if (session2) session2::gimmick_relay_start(cfg.s2_gimmick_relay, cfg.s2_gimmick_relay_states);
         if (session2) session2::focus_follow_start(cfg.s2_focus_follow, /*guest=*/false);
         if (session2) session2::field_leave_guard_start(cfg.s2_field_leave_guard, /*guest=*/false);
         if (session2) session2::manager_probe_start(cfg.s2_manager_probe);

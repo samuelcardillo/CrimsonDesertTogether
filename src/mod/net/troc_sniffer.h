@@ -43,6 +43,13 @@ uint64_t sniffer_first_packet_us() noexcept;
 using PacketTap = void (*)(const uint8_t* packet, size_t size, uint64_t t_us, bool server_to_client) noexcept;
 void sniffer_set_tap(PacketTap tap) noexcept;
 
+// Development (session2/send_trace.h): a read-only observer inside the ClientNet::PostPacket mid hook, on the client's
+// own SENDING thread, for every packet the game itself posts (never the mod's injected ones): the logical opcode, the
+// game's packet (native bytes: read it SEH-guarded), its size and the hook's rsp (the sender's stack). It must not
+// block. Up to four, never removed. False: no room.
+using PostProbe = void (*)(uint16_t logical_op, const uint8_t* packet, uint16_t size, uint64_t rsp) noexcept;
+bool sniffer_add_post_probe(PostProbe probe) noexcept;
+
 // P8 session 9, D1 (session2/ride_filter.h): a callback that may change a logical COPY of an S->C packet inside the
 // OnRecvPacket mid hook, after it was captured (the capture keeps what the server sent) and before the game
 // reads it. A valid rewrite is encoded back into the native buffer. Called on the game's thread: it must not allocate, lock or log; any access to the packet must be

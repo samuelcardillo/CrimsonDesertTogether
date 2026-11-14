@@ -96,12 +96,22 @@ constexpr uint8_t kTypeGimmick = 7, kTypeVehicle = 5, kAttachVehicle = 7;
 // a vehicle request (type 7; on 3663 also 12 from far away). One entry per vehicle actor.
 constexpr size_t kMaxVehicles = 16;
 constexpr ULONGLONG kProbeMs = 100;  // ~6 frames at 60 fps
+constexpr ULONGLONG kScanMs = 3000;  // between two scans of the actor table
+// Set when the other player's character changes what it stands on: the worker rebuilds its chain at once instead of at
+// its next 250 ms tick (auto-reset; null: the worker only sleeps).
+HANDLE g_wake = nullptr;
 
 struct Vehicle {
     std::atomic<uintptr_t> ts{0};
     std::atomic<uint32_t> key{0};
     uint32_t gimmick = 0, gimmicks = 0;  // one of the vehicle gimmicks hanging from it and their number (log only)
     bool following = false;              // worker only: a vehicle request seen (it is drawn from its gimmick)
+    // A NEAR vehicle request seen for it (hook, or the worker's probe): only then are its far requests followed too.
+    // The far type is also the type of a character's own per-frame request (3663: 12), and the list holds the other
+    // user's mounts as well: one that moves like a character must be left to the game (never seen with the near type).
+    std::atomic<bool> near_seen{false};
+    std::atomic<uint64_t> far_only{0};   // far requests passed through because of that (hook)
+    bool far_logged = false;             // worker only
     SRWLOCK lock = SRWLOCK_INIT;
     vfl::Track track;        // under lock
     vfl::Pose drawn;         // under lock: the pose given to the last position request
@@ -118,6 +128,16 @@ std::atomic<bool> g_guest{false};
 SafetyHookMid g_pos_hook, g_rot_hook;
 std::atomic<uint64_t> g_unreadable{0};
 std::atomic<uint32_t> g_delay_ms{static_cast<uint32_t>(vfl::Track::kDefaultDelayMs)};
+
+// Milliseconds on the performance counter (g_qpc_freq is set before the worker starts). GetTickCount64 steps by 10-16
+// ms: above ~64 frames a second two frames in a row would get the same ship pose and the next one a double step.
+int64_t g_qpc_freq = 0;
+uint64_t now_ms() noexcept {
+    LARGE_INTEGER c;
+    if (g_qpc_freq <= 0 || !QueryPerformanceCounter(&c)) return GetTickCount64();
+    const auto q = static_cast<uint64_t>(c.QuadPart), f = static_cast<uint64_t>(g_qpc_freq);
+    return q / f * 1000 + q % f * 1000 / f;
+}
 
 // SEH-guarded reads without VirtualQuery (game::fast_read): the scan reads thousands of heap fields, and a
 // VirtualQuery per read contends with the game's own allocations (it is also never run during a load: in_world()).
@@ -178,7 +198,7 @@ Vehicle* find(uintptr_t ts) noexcept {
 // type, flag): they store the request (TS+0x5AC.. / +0x5C0..) and set bit 0 of the actor's byte +0x100 (its vf54),
 // nothing else. The TransformSync is checked against its actor and key right before, and the call is SEH-guarded.
 constexpr size_t kMaxPassengers = 4, kMaxChain = 4;
-constexpr ULONGLONG kPassengerEaseMs = 120, kPassengerIdleMs = 30, kChannelFreshMs = 2000;
+constexpr ULONGLONG kPassengerEaseMs = 120, kPassengerIdleMs = 30, kPassengerIdleGapMs = 2, kChannelFreshMs = 2000;
 constexpr float kPassengerSnapM = 3.0f;
 using SetPositionFn = void (*)(uintptr_t ts, const void* pos, uint8_t type, uint8_t has_velocity, const void* velocity,
                                uint8_t flag_a, uint8_t flag_b);
@@ -193,18 +213,31 @@ struct Passenger {
     // Its controller's last Move: the mod's network thread writes, the hooks read (under lock).
     uint32_t parent = 0;            // 0: no parent (on foot)
     float pos[3]{}, q[4]{0, 0, 0, 1};
-    // The parent's TransformSyncs on this client, from the parent up to the root vehicle (worker writes: chain_for = 0,
-    // the chain, then chain_for = the parent key they belong to).
-    std::atomic<uint32_t> chain_for{0}, chain_len{0}, vehicle{0};
-    std::array<std::atomic<uintptr_t>, kMaxChain> chain{};
+    // The parent's TransformSyncs on this client, from the parent up to the root vehicle, with the key of each one's
+    // actor (checked at every use: a pointer can outlive its actor for a worker tick). Two slots: the worker fills the
+    // one not in use and then publishes chain_state = parent key << 32 | slot << 8 | length (0: none), so a hook
+    // never sees a half-written chain nor a frame without one while the other player steps from part to part.
+    struct Chain {
+        std::array<std::atomic<uintptr_t>, kMaxChain> ts{};
+        std::array<std::atomic<uint32_t>, kMaxChain> key{};
+    };
+    std::array<Chain, 2> chains;
+    std::atomic<uint64_t> chain_state{0};
+    std::atomic<uint32_t> vehicle{0};
     // Hook side, under lock: the eased local pose and the world rotation of the last position request.
     float eased_pos[3]{}, eased_q[4]{0, 0, 0, 1}, drawn_q[4]{0, 0, 0, 1};
     ULONGLONG eased_ms = 0, drawn_ms = 0;
     uint32_t eased_for = 0;
-    std::atomic<uint64_t> moves{0}, requests{0}, placed{0}, unreadable{0}, idle_placed{0}, idle_failed{0};
+    std::atomic<uint64_t> moves{0}, requests{0}, placed{0}, unreadable{0}, idle_placed{0}, idle_failed{0}, held{0};
     std::atomic<uint32_t> last_off_cm{0}, max_off_cm{0};
-    // Its own last request: when, and the arguments this module's calls copy (hooks).
-    std::atomic<ULONGLONG> request_ms{0};
+    // Its own last request (the game's) and the last one this module gave it while it stood still: when (hooks).
+    std::atomic<ULONGLONG> request_ms{0}, idle_ms{0};
+    // A setter call for it faulted: no more calls for this character (until the slot gets another one).
+    std::atomic<bool> faulted{false};
+    // The thread of its own requests, and how many of this module's calls for it ran on another one (if the game
+    // updates characters on several threads, those calls race its own update: the summary says).
+    std::atomic<uint32_t> own_tid{0};
+    std::atomic<uint64_t> cross_thread{0};
     // The last state of it from the mod's own channel (vehicle_follow_on_peer_state): while those arrive, the game's
     // Moves of it are not used (the server blanks them for a character on a ship's deck).
     std::atomic<ULONGLONG> channel_ms{0};
@@ -216,10 +249,20 @@ struct Passenger {
 std::array<Passenger, kMaxPassengers> g_passengers;
 std::atomic<uint32_t> g_passenger_count{0};
 
+uintptr_t actor_by_key(uintptr_t table, uint32_t key) noexcept;
+uintptr_t actor_table() noexcept;
+inline uint32_t chain_parent(uint64_t state) noexcept { return static_cast<uint32_t>(state >> 32); }
+
+// The listed character whose TransformSync this is: the pointer, and the key of the actor it belongs to now (the
+// address of a character that left can be given to another actor before the worker's next tick).
 Passenger* find_passenger(uintptr_t ts) noexcept {
     if (!ts || !g_passenger_count.load(std::memory_order_relaxed)) return nullptr;
-    for (auto& p : g_passengers)
-        if (p.ts.load(std::memory_order_acquire) == ts) return &p;
+    for (auto& p : g_passengers) {
+        if (p.ts.load(std::memory_order_acquire) != ts) continue;
+        const uintptr_t actor = rd<uintptr_t>(ts + kTS_Actor);
+        const uint32_t key = p.key.load(std::memory_order_relaxed);
+        return key && actor && rd<uint32_t>(actor + kActor_Key) == key ? &p : nullptr;
+    }
     return nullptr;
 }
 
@@ -244,16 +287,25 @@ bool ts_pose(uintptr_t ts, bool root, vfl::Pose* out, float local_pos[3]) noexce
 }
 
 // The world pose of the passenger's parent on this client: the chain's poses composed from the root down.
-bool chain_world(const Passenger& p, vfl::Pose* out) noexcept {
-    const uint32_t n = p.chain_len.load(std::memory_order_acquire);
+bool chain_world(const Passenger& p, uint64_t state, vfl::Pose* out) noexcept {
+    const uint32_t n = static_cast<uint32_t>(state & 0xFF);
     if (!n || n > kMaxChain) return false;
+    const Passenger::Chain& c = p.chains[(state >> 8) & 1];
+    std::array<uintptr_t, kMaxChain> ts{};
+    for (uint32_t i = 0; i < n; ++i) {
+        // Still the TransformSync of the actor it was taken from.
+        ts[i] = c.ts[i].load(std::memory_order_relaxed);
+        const uintptr_t actor = ts[i] ? rd<uintptr_t>(ts[i] + kTS_Actor) : 0;
+        const uint32_t key = c.key[i].load(std::memory_order_relaxed);
+        if (!actor || !key || rd<uint32_t>(actor + kActor_Key) != key) return false;
+    }
     vfl::Pose w;
     float unused[3];
-    if (!ts_pose(p.chain[n - 1].load(std::memory_order_relaxed), true, &w, unused)) return false;
+    if (!ts_pose(ts[n - 1], true, &w, unused)) return false;
     for (uint32_t i = n - 1; i-- > 0;) {
         vfl::Pose l;
         float lp[3];
-        if (!ts_pose(p.chain[i].load(std::memory_order_relaxed), false, &l, lp)) return false;
+        if (!ts_pose(ts[i], false, &l, lp)) return false;
         w = vfl::attach(w, lp, l.q);
     }
     *out = w;
@@ -265,9 +317,18 @@ bool chain_world(const Passenger& p, vfl::Pose* out) noexcept {
 bool passenger_pose(Passenger& p, ULONGLONG now, vfl::Pose* out_pose) noexcept {
     float lp[3], lq[4];
     uint32_t parent = 0;
+    const uint64_t state = p.chain_state.load(std::memory_order_acquire);
+    const uint32_t chain_for = chain_parent(state);
     AcquireSRWLockExclusive(&p.lock);
     parent = p.parent;
-    if (parent && p.chain_for.load(std::memory_order_acquire) == parent) {
+    if (parent && chain_for && chain_for != parent && p.eased_for == chain_for) {
+        // The other player stepped onto another part and its chain here is not built yet (the worker's next tick):
+        // it stays where it was drawn on the part before, not at the game's own (stale) pose for those frames.
+        parent = chain_for;
+        std::memcpy(lp, p.eased_pos, sizeof lp);
+        std::memcpy(lq, p.eased_q, sizeof lq);
+        p.held.fetch_add(1, std::memory_order_relaxed);
+    } else if (parent && chain_for == parent) {
         float d[3] = {p.pos[0] - p.eased_pos[0], p.pos[1] - p.eased_pos[1], p.pos[2] - p.eased_pos[2]};
         const float gap = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
         const ULONGLONG dt = now - p.eased_ms;
@@ -293,7 +354,7 @@ bool passenger_pose(Passenger& p, ULONGLONG now, vfl::Pose* out_pose) noexcept {
     ReleaseSRWLockExclusive(&p.lock);
     if (!parent) return false;
     vfl::Pose base;
-    if (!chain_world(p, &base)) {
+    if (!chain_world(p, state, &base)) {
         p.unreadable.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
@@ -309,8 +370,9 @@ struct PositionArg {
 };
 
 void passenger_position(safetyhook::Context& ctx, Passenger& p) noexcept {
-    const ULONGLONG now = GetTickCount64();
+    const ULONGLONG now = now_ms();
     p.request_ms.store(now, std::memory_order_relaxed);
+    p.own_tid.store(GetCurrentThreadId(), std::memory_order_relaxed);
     p.flag_a.store(rd<uint8_t>(ctx.rsp + 0x30), std::memory_order_relaxed);
     p.flag_b.store(rd<uint8_t>(ctx.rsp + 0x38), std::memory_order_relaxed);
     vfl::Pose out;
@@ -354,17 +416,31 @@ bool call_setters(uintptr_t ts, const PositionArg* pos, const float* quat, uint8
 // From this client's own character's request (once a frame): the passengers that got no request of their own lately.
 void passengers_idle(ULONGLONG now) noexcept {
     if (!on()) return;
+    uintptr_t table = 0;
+    bool table_read = false;
     for (auto& p : g_passengers) {
         const uintptr_t ts = p.ts.load(std::memory_order_acquire);
-        if (!ts || !p.chain_for.load(std::memory_order_relaxed)) continue;
+        if (!ts || p.faulted.load(std::memory_order_relaxed) || !chain_parent(p.chain_state.load(std::memory_order_relaxed)))
+            continue;
+        // Its own movement is asking (every frame while it moves), or it was already given one in this frame.
         if (now - p.request_ms.load(std::memory_order_relaxed) < kPassengerIdleMs) continue;
+        if (now - p.idle_ms.load(std::memory_order_relaxed) < kPassengerIdleGapMs) continue;
         if (p.busy.exchange(true, std::memory_order_acquire)) continue;
         vfl::Pose out;
-        // Still that character's TransformSync: its actor, the actor's key, and the actor's components point back.
+        // Still that character's TransformSync: its actor, the actor's key, the actor's components point back, AND the
+        // actor table still has that actor under the key (a freed actor's memory can keep all its fields: the table is
+        // what says it is alive; this call goes into the game's code with the pointer).
+        const uint32_t key = p.key.load(std::memory_order_relaxed);
         const uintptr_t actor = rd<uintptr_t>(ts + kTS_Actor);
         const uintptr_t comps = actor ? rd<uintptr_t>(actor + kActor_Comps) : 0;
-        const bool same = comps && rd<uint32_t>(actor + kActor_Key) == p.key.load(std::memory_order_relaxed) &&
-                          rd<uintptr_t>(comps + kComps_TS) == ts;
+        bool same = key && comps && rd<uint32_t>(actor + kActor_Key) == key && rd<uintptr_t>(comps + kComps_TS) == ts;
+        if (same) {
+            if (!table_read) {
+                table = in_world() ? actor_table() : 0;
+                table_read = true;
+            }
+            same = table && actor_by_key(table, key) == actor;
+        }
         if (same && passenger_pose(p, now, &out)) {
             int16_t sector[2]{};
             game::fast_read(ts + kTS_LocalSector, sector, sizeof sector);
@@ -380,12 +456,14 @@ void passengers_idle(ULONGLONG now) noexcept {
                              p.flag_b.load(std::memory_order_relaxed), p.rot_type.load(std::memory_order_relaxed),
                              p.rot_flag.load(std::memory_order_relaxed))) {
                 p.idle_placed.fetch_add(1, std::memory_order_relaxed);
-                p.request_ms.store(now, std::memory_order_relaxed);
+                p.idle_ms.store(now, std::memory_order_relaxed);
+                const uint32_t own_tid = p.own_tid.load(std::memory_order_relaxed);
+                if (own_tid && own_tid != GetCurrentThreadId()) p.cross_thread.fetch_add(1, std::memory_order_relaxed);
             } else {
-                // A fault inside the game's setter: this character is left alone from now on.
+                // A fault inside the game's setter: no more calls for this character (its own requests are still
+                // answered: those only write the caller's argument).
                 p.idle_failed.fetch_add(1, std::memory_order_relaxed);
-                p.chain_for.store(0, std::memory_order_release);
-                p.ts.store(0, std::memory_order_release);
+                p.faulted.store(true, std::memory_order_release);
             }
         }
         p.busy.store(false, std::memory_order_release);
@@ -398,7 +476,7 @@ void passenger_rotation(safetyhook::Context& ctx, Passenger& p) noexcept {
     float q[4];
     bool have = false;
     AcquireSRWLockShared(&p.lock);
-    if (p.drawn_ms && GetTickCount64() - p.drawn_ms < 500) {
+    if (p.drawn_ms && now_ms() - p.drawn_ms < 500) {
         std::memcpy(q, p.drawn_q, sizeof q);
         have = vfl::unit_quat(q);
     }
@@ -427,16 +505,24 @@ void position_mid(safetyhook::Context& ctx) {
             return;
         }
         if (ctx.rcx == g_own_ts.load(std::memory_order_relaxed) && g_passenger_count.load(std::memory_order_relaxed)) {
-            passengers_idle(GetTickCount64());
+            passengers_idle(now_ms());
             return;
         }
     }
     if (!vehicle_request(type)) return;
     Vehicle* v = find(ctx.rcx);
     if (!v) return;
-    v->requests.fetch_add(1, std::memory_order_relaxed);
     const uintptr_t actor = rd<uintptr_t>(ctx.rcx + kTS_Actor);
     if (!actor || rd<uint32_t>(actor + kActor_Key) != v->key.load(std::memory_order_relaxed)) return;
+    if (type == g_addrs->request_type) {
+        v->near_seen.store(true, std::memory_order_relaxed);
+    } else if (!v->near_seen.load(std::memory_order_relaxed)) {
+        // A far request (the type a character's own movement uses too) of a listed vehicle never drawn from its
+        // gimmick here: a mount, or a ship this client has not been near yet. The game's own.
+        v->far_only.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    v->requests.fetch_add(1, std::memory_order_relaxed);
     vfl::Pose net;
     if (!network_pose(ctx.rcx, &net)) {
         g_unreadable.fetch_add(1, std::memory_order_relaxed);
@@ -447,7 +533,7 @@ void position_mid(safetyhook::Context& ctx) {
         int16_t sx, sz;
     } arg{};
     if (!game::fast_read(ctx.rdx, &arg, sizeof arg)) return;
-    const uint64_t now = GetTickCount64();
+    const uint64_t now = now_ms();
     vfl::Pose out;
     bool have = false;
     AcquireSRWLockExclusive(&v->lock);
@@ -485,11 +571,13 @@ void rotation_mid(safetyhook::Context& ctx) {
     }
     if (!vehicle_request(type)) return;
     Vehicle* v = find(ctx.rcx);
-    if (!v) return;
+    if (!v || !v->near_seen.load(std::memory_order_relaxed)) return;
+    const uintptr_t actor = rd<uintptr_t>(ctx.rcx + kTS_Actor);
+    if (!actor || rd<uint32_t>(actor + kActor_Key) != v->key.load(std::memory_order_relaxed)) return;
     float q[4];
     bool have = false;
     AcquireSRWLockShared(&v->lock);
-    if (v->drawn_ms && GetTickCount64() - v->drawn_ms < 500) {
+    if (v->drawn_ms && now_ms() - v->drawn_ms < 500) {
         std::memcpy(q, v->drawn.q, sizeof q);
         have = vfl::unit_quat(q);
     }
@@ -647,7 +735,7 @@ void parts_pass() {
     const uint32_t n = table ? rd<uint32_t>(table + kTable_Count) : 0;
     const uintptr_t buckets = table ? rd<uintptr_t>(table + kTable_Buckets) : 0, nodes = table ? rd<uintptr_t>(table + kTable_Nodes) : 0;
     if (any && n && n <= (1u << 20) && buckets && nodes) {
-        const ULONGLONG now = GetTickCount64();
+        const ULONGLONG now = now_ms();
         for (uint32_t b = 0; b < n; ++b) {
             const uintptr_t base = buckets + static_cast<uintptr_t>(b) * kBucketStride;
             const uint32_t c = rd<uint32_t>(base);
@@ -785,12 +873,15 @@ void passengers_list() {
                 p.eased_for = 0;
                 p.drawn_ms = 0;
                 ReleaseSRWLockExclusive(&p.lock);
-                p.chain_for = 0;
-                p.chain_len = 0;
+                p.chain_state = 0;
                 p.vehicle = 0;
-                p.moves = p.requests = p.placed = p.unreadable = p.idle_placed = p.idle_failed = 0;
+                p.moves = p.requests = p.placed = p.unreadable = p.idle_placed = p.idle_failed = p.held = 0;
                 p.last_off_cm = p.max_off_cm = 0;
                 p.request_ms = 0;
+                p.idle_ms = 0;
+                p.faulted = false;
+                p.own_tid = 0;
+                p.cross_thread = 0;
                 p.channel_ms = 0;
                 p.channel_states = 0;
                 p.flag_a = p.flag_b = p.rot_flag = 0;
@@ -835,7 +926,7 @@ bool passengers_tick() {
                           p.moves.load(), p.requests.load(), p.placed.load(), p.idle_placed.load(),
                           p.max_off_cm.load() / 100.0);
             p.ts.store(0);
-            p.chain_for = 0;
+            p.chain_state = 0;
             p.key.store(0);
             g_passenger_count.fetch_sub(1);
             continue;
@@ -847,6 +938,7 @@ bool passengers_tick() {
         ReleaseSRWLockShared(&p.lock);
         uint32_t len = 0, vehicle = 0;
         std::array<uintptr_t, kMaxChain> chain{};
+        std::array<uint32_t, kMaxChain> keys{};
         uint32_t k = parent;
         for (uint32_t depth = 0; k && depth < kMaxChain; ++depth) {
             const uintptr_t pa = actor_by_key(table, k);
@@ -857,6 +949,7 @@ bool passengers_tick() {
             const uint8_t type = rd<uint8_t>(pinfo + 1);
             if (depth == 0 && type != kTypeGimmick) break;  // on a horse or another character: not here
             chain[depth] = pts;
+            keys[depth] = k;
             const uintptr_t phier = rd<uintptr_t>(pcomps + kComps_Hierarchy);
             const uint32_t up = phier ? rd<uint32_t>(phier + kHier_Parent) : 0;
             if (!up) {
@@ -869,14 +962,22 @@ bool passengers_tick() {
             k = up;
         }
         if (len) {
-            if (p.chain_for.load() != parent) {
-                p.chain_for.store(0, std::memory_order_release);
-                for (uint32_t i = 0; i < kMaxChain; ++i) p.chain[i].store(chain[i], std::memory_order_relaxed);
-                p.chain_len.store(len, std::memory_order_relaxed);
+            // Published only when something changed (the parent, the depth, a pointer or a key), into the slot the
+            // hooks are not reading.
+            const uint64_t cur = p.chain_state.load();
+            const uint32_t cur_slot = static_cast<uint32_t>(cur >> 8) & 1;
+            bool same = chain_parent(cur) == parent && static_cast<uint32_t>(cur & 0xFF) == len;
+            for (uint32_t i = 0; same && i < len; ++i)
+                same = p.chains[cur_slot].ts[i].load() == chain[i] && p.chains[cur_slot].key[i].load() == keys[i];
+            if (!same) {
+                const uint32_t slot = cur ? cur_slot ^ 1 : 0;
+                for (uint32_t i = 0; i < kMaxChain; ++i) {
+                    p.chains[slot].ts[i].store(chain[i], std::memory_order_relaxed);
+                    p.chains[slot].key[i].store(keys[i], std::memory_order_relaxed);
+                }
                 p.vehicle.store(vehicle);
-                p.chain_for.store(parent, std::memory_order_release);
-            } else {
-                for (uint32_t i = 0; i < kMaxChain; ++i) p.chain[i].store(chain[i], std::memory_order_relaxed);
+                p.chain_state.store(static_cast<uint64_t>(parent) << 32 | static_cast<uint64_t>(slot) << 8 | len,
+                                    std::memory_order_release);
             }
             any = true;
             if (p.logged_parent != parent) {
@@ -886,7 +987,7 @@ bool passengers_tick() {
                 p.logged_parent = parent;
             }
         } else {
-            p.chain_for.store(0, std::memory_order_release);
+            p.chain_state.store(0, std::memory_order_release);
             if (p.logged_parent) {
                 log::info("VehicleFollow: character 0x{:08X} left 0x{:08X}; {} requests there, {} placed, {} more given "
                           "while it stood still, the game's own pose up to {:.1f} m away", key, p.logged_parent,
@@ -906,21 +1007,25 @@ void passenger_move(std::span<const uint8_t> payload, const movement::Layout& l,
         if (p.key.load(std::memory_order_relaxed) != key) continue;
         p.moves.fetch_add(1, std::memory_order_relaxed);
         // The other mod says what it stands on 20 times a second: the game's Move is only the fallback.
-        if (GetTickCount64() - p.channel_ms.load(std::memory_order_relaxed) < kChannelFreshMs) return;
+        if (now_ms() - p.channel_ms.load(std::memory_order_relaxed) < kChannelFreshMs) return;
         uint64_t parent = 0;
         float pos[3], q[4];
         std::memcpy(&parent, payload.data() + l.parent, 8);
         std::memcpy(pos, payload.data() + l.local_pos, sizeof pos);
         std::memcpy(q, payload.data() + l.local_quat, sizeof q);
         const bool ok = parent != ~0ull && (parent >> 32) == 0 && vfl::unit_quat(q) && std::isfinite(pos[0]) &&
-                        std::isfinite(pos[1]) && std::isfinite(pos[2]);
+                        std::isfinite(pos[1]) && std::isfinite(pos[2]) && std::fabs(pos[0]) <= 500.0f &&
+                        std::fabs(pos[1]) <= 500.0f && std::fabs(pos[2]) <= 500.0f;
+        const uint32_t now_parent = ok ? static_cast<uint32_t>(parent) : 0;
         AcquireSRWLockExclusive(&p.lock);
-        p.parent = ok ? static_cast<uint32_t>(parent) : 0;
+        const uint32_t before = p.parent;
+        p.parent = now_parent;
         if (ok) {
             std::memcpy(p.pos, pos, sizeof pos);
             std::memcpy(p.q, q, sizeof q);
         }
         ReleaseSRWLockExclusive(&p.lock);
+        if (before != now_parent && g_wake) SetEvent(g_wake);
         return;
     }
 }
@@ -959,6 +1064,9 @@ void refresh(const std::vector<Found>& found) {
             v.gimmick = f.gimmick;
             v.gimmicks = f.gimmicks;
             v.following = false;
+            v.near_seen = false;
+            v.far_only = 0;
+            v.far_logged = false;
             v.requests = v.positions = v.rotations = v.samples = 0;
             v.last_err_cm = v.max_err_cm = 0;
             v.key.store(f.vehicle);
@@ -995,15 +1103,16 @@ bool probe_active() {
         any_listed |= ts[i] != 0;
     }
     if (!any_listed) return false;
-    const ULONGLONG end = GetTickCount64() + kProbeMs;
+    const ULONGLONG end = now_ms() + kProbeMs;
     for (uint32_t spin = 0;; ++spin) {
         for (size_t i = 0; i < kMaxVehicles; ++i) {
-            if (!ts[i] || !vehicle_request(rd<uint8_t>(ts[i] + kTS_RequestType, kRequestNone))) continue;
-            announce(g_vehicles[i], "a vehicle request pending at TS+0x5BC");
+            if (!ts[i] || rd<uint8_t>(ts[i] + kTS_RequestType, kRequestNone) != g_addrs->request_type) continue;
+            g_vehicles[i].near_seen.store(true, std::memory_order_relaxed);
+            announce(g_vehicles[i], "a near vehicle request pending at TS+0x5BC");
             return true;
         }
         YieldProcessor();
-        if ((spin & 0xFF) == 0 && GetTickCount64() >= end) return false;
+        if ((spin & 0xFF) == 0 && now_ms() >= end) return false;
     }
 }
 
@@ -1023,18 +1132,34 @@ DWORD WINAPI worker(LPVOID) {
                   g_guest.load() ? "guest" : "host", gil::mode_name(static_cast<gil::Mode>(g_mode.load())));
         bool hooked = false;
         uint64_t last_total = 0;
-        ULONGLONG last_summary = GetTickCount64();
+        ULONGLONG last_summary = now_ms();
         uint32_t last_own = 0;
         bool dropped_logged = false;
         bool passengers = false;
-        for (uint32_t tick = 0;; ++tick) {
-            Sleep(250);
-            if (!in_world()) continue;  // the vehicles already followed keep their entries (pointers only)
-            if (tick % 12 != 0) {
+        ULONGLONG next_scan = 0;
+        for (;;) {
+            if (g_wake)
+                WaitForSingleObject(g_wake, 250);
+            else
+                Sleep(250);
+            if (!in_world()) {
+                // A load: any actor may go. The passengers' pointers are dropped, so the hooks match nothing of theirs
+                // and no call goes into the game until the world is back and they are found again. The vehicles keep
+                // their entries: those paths only use the TransformSync the game itself passes in, checked by key.
+                g_own_ts.store(0, std::memory_order_relaxed);
+                for (auto& p : g_passengers) {
+                    p.ts.store(0, std::memory_order_release);
+                    p.chain_state.store(0, std::memory_order_release);
+                }
+                continue;
+            }
+            const ULONGLONG loop_now = now_ms();
+            if (loop_now < next_scan) {
                 // Between two scans: only the passengers' chains (a few table lookups), and their hooks if not in yet.
                 passengers = passengers_tick();
                 if (hooked || !passengers) continue;
             }
+            next_scan = loop_now + kScanMs;
             uint32_t own = 0, dropped = 0;
             const auto found = scan(&own, &dropped);
             if (own != last_own) {
@@ -1070,8 +1195,16 @@ DWORD WINAPI worker(LPVOID) {
             if (hooked)
                 for (auto& v : g_vehicles)
                     if (v.ts.load() && !v.following && v.requests.load()) announce(v, "vehicle requests in the hook");
+            for (auto& v : g_vehicles) {
+                if (!v.ts.load() || v.far_logged || !v.far_only.load()) continue;
+                v.far_logged = true;
+                log::info("VehicleFollow: vehicle 0x{:08X} of another user gets far-type ({}) position requests and was "
+                          "never drawn from its gimmick near this client: left to the game (a mount moves this way; a "
+                          "ship first seen from far is followed once this client has been near it)", v.key.load(),
+                          g_addrs->request_type_far);
+            }
             parts_pass();
-            const ULONGLONG now = GetTickCount64();
+            const ULONGLONG now = now_ms();
             if (now - last_summary < 60000) continue;
             last_summary = now;
             uint64_t total = 0;
@@ -1100,12 +1233,15 @@ DWORD WINAPI worker(LPVOID) {
                 if (!p.key.load() || !(p.requests.load() + p.idle_placed.load())) continue;
                 total += p.requests.load() + p.idle_placed.load();
                 line += std::format(" | character 0x{:08X}: Moves {} channel states {} on a ship part now {} own requests {} placed {} "
-                                    "given while still {} (faults {}, unreadable {}) rotation type {} the game's own "
+                                    "given while still {} (faults {}{}, on another thread than its own requests {}, "
+                                    "unreadable {}) held on the part before {} rotation type {} the game's own "
                                     "pose {:.1f} m away now, max {:.1f} m",
                                     p.key.load(), p.moves.load(), p.channel_states.load(),
-                                    p.chain_for.load() ? "yes" : "no", p.requests.load(),
-                                    p.placed.load(), p.idle_placed.load(), p.idle_failed.load(), p.unreadable.load(),
-                                    p.rot_type.load(), p.last_off_cm.load() / 100.0, p.max_off_cm.load() / 100.0);
+                                    chain_parent(p.chain_state.load()) ? "yes" : "no", p.requests.load(),
+                                    p.placed.load(), p.idle_placed.load(), p.idle_failed.load(),
+                                    p.faulted.load() ? ": no more calls for it" : "", p.cross_thread.load(),
+                                    p.unreadable.load(), p.held.load(), p.rot_type.load(),
+                                    p.last_off_cm.load() / 100.0, p.max_off_cm.load() / 100.0);
             }
             if (total == last_total && line.empty()) continue;
             last_total = total;
@@ -1162,14 +1298,17 @@ void vehicle_follow_on_peer_state(uint32_t self_key, uint32_t anchor, const floa
         const bool ok = (anchor >> 28) == 0xB && vfl::unit_quat(quat) && std::isfinite(pos[0]) && std::isfinite(pos[1]) &&
                         std::isfinite(pos[2]) && std::fabs(pos[0]) <= 500.0f && std::fabs(pos[1]) <= 500.0f &&
                         std::fabs(pos[2]) <= 500.0f;
+        const uint32_t now_parent = ok ? anchor : 0;
         AcquireSRWLockExclusive(&p.lock);
-        p.parent = ok ? anchor : 0;
+        const uint32_t before = p.parent;
+        p.parent = now_parent;
         if (ok) {
             std::memcpy(p.pos, pos, sizeof p.pos);
             std::memcpy(p.q, quat, sizeof p.q);
         }
         ReleaseSRWLockExclusive(&p.lock);
-        p.channel_ms.store(GetTickCount64(), std::memory_order_relaxed);
+        if (before != now_parent && g_wake) SetEvent(g_wake);
+        p.channel_ms.store(now_ms(), std::memory_order_relaxed);
         p.channel_states.fetch_add(1, std::memory_order_relaxed);
         return;
     }
@@ -1206,7 +1345,7 @@ void vehicle_follow_on_in(uint16_t opcode, std::span<const uint8_t> payload) noe
         AcquireSRWLockExclusive(&g_parts_lock);
         p.net_parent = parent == ~0ull ? 0 : static_cast<uint32_t>(parent);
         std::memcpy(p.net_pos, pos, sizeof pos);
-        p.net_ms = GetTickCount64();
+        p.net_ms = now_ms();
         ReleaseSRWLockExclusive(&g_parts_lock);
         g_part_acks.fetch_add(1, std::memory_order_relaxed);
         return;
@@ -1231,7 +1370,12 @@ void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms
         log::info("VehicleFollow: build 1.0.0.3663: vehicle requests of types {} (near) and {} (far) are followed; the "
                   "setters' bytes are checked before hooking", addrs->request_type, addrs->request_type_far);
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    {
+        LARGE_INTEGER f;
+        g_qpc_freq = QueryPerformanceFrequency(&f) ? f.QuadPart : 0;
+    }
     g_guest.store(guest);
+    g_wake = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     g_mode.store(static_cast<uint8_t>(*m));
     g_delay_ms.store(std::clamp<uint32_t>(delay_ms, 0, 3000));
     log::info("VehicleFollow ON ({}, vehicle_follow={}, delay {} ms): hooked once a ship of another user is found",

@@ -942,8 +942,10 @@ void remote_interp_on_host_packet(uint16_t opcode, std::span<const uint8_t> payl
         g_cb_no_own.fetch_add(1, std::memory_order_relaxed);
         return;
     }
-    // combat_follow's own rule (the host's side of session 9), with this client's character as "user 2".
-    if (const uint32_t k = cfl::read_out(opcode, payload, own).engage) {
+    // combat_follow's own rule (the host's side of session 9), with this client's character as "user 2". The
+    // payload layout is the running build's (without it the 2976 sizes were used, and on every later build a
+    // StartActionAck never counted: only the hits, 2922, did).
+    if (const uint32_t k = cfl::read_out(opcode, payload, own, game::wire_build()).engage) {
         g_engage.note(k, GetTickCount64());
         g_cb_packets.fetch_add(1, std::memory_order_relaxed);
     }
