@@ -54,7 +54,10 @@
 // Moves (vehicle_follow_on_in on the guest, vehicle_follow_on_user2_req on the host) are only the fallback when no
 // channel state came in the last 2 s.
 // 'VehicleFollow: character ...' lines. The host needs vehicle_follow=1 too for this.
-// After the review of 2026-11-14 (none of it seen to fail on one PC; all of it could on two):
+// After the review of 2026-11-14 (none of it seen to fail on one PC; all of it could on two). A second review, of
+// these changes against kit v23, added: a far request still puts the hooks in and has the vehicle's parts watched
+// (v23 mended the wheel while the guest was 6 km away; only the POSE waits for a near request); a still passenger's
+// own request no longer keeps the module's away for 30 ms; two time differences can no longer wrap.
 //  - a character or a chain pointer can outlive its actor for a worker tick: every use checks that the TransformSync
 //    still belongs to the actor with the expected key, and the calls into the game's setters also ask the actor table;
 //  - during a load the passengers' pointers are dropped, and a setter that faulted once is never called again for

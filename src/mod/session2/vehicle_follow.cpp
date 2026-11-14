@@ -198,7 +198,10 @@ Vehicle* find(uintptr_t ts) noexcept {
 // type, flag): they store the request (TS+0x5AC.. / +0x5C0..) and set bit 0 of the actor's byte +0x100 (its vf54),
 // nothing else. The TransformSync is checked against its actor and key right before, and the call is SEH-guarded.
 constexpr size_t kMaxPassengers = 4, kMaxChain = 4;
-constexpr ULONGLONG kPassengerEaseMs = 120, kPassengerIdleMs = 30, kPassengerIdleGapMs = 2, kChannelFreshMs = 2000;
+// kPassengerIdleMs: shorter than any frame. A still passenger makes about two requests of its own a second; with the
+// 30 ms of kit v23 each of them kept the module's request away for the next one to four frames (a hitch of 0.2 m at
+// 14 m/s). A second request in the same frame carries the same pose.
+constexpr ULONGLONG kPassengerEaseMs = 120, kPassengerIdleMs = 4, kPassengerIdleGapMs = 2, kChannelFreshMs = 2000;
 constexpr float kPassengerSnapM = 3.0f;
 using SetPositionFn = void (*)(uintptr_t ts, const void* pos, uint8_t type, uint8_t has_velocity, const void* velocity,
                                uint8_t flag_a, uint8_t flag_b);
@@ -331,7 +334,7 @@ bool passenger_pose(Passenger& p, ULONGLONG now, vfl::Pose* out_pose) noexcept {
     } else if (parent && chain_for == parent) {
         float d[3] = {p.pos[0] - p.eased_pos[0], p.pos[1] - p.eased_pos[1], p.pos[2] - p.eased_pos[2]};
         const float gap = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-        const ULONGLONG dt = now - p.eased_ms;
+        const ULONGLONG dt = now > p.eased_ms ? now - p.eased_ms : 0;  // a stamp of another thread can be later
         if (p.eased_for != parent || gap > kPassengerSnapM || dt > 1000) {
             std::memcpy(p.eased_pos, p.pos, sizeof p.pos);
             std::memcpy(p.eased_q, p.q, sizeof p.q);
@@ -423,8 +426,11 @@ void passengers_idle(ULONGLONG now) noexcept {
         if (!ts || p.faulted.load(std::memory_order_relaxed) || !chain_parent(p.chain_state.load(std::memory_order_relaxed)))
             continue;
         // Its own movement is asking (every frame while it moves), or it was already given one in this frame.
-        if (now - p.request_ms.load(std::memory_order_relaxed) < kPassengerIdleMs) continue;
-        if (now - p.idle_ms.load(std::memory_order_relaxed) < kPassengerIdleGapMs) continue;
+        // (A stamp taken on another thread can be later than `now`: that counts as "just now".)
+        const ULONGLONG req = p.request_ms.load(std::memory_order_relaxed);
+        if (now <= req || now - req < kPassengerIdleMs) continue;
+        const ULONGLONG idle = p.idle_ms.load(std::memory_order_relaxed);
+        if (now <= idle || now - idle < kPassengerIdleGapMs) continue;
         if (p.busy.exchange(true, std::memory_order_acquire)) continue;
         vfl::Pose out;
         // Still that character's TransformSync: its actor, the actor's key, the actor's components point back, AND the
@@ -1106,9 +1112,15 @@ bool probe_active() {
     const ULONGLONG end = now_ms() + kProbeMs;
     for (uint32_t spin = 0;; ++spin) {
         for (size_t i = 0; i < kMaxVehicles; ++i) {
-            if (!ts[i] || rd<uint8_t>(ts[i] + kTS_RequestType, kRequestNone) != g_addrs->request_type) continue;
-            g_vehicles[i].near_seen.store(true, std::memory_order_relaxed);
-            announce(g_vehicles[i], "a near vehicle request pending at TS+0x5BC");
+            const uint8_t type = ts[i] ? rd<uint8_t>(ts[i] + kTS_RequestType, kRequestNone) : kRequestNone;
+            if (!vehicle_request(type)) continue;
+            // Either type puts the hooks in and has the vehicle's parts watched (kit v23 did: the wheel was mended
+            // while the guest was still 6 km away). Only the POSE waits for a near request (position_mid).
+            const bool is_near = type == g_addrs->request_type;  // (`near` is a macro of windows.h)
+            if (is_near) g_vehicles[i].near_seen.store(true, std::memory_order_relaxed);
+            announce(g_vehicles[i], is_near ? "a near vehicle request pending at TS+0x5BC"
+                                         : "a far vehicle request pending at TS+0x5BC: its parts are watched, its pose "
+                                           "stays the game's until it is seen near");
             return true;
         }
         YieldProcessor();
@@ -1194,7 +1206,10 @@ DWORD WINAPI worker(LPVOID) {
             }
             if (hooked)
                 for (auto& v : g_vehicles)
-                    if (v.ts.load() && !v.following && v.requests.load()) announce(v, "vehicle requests in the hook");
+                    if (v.ts.load() && !v.following && (v.requests.load() || v.far_only.load()))
+                        announce(v, v.requests.load() ? "vehicle requests in the hook"
+                                                      : "far vehicle requests in the hook: its parts are watched, its "
+                                                        "pose stays the game's until it is seen near");
             for (auto& v : g_vehicles) {
                 if (!v.ts.load() || v.far_logged || !v.far_only.load()) continue;
                 v.far_logged = true;

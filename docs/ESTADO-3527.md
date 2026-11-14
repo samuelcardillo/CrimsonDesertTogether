@@ -27,7 +27,8 @@ está en `main` del repositorio nuevo, después de la etiqueta). El jugador que 
 tras una revisión independiente; `create_retry` (invitado: vuelve a dar a su cliente las piezas del barco que no
 llegó a crear, los faroles); `gimmick_relay` + `gimmick_take` (el anfitrión reenvía los cambios de estado de la vela
 y el invitado los aplica a su copia); `send_trace` (desarrollo). Todo pasó una segunda y una tercera revisión
-independiente y sus correcciones. `build/bin`: `cdmp.asi` `ed4e4e2d`, 105/105 pruebas. Para probarlo:
+independiente y sus correcciones, y los cambios de `vehicle_follow` una revisión contra el código de v23.
+`build/bin`: `cdmp.asi` `885d2c74`, 105/105 pruebas. Para probarlo:
 `SAIL_EXP=1 bash tools/porting/livetest/shipsession.sh` y luego `sailtest.sh H G` (~40 min, dos copias). Detalle:
 `docs/research/port-3663.md`, «Barco, mañana del 14-nov».
 
