@@ -80,6 +80,12 @@ Las capturas `.bin` de `bin64` guardan los paquetes ENTEROS con los códigos NAT
   mundo del anfitrión (vehículo de tipo 5 con 6 o más gimmicks colgando) tal como lo tiene cada copia: si es de un
   jugador o de la IA, a qué velocidad va, a cuántos metros está la copia del invitado y a cuántos su última pose de
   red. `vehwatch` lo apunta cada pocos segundos (sirve mientras alguien juega: solo lee memoria).
+- `track_replay.cpp` (`track_replay movimientos.txt [retraso_ms]`, con la salida de `movedump.py` de un vehículo en
+  la captura del invitado; cómo compilarlo, en su cabecera): lo que dibuja el `Track` de `vehicle_follow` para ese
+  vehículo alimentado de dos formas con el mismo movimiento real: (A) las posiciones del juego tal como le llegaron
+  al invitado (una por segundo) y (B) diez por segundo, como las manda ahora el mod (`EventKind::Vehicles`). Cuenta
+  los fotogramas en que el barco dibujado RETROCEDE o se queda quieto. (A) son tiempos y posiciones reales; en (B) la
+  trayectoria entre dos posiciones es una curva suave: un modelo. Sin juego.
 - `movedump.py captura.bin clave[-clave] [t0 t1] [max]`: los `MoveActorAck` de un actor, descifrados (padre, posición
   local, posición del mundo). Los de la tripulación llegan al invitado EN BLANCO (identidad, sin padre), uno por
   segundo.
