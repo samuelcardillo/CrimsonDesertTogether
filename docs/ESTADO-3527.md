@@ -18,17 +18,19 @@ posición en el barco va ahora por el canal del mod). Lo que dicen las entradas 
 había probado y no es así.
 
 **14-nov-2026: el proyecto vive ahora en `github.com/samuelcardillo/CrimsonDesertTogether`** (repositorio nuevo,
-privado por ahora, no es un fork; esta carpeta es su copia de trabajo, rama `main`). Conserva el historial del fork
+público desde ese mismo día, no es un fork; esta carpeta es su copia de trabajo, rama `main`). Conserva el historial del fork
 anterior; la etiqueta `kit-3663-v23` marca el código del último kit verificado en el juego y lo que hay después en
 `main` es trabajo sin verificar.
 
-**14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; nada de esto está en el kit;
-está en `main` del repositorio nuevo, después de la etiqueta). El jugador que probó v23 pidió las VELAS. En el árbol de trabajo: el endurecimiento de `vehicle_follow`
+**14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; no está en el kit v23, pero
+**sí en la release `cdmp-coop-20261114-3663-b1` que baja el launcher**, compilada de `main` esa tarde: con sus ini las
+funciones nuevas van apagadas salvo `create_retry`, que va en `probe` (solo guarda y anota), y el endurecimiento de
+`vehicle_follow` va siempre activo; `docs/research/port-3663.md`, punto 17. El último código jugado es v23). El jugador que probó v23 pidió las VELAS. En el árbol de trabajo: el endurecimiento de `vehicle_follow`
 tras una revisión independiente; `create_retry` (invitado: vuelve a dar a su cliente las piezas del barco que no
 llegó a crear, los faroles); `gimmick_relay` + `gimmick_take` (el anfitrión reenvía los cambios de estado de la vela
 y el invitado los aplica a su copia); `send_trace` (desarrollo). Todo pasó una segunda y una tercera revisión
 independiente y sus correcciones, y los cambios de `vehicle_follow` una revisión contra el código de v23.
-`build/bin`: `cdmp.asi` `885d2c74`, 105/105 pruebas. Para probarlo:
+`build/bin`: `cdmp.asi` `885d2c74` en `48bf38b` (el hash cambia con cada commit), 105/105 pruebas. Para probarlo:
 `SAIL_EXP=1 bash tools/porting/livetest/shipsession.sh` y luego `sailtest.sh H G` (~40 min, dos copias). Detalle:
 `docs/research/port-3663.md`, «Barco, mañana del 14-nov».
 

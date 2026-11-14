@@ -71,6 +71,11 @@ Las capturas `.bin` de `bin64` guardan los paquetes ENTEROS con los códigos NAT
 - `recnames.py captura.bin clave_lo clave_hi [t0 t1]`: de cada registro 2005 de esas claves, su tipo, controlador,
   nombre (longitud y texto) y las dos copias del padre que van DESPUÉS del nombre (`+0xB9` / `+0xD7`), junto a lo
   que hay en `+0xF5` / `+0x113` fijos (lo mismo solo si el nombre tiene 13 caracteres).
+- `cr_extract.py captura.bin salida.stream` y `cr_replay.cpp` (`cr_replay salida.stream delay_ms [on] [fail=K,..]
+  [lost=K,..] [budget=N]`; cómo compilarlo, en su cabecera): los 2005 / 2516 / 2174 reales de una captura del
+  invitado por la lógica de `create_retry` (`src/mod/session2/create_retry_logic.h`, tal cual), contra un modelo del
+  cliente en el que todo actor anunciado existe `delay` ms después salvo los de `fail=` (fallan, con un fallo sin
+  clave) y `lost=` (no aparecen, sin error). Dice cuánto guarda, cuánto tarda y qué volvería a entregar. Sin juego.
 - `hashrefs.py [hex8...]`: dónde aparece en el `.exe` en disco (3663) un valor de 4 bytes tal como va en el paquete,
   con la instrucción que lo lleva. Los hashes de estado de la vela no aparecen: salen de los datos del juego.
 - `loadrecs.py captura.bin clave_lo clave_hi [t0 t1]`: los registros del `ActorLoadDataAck` de esas claves, por lote,
