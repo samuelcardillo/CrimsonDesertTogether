@@ -17,8 +17,13 @@ puestos de Hernand), con el mismo kit. El código de v23 está en el fork desde 
 posición en el barco va ahora por el canal del mod). Lo que dicen las entradas del 13-nov de abajo sobre «el invitado no puede subir al barco» no se
 había probado y no es así.
 
-**14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; nada de esto está en el kit ni
-en el fork). El jugador que probó v23 pidió las VELAS. En el árbol de trabajo: el endurecimiento de `vehicle_follow`
+**14-nov-2026: el proyecto vive ahora en `github.com/samuelcardillo/CrimsonDesertTogether`** (repositorio nuevo,
+privado por ahora, no es un fork; esta carpeta es su copia de trabajo, rama `main`). Conserva el historial del fork
+anterior; la etiqueta `kit-3663-v23` marca el código del último kit verificado en el juego y lo que hay después en
+`main` es trabajo sin verificar.
+
+**14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; nada de esto está en el kit;
+está en `main` del repositorio nuevo, después de la etiqueta). El jugador que probó v23 pidió las VELAS. En el árbol de trabajo: el endurecimiento de `vehicle_follow`
 tras una revisión independiente; `create_retry` (invitado: vuelve a dar a su cliente las piezas del barco que no
 llegó a crear, los faroles); `gimmick_relay` + `gimmick_take` (el anfitrión reenvía los cambios de estado de la vela
 y el invitado los aplica a su copia); `send_trace` (desarrollo). Todo pasó una segunda y una tercera revisión
