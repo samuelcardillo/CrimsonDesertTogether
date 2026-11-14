@@ -37,6 +37,8 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
 
 ## Comandos
 - Compilar y pasar tests: `.\scripts\build.ps1` (busca solo las VS Build Tools; cmake no está en el PATH).
+  Compila siempre con este script: vuelve a compilar los objetos que MSBuild deja obsoletos tras un error de
+  compilación (`docs/research/objetos-obsoletos-msbuild.md`; así se rompió la release b1). `-Clean` lo recompila todo.
 - Instalar en el juego: `.\scripts\deploy.ps1`; desinstalar con `-Remove`. Falla si el juego está abierto.
 - Si cambias `tools/porting/configs/cdmp.3527-2inst-*.ini`, regenera el kit de dos PC: `python tools/porting/make_steam_kit.py`.
 - Launcher de jugadores (`cdmp_launcher.exe`, `docs/LAUNCHER.md`): instala el mod, lanza con o sin él y elige con quién.

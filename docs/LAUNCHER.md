@@ -30,8 +30,9 @@ compila en el PC de desarrollo y se publica como release del repositorio en GitH
 En GitHub no se compila nada.
 
 1. Con el commit ya subido: `.\scripts\publish_release.ps1 -Publish`. Se niega si hay archivos con cambios o si el
-   commit no está en el remoto. Después ejecuta `scripts/build.ps1` (compila, pone en el mod el id de ese commit y
-   pasa los tests: si falla uno, no se publica), baja el cargador ASI si falta (`fetch_loader.ps1`, comprobando su
+   commit no está en el remoto. Después ejecuta `scripts/build.ps1 -Clean` (compila TODO de nuevo, pone en el mod el
+   id de ese commit y pasa los tests: si falla uno, no se publica; la compilación limpia es porque `b1` salió con un
+   objeto obsoleto y se cierra al arrancar de anfitrión, `docs/research/objetos-obsoletos-msbuild.md`), baja el cargador ASI si falta (`fetch_loader.ps1`, comprobando su
    SHA-256), hace el kit (`package_coop.ps1`) y crea la release con `gh release create`, con el `gh` que tenga la
    sesión iniciada en el PC.
 2. La release se llama como el kit, `cdmp-coop-<fecha>-<build del juego>-b<n>` (`n` es uno más que el número más

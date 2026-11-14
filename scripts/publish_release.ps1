@@ -27,7 +27,9 @@ if ($Publish) {
     # A release says which commit it was built from, so the build has to be that commit and nothing else.
     if (& git -C $root status --porcelain --untracked-files=no) { throw 'Tracked files differ from the commit: commit them (and push) or undo them first.' }
     if (-not (& git -C $root branch -r --contains $commit)) { throw "Commit $commit is not on the remote yet: push it first (a release points at a pushed commit)." }
-    & (Join-Path $PSScriptRoot 'build.ps1')
+    # A clean build: no object of an earlier build goes into a release (release b1 carried a stale session2.obj and
+    # crashed when hosting; scripts\build.ps1 says how an object goes stale).
+    & (Join-Path $PSScriptRoot 'build.ps1') -Clean
     $buildIdFile = Join-Path $root 'build\generated\build_id.h'
     $buildId = if (Test-Path -LiteralPath $buildIdFile) { Get-Content -Raw -LiteralPath $buildIdFile } else { '' }
     if ($buildId -notmatch ('CDMP_BUILD_ID 0x' + $commit.Substring(0, 8) + 'u') -or $buildId -notmatch 'CDMP_BUILD_DIRTY 0\b') {

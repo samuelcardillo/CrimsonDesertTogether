@@ -22,6 +22,13 @@ público desde ese mismo día, no es un fork; esta carpeta es su copia de trabaj
 anterior; la etiqueta `kit-3663-v23` marca el código del último kit verificado en el juego y lo que hay después en
 `main` es trabajo sin verificar.
 
+**14-nov-2026 (tarde): la release `cdmp-coop-20261114-3663-b1` SE CIERRA AL ARRANCAR de anfitrión** (`0xC0000005`
+en `session2::install`, antes del título; comprobado con su `cdmp.asi` exacto). No es un fallo del código: `build\`
+tenía 32 objetos del mod que MSBuild ya no recompilaba y `session2.obj` leía `Config` con la disposición del día
+anterior. `scripts/build.ps1` lo arregla solo desde esa tarde y una release se compila siempre limpia
+(`docs/research/objetos-obsoletos-msbuild.md`). Hace falta publicar una release nueva; hasta entonces, para jugar
+vale el kit v23 (`dist\cdmp-coop-20261114-3663-v23.zip`).
+
 **14-nov-2026 (mediodía): escrito y SIN ejecutar en el juego** (el PC estaba en uso; no está en el kit v23, pero
 **sí en la release `cdmp-coop-20261114-3663-b1` que baja el launcher**, compilada de `main` esa tarde: con sus ini las
 funciones nuevas van apagadas salvo `create_retry`, que va en `probe` (solo guarda y anota), y el endurecimiento de
