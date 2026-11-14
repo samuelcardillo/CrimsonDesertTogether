@@ -44,7 +44,7 @@ constexpr int kWidth = 780, kHeight = 730;  // of the window's inside, before th
 constexpr wchar_t kWindowClass[] = L"cdmp_launcher";
 
 // Where the newest build of the mod is looked for when neither the player nor the kit names a place: the releases
-// that the repository's GitHub build publishes (CMakeLists.txt, CDMP_UPDATE_ADDRESS).
+// of the repository on GitHub (CMakeLists.txt, CDMP_UPDATE_ADDRESS; scripts/publish_release.ps1 publishes them).
 #ifndef CDMP_UPDATE_ADDRESS
 #define CDMP_UPDATE_ADDRESS ""
 #endif

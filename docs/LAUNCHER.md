@@ -14,7 +14,7 @@ está en inglés.
 | Ventana (Dear ImGui sobre Direct3D 11) | `tools/launcher/main.cpp` |
 | Pruebas | `tests/launcher_tests.cpp` (ctest `launcher`) |
 | En el kit | `scripts/package_coop.ps1` mete el exe, `package.txt` y `kit/coop/cdmp_launcher.ini` |
-| Compilación y publicación en GitHub | `.github/workflows/release.yml`, `scripts/ci_release.ps1`, `scripts/fetch_loader.ps1` |
+| Publicación de una release (desde un PC) | `scripts/publish_release.ps1`, `scripts/fetch_loader.ps1` |
 | Para qué build del juego es el kit | `kit/coop/game-builds.txt` |
 
 Para probarlo sin tocar el juego real:
@@ -23,42 +23,42 @@ Un `bin64` falso sirve con los primeros 4 KB del `CrimsonDesert.exe` real (de ah
 pregunta a la dirección de actualizaciones (para probar un kit local más nuevo que la última release) y
 `--press update|play` pulsa ese botón en cuanto termina de mirar el PC, para pruebas sin ratón.
 
-## De dónde sale el mod: GitHub compila, el launcher descarga
+## De dónde sale el mod: se publica desde el PC de desarrollo, el launcher descarga
 
 Los jugadores no tienen compilador (las VS Build Tools son varios GB), así que el mod no se compila en su PC. Se
-compila en GitHub y el launcher baja el resultado:
+compila en el PC de desarrollo y se publica como release del repositorio en GitHub; el launcher baja esa release.
+En GitHub no se compila nada.
 
-1. Cada push a `main` que toque lo que va en el kit (`src/`, `tools/launcher/`, `kit/coop/`, `third_party/`,
-   `CMakeLists.txt`, los scripts de empaquetado) lanza `.github/workflows/release.yml`; también se puede lanzar a
-   mano (pestaña Actions, "Run workflow"). Un push que solo toque documentación no publica nada.
-2. El workflow ejecuta `scripts/build.ps1` (compila y pasa los tests: si falla uno, no se publica) y
-   `scripts/ci_release.ps1 -Publish`, que baja el cargador ASI comprobando su SHA-256 (`fetch_loader.ps1`), hace el
-   kit (`package_coop.ps1`) y crea una release nueva con `gh release create`.
-3. La release se llama como el kit, `cdmp-coop-<fecha>-<build del juego>-b<número de ejecución>`, y lleva sueltos
-   `package.txt`, los cuatro archivos que instala el launcher, `cdmp_launcher.exe`, el zip del kit y los símbolos
-   del mod (`...-symbols.zip`, para leer volcados).
-4. El launcher lleva compilada la dirección
+1. Con el commit ya subido: `.\scripts\publish_release.ps1 -Publish`. Se niega si hay archivos con cambios o si el
+   commit no está en el remoto. Después ejecuta `scripts/build.ps1` (compila, pone en el mod el id de ese commit y
+   pasa los tests: si falla uno, no se publica), baja el cargador ASI si falta (`fetch_loader.ps1`, comprobando su
+   SHA-256), hace el kit (`package_coop.ps1`) y crea la release con `gh release create`, con el `gh` que tenga la
+   sesión iniciada en el PC.
+2. La release se llama como el kit, `cdmp-coop-<fecha>-<build del juego>-b<n>` (`n` es uno más que el número más
+   alto entre las releases; `-Number` lo fija), y lleva sueltos `package.txt`, los cuatro archivos que instala el
+   launcher, `cdmp_launcher.exe`, el zip del kit y los símbolos del mod (`...-symbols.zip`, para leer volcados).
+3. El launcher lleva compilada la dirección
    `https://github.com/<repo>/releases/latest/download/package.txt` (`CDMP_UPDATE_ADDRESS` en `CMakeLists.txt`).
    Al arrancar la lee; los archivos que nombra los baja de al lado, comprobando el SHA-256 de cada uno.
 
-**Lo que se sube a `main` llega a los jugadores en su siguiente Update.** Sube ahí solo lo que deban ejecutar los
-dos; lo que esté sin probar en el juego, en otra rama.
+Sin `-Publish` el script solo hace el kit en `dist\` con la build que haya en `build\`: nada sale del PC.
 
-**Estado el 2026-11-14.** El repositorio es público desde ese día (con él privado GitHub contesta 404 a quien no ha
-iniciado sesión y el launcher dice "Could not check for updates (the server answered 404)"). El workflow se lanzó
-con el primer push y **no llegó a arrancar**: "The job was not started because your account is locked due to a
-billing issue". Es un bloqueo de la cuenta de GitHub que solo puede quitar su dueño; hasta entonces no hay builds
-automáticas. La primera release, `cdmp-coop-20261114-3663-b1` (commit `75bc963`), se publicó desde este PC.
+**Publicar una release es lo que entrega código a los jugadores:** su siguiente Update la instala. Un push a `main`
+ya no publica nada. Publica solo lo que deban ejecutar los dos.
 
-**Publicar desde un PC** (cuando GitHub no puede compilar): con el commit ya subido,
-`.\scripts\build.ps1` y después `.\scripts\ci_release.ps1 -Run <n> -Publish`. Usa el `gh` que tenga la sesión
-iniciada y llama al kit `...-pc<n>`, para no ocupar un nombre que vaya a querer la build de GitHub. Se niega si la
-build de `build\` no es exactamente un commit subido: archivos con cambios, otro commit en el id de build del mod
-(`build\generated\build_id.h`) o un commit que no está en el remoto. Compila con el compilador de siempre (el
-`build\` de este PC está atado a VS 2022); un `build\` nuevo en este PC elegiría VS 2026.
+Se compila con VS 2022 (MSVC 14.4x), el compilador con el que se prueba el mod. El de VS 2026 (MSVC 14.51) genera
+código incorrecto para este proyecto (`docs/research/msvc-14.51-miscompila.md`): `build.ps1` elige VS 2022 aunque
+esté instalado el otro y se niega a compilar con él, así que una release no puede salir con ese compilador.
 
-La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, porque en
-GitHub no hay juego instalado. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.
+**Historia (2026-11-14).** El repositorio es público desde ese día (con él privado GitHub contesta 404 a quien no ha
+iniciado sesión y el launcher dice "Could not check for updates (the server answered 404)"). Hubo un workflow de
+GitHub Actions (`.github/workflows/release.yml`) que compilaba y publicaba en cada push a `main`. No llegó a
+ejecutar un solo paso ("The job was not started because your account is locked due to a billing issue") y se quitó
+ese mismo día por decisión del dueño: las releases se hacen siempre desde este PC. La primera,
+`cdmp-coop-20261114-3663-b1` (commit `75bc963`), ya se publicó así.
+
+La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, igual en
+cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.
 
 ## Qué hace
 
@@ -154,18 +154,17 @@ Comprobado el 2026-11-14:
   ajustes, solo su dirección compilada), contra una copia falsa de `bin64` y con `--press update`: baja los cuatro
   archivos en unos 5 s, los instala (mismos SHA-256 que el kit de este PC), escribe el ini y queda en "installed,
   up to date". Los archivos de la release en GitHub tienen el mismo SHA-256 que los del kit local.
-- `ci_release.ps1 -Publish` desde un PC (así se publicó `b1`) y sus comprobaciones: se niega con archivos cambiados
-  y con un commit que no es el del checkout.
-- Los pasos del workflow en una copia limpia del repositorio en este PC (un clon más los cambios sin subir). Con el
-  compilador de VS 2022 (MSVC 14.44: el de las builds de siempre y el de `windows-2022`) compila, pasan los 105
-  tests (2 se saltan solos) y `ci_release.ps1` sin `-Publish` baja el cargador ASI comprobando sus dos SHA-256 y
-  hace el kit. Con el de VS 2026 (MSVC 14.51), que es el que elige `build.ps1` en un configure nuevo en este PC,
-  falla un test, `optd_guest_save_b` (`parse_slot_dir(L"slot1")`, `tests/optd_guest_save_b_tests.cpp:708`): por
-  eso el workflow fija `windows-2022`. La causa está sin investigar.
+- La release `b1` se publicó con la versión anterior del script (entonces `ci_release.ps1 -Publish`, tras un
+  `build.ps1` aparte). De `publish_release.ps1` están probados: que se niega con archivos cambiados, el número
+  siguiente (`b2`, mirando las releases) y el modo sin `-Publish`.
+- Una copia limpia del repositorio en este PC (un clon más los cambios de entonces): con el compilador de VS 2022
+  (MSVC 14.44, el de las builds de siempre) compila, pasan los 105 tests (2 se saltan solos), se baja el cargador
+  ASI comprobando sus dos SHA-256 y se hace el kit. Con el de VS 2026 (MSVC 14.51) falla un test,
+  `optd_guest_save_b` (`parse_slot_dir(L"slot1")`, `tests/optd_guest_save_b_tests.cpp:708`): es un fallo de ese
+  compilador (`docs/research/msvc-14.51-miscompila.md`).
 
 Sin comprobar:
-- **El workflow en GitHub**: no ha ejecutado ni un paso (bloqueo de facturación de la cuenta, arriba). Puede que
-  algún test dependa de algo de este PC y falle allí.
+- **Una publicación entera con `publish_release.ps1 -Publish`** (compilar, kit y release en un solo paso).
 - **Pulsar los botones contra el juego real y arrancarlo** (`steam://`), y una sesión jugada desde el launcher.
 - El paso de una release a la siguiente bajada de GitHub (solo hay una; con una carpeta sí se probó).
 - Otro PC: otra escala de pantalla, Steam en otra ruta, SmartScreen o el antivirus con el exe sin firmar.

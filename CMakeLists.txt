@@ -290,7 +290,7 @@ set_source_files_properties(tools/launcher/main.cpp tools/launcher/launcher_core
 target_include_directories(cdmp_launcher PRIVATE src tools/launcher)
 target_link_libraries(cdmp_launcher PRIVATE imgui d3d11 winhttp version shell32 ole32 advapi32)
 # Where the launcher looks for the newest build of the mod when neither the player nor the kit names a place: the
-# newest release that this repository's GitHub build publishes (.github/workflows/release.yml). A fork sets its own.
+# repository's newest release, which scripts/publish_release.ps1 publishes from a PC. A fork sets its own.
 set(CDMP_UPDATE_ADDRESS "https://github.com/samuelcardillo/CrimsonDesertTogether/releases/latest/download/package.txt"
     CACHE STRING "Where cdmp_launcher.exe looks for the newest mod package (package.txt)")
 target_compile_definitions(cdmp_launcher PRIVATE CDMP_UPDATE_ADDRESS="${CDMP_UPDATE_ADDRESS}")

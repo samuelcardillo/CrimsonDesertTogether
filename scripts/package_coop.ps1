@@ -6,10 +6,10 @@
 #
 # package.txt in the kit is what cdmp_launcher.exe reads (docs/LAUNCHER.md): the kit's id, the game build it is for
 # and the SHA-256 of the four files the launcher installs. The game build comes from kit\coop\game-builds.txt (the
-# same on every PC and on GitHub, where no game is installed); -Game '1.0.0.3663=0x6AF5D198' says another, and can
-# be given more than once.
+# same on every PC, whatever game is installed there); -Game '1.0.0.3663=0x6AF5D198' says another, and can be given
+# more than once.
 #
-# The script's output is the kit's folder (scripts\ci_release.ps1 takes it from there).
+# The script's output is the kit's folder (scripts\publish_release.ps1 takes it from there).
 
 param(
     [ValidateSet('Debug', 'Release', 'RelWithDebInfo')]

@@ -1,6 +1,6 @@
 # Puts Ultimate ASI Loader v9.7.4's dinput8.dll where the packaging scripts read it from
-# (third_party\ultimate-asi-loader\v9.7.4, a path git ignores; see the README next to it). The GitHub build runs this
-# on its clean checkout; on a PC that already has the file it does nothing.
+# (third_party\ultimate-asi-loader\v9.7.4, a path git ignores; see the README next to it). A fresh clone needs it
+# once; scripts\publish_release.ps1 runs it, and on a PC that already has the file it does nothing.
 #
 # The zip and the dll inside it must have the SHA-256 written here: anything else is refused, and a different
 # dinput8.dll already at that path is left alone.
