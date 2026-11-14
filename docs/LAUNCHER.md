@@ -67,7 +67,9 @@ ese mismo día por decisión del dueño: las releases se hacen siempre desde est
 `cdmp-coop-20261114-3663-b1` (commit `75bc963`), ya se publicó así; se cerraba al arrancar de anfitrión por un
 objeto obsoleto de `build\` (`docs/research/objetos-obsoletos-msbuild.md`) y la sustituyó esa tarde
 `cdmp-coop-20261114-3663-b2` (commit `a4868ef`), la primera hecha con `publish_release.ps1 -Publish` de principio a
-fin (compilación limpia, 105 pruebas, kit, `gh release create`: 7 min).
+fin (compilación limpia, 105 pruebas, kit, `gh release create`: 7 min). A las 18:32 salió
+`cdmp-coop-20261114-3663-b3` (commit `b93986e`), igual: el mod es el mismo que en la `b2` (nada de `src/` cambia) y
+el launcher es el primero con las partidas.
 
 La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, igual en
 cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.
@@ -257,13 +259,17 @@ Comprobado el 2026-11-14:
   que la carpeta de antes y la carpeta de preparación vacía. Con un archivo de `slot0` abierto, Play no arrancó ni
   instaló nada y lo dijo; al repetir sin el archivo abierto pasó las ranuras, hizo la copia e instaló el mod. La
   carpeta real no se tocó (su archivo más nuevo sigue siendo del 8-11).
+- **El paso de una release a la siguiente desde GitHub** (14-11, con la `b3` recién publicada): los seis archivos
+  que sirve `releases/latest/download/` son byte a byte los del kit local. Con el launcher de la `b3` solo (sin
+  kit), una copia falsa de `bin64` con la `b2` instalada y `--local-dir` a una carpeta vacía: dijo "Update available:
+  cdmp-coop-20261114-3663-b3" y "Update and join a friend"; con `--press update` bajó la `b3`, la instaló
+  (`cdmp.asi` `af4acd3e`, el de la release) y quedó en "installed, up to date".
 
 Sin comprobar:
 - **Las partidas contra la carpeta real y en una sesión jugada**: que el juego cargue la ranura pasada (la del
   anfitrión no se ha cargado nunca después de una sesión con invitado), qué hace Steam Cloud, y el camino del
   invitado con generaciones de verdad (en este PC solo las hay de pruebas sin Steam, que el launcher no mira).
 - **Pulsar los botones contra el juego real y arrancarlo** (`steam://`), y una sesión jugada desde el launcher.
-- El paso de una release a la siguiente bajada de GitHub (solo hay una; con una carpeta sí se probó).
 - Otro PC: otra escala de pantalla, Steam en otra ruta, SmartScreen o el antivirus con el exe sin firmar.
 
 Fuera de esta versión: que el launcher se actualice a sí mismo (hay que bajar el exe nuevo de la release a mano;

@@ -22,6 +22,15 @@ público desde ese mismo día, no es un fork; esta carpeta es su copia de trabaj
 anterior; la etiqueta `kit-3663-v23` marca el código del último kit verificado en el juego y lo que hay después en
 `main` es trabajo sin verificar.
 
+**14-nov-2026, 18:32: publicada la release `cdmp-coop-20261114-3663-b3`** (commit `b93986e`, `cdmp.asi`
+`af4acd3e`, compilación limpia, 105/105 pruebas), a petición del usuario («Yes, publish»). Es lo que baja el launcher
+desde entonces. **El mod es el de la `b2`** (entre `a4868ef` y `b93986e` no cambia nada de `src/`; el `.asi` es otro
+solo por el id de compilación). Lo nuevo es el **launcher**: hace copia de seguridad de las partidas y, con el juego
+cerrado, pasa a la partida real el progreso de la sesión del anfitrión y del invitado, sin preguntar por defecto
+(`docs/LAUNCHER.md`, «Las partidas»). Eso está probado con carpetas falsas y con copias de las partidas de este PC,
+**no contra una carpeta real ni en una sesión jugada**; el usuario lo publicó sabiéndolo. Quien tenga el
+`cdmp_launcher.exe` de la `b2` tiene que bajar el nuevo de la release: el launcher no se actualiza a sí mismo.
+
 **14-nov-2026, 17:06: publicada la release `cdmp-coop-20261114-3663-b2`** (commit `a4868ef`, `cdmp.asi`
 `ccd9457b`, compilación limpia, 105/105 pruebas), a petición del usuario («Push everything, release the build so the
 launcher pick it up»). Es lo que baja el launcher desde entonces y sustituye a la `b1`, que se cierra al arrancar.
