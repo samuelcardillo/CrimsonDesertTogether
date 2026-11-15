@@ -155,6 +155,10 @@ struct Vehicle {
     std::atomic<bool> near_seen{false};
     std::atomic<uint64_t> far_only{0};   // far requests passed through because of that (hook)
     bool far_logged = false;             // worker only
+    // Of those far requests, the ones that came while the other mod's samples of it were fresh: how far the pose
+    // the game asked for was from where the other mod has it (measured only: the game's pose is left as it is).
+    std::atomic<uint64_t> far_measured{0}, far_err_sum_cm{0};
+    std::atomic<uint32_t> far_err_max_cm{0}, far_err_last_cm{0};
     SRWLOCK lock = SRWLOCK_INIT;
     vfl::Track track;        // under lock
     vfl::Pose drawn;         // under lock: the pose given to the last position request
@@ -985,8 +989,29 @@ void position_mid(safetyhook::Context& ctx) {
         v->near_seen.store(true, std::memory_order_relaxed);
     } else if (!v->near_seen.load(std::memory_order_relaxed)) {
         // A far request (the type a character's own movement uses too) of a listed vehicle never drawn from its
-        // gimmick here: a mount, or a ship this client has not been near yet. The game's own.
+        // gimmick here: a mount, a cart, or a ship this client has not been near yet. The game's own.
         v->far_only.fetch_add(1, std::memory_order_relaxed);
+        // Measured, not moved (2026-11-15: the guest had the AI's carts by the quay 2-10 m from where the host had
+        // them, but that was read with the guest's copy behind): while the other mod's samples of it are fresh, how
+        // far the pose the game asks for is from them.
+        const uint64_t now = now_ms();
+        const uint64_t channel = v->channel_ms.load(std::memory_order_relaxed);
+        if (!channel || now - channel >= kVehicleChannelFreshMs) return;
+        PositionArg arg{};
+        if (!game::fast_read(ctx.rdx, &arg, sizeof arg) || !std::isfinite(arg.x) || !std::isfinite(arg.z)) return;
+        vfl::Pose there;
+        AcquireSRWLockShared(&v->lock);
+        const bool have = v->track.at(now, &there);
+        ReleaseSRWLockShared(&v->lock);
+        if (!have) return;
+        vfl::Pose asked;
+        asked.x = arg.x + arg.sx * 1000.0;
+        asked.z = arg.z + arg.sz * 1000.0;
+        const auto cm = static_cast<uint32_t>(std::min(vfl::dist_xz(asked, there) * 100.0, 4.0e9));
+        v->far_measured.fetch_add(1, std::memory_order_relaxed);
+        v->far_err_sum_cm.fetch_add(cm, std::memory_order_relaxed);
+        v->far_err_last_cm.store(cm, std::memory_order_relaxed);
+        if (cm > v->far_err_max_cm.load(std::memory_order_relaxed)) v->far_err_max_cm.store(cm, std::memory_order_relaxed);
         return;
     }
     v->requests.fetch_add(1, std::memory_order_relaxed);
@@ -1764,6 +1789,8 @@ void refresh(const std::vector<Found>& found) {
             v.near_seen = false;
             v.far_only = 0;
             v.far_logged = false;
+            v.far_measured = v.far_err_sum_cm = 0;
+            v.far_err_max_cm = v.far_err_last_cm = 0;
             v.requests = v.positions = v.rotations = v.samples = 0;
             v.channel_ms = 0;
             v.channel_samples = 0;
@@ -1926,6 +1953,15 @@ DWORD WINAPI worker(LPVOID) {
                 if (!v.ts.load()) continue;
                 if (!v.following) {
                     ++idle;
+                    // Left to the game, but the other mod sends where it has it: how far apart the two are.
+                    if (const uint64_t m = v.far_measured.load()) {
+                        total += m;
+                        line += std::format(" | 0x{:08X} left to the game (far requests only, {} of {} with the other "
+                                            "mod's samples fresh): the game's pose {:.1f} m from the other mod's on "
+                                            "average, {:.1f} m now, {:.1f} m at most",
+                                            v.key.load(), m, v.far_only.load(), v.far_err_sum_cm.load() / 100.0 / m,
+                                            v.far_err_last_cm.load() / 100.0, v.far_err_max_cm.load() / 100.0);
+                    }
                     continue;
                 }
                 total += v.requests.load();
