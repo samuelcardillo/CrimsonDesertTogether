@@ -84,8 +84,8 @@ on an older version were ported to 3663 but not all were tried again.
   is not tested. Carts and other AI vehicles on land are not followed: the guest can see them a few metres from
   where the host has them.
 - Two copies of the game on one PC (how the mod is developed): the copy whose window is behind draws a handful
-  of frames a second and its world runs slowly. Ships look less smooth from it, and a passenger in it dropped
-  off the ship once at full sail.
+  of frames a second and its world runs slowly. Ships look less smooth from it, and a passenger in it drops off
+  the ship at full sail (the game lets go of a character whose deck moves several metres in one frame).
 - Loot from enemies killed by the guest is not tested.
 
 Each feature can be switched off in `cdmp.ini`; the kit's README says which setting does what.

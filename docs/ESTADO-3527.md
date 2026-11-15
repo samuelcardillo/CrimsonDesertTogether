@@ -9,8 +9,10 @@ hay código nuevo en `main`, **sin release** (la release se pide): cada pose de 
 segundo, antes de 0,60 a 1,44), el cartel del otro jugador se queda sobre su cabeza en un barco en marcha (se iba
 3 m a 5 m/s), el panel vuelve a dar el aguante (id 25 en 3663) y la sesión descarta los estados y las poses que
 llegan después de otros más nuevos. `kVersion` sigue en 10; con una `b2`/`b3` al otro lado se conecta igual y los
-demás barcos se ven como antes de la `b2`. Abierto: un pasajero resbala por la cubierta en la copia de detrás cuando
-el barco corre (se cayó a 18 m/s). Detalle: `docs/research/port-3663.md`, «Barco, madrugada del 15-nov».
+demás barcos se ven como antes de la `b2`. Abierto, y no es de esa noche (la `b3` hace lo mismo): con dos copias en
+un PC, en la de detrás el juego suelta al pasajero del casco cuando el barco corre, y a 18 m/s acaba en el agua.
+Las velas y la tripulación, vueltas a comprobar con el código final. Detalle: `docs/research/port-3663.md`, «Barco,
+madrugada del 15-nov».
 **Y la primera PELEA vista en 3663** (esa misma madrugada, con ese código): los golpes del invitado quitan la misma
 vida a un enemigo en las dos copias (160 → 14), los enemigos hieren y matan a los dos, pantalla de muerte, y revivir
 en el punto de control (manteniendo U); `ERR` 0. Sin ver: que el invitado mate a un enemigo, y el botín

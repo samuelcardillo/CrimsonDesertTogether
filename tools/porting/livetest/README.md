@@ -64,7 +64,10 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
 - `slidetest.sh H G [s]`: cuánto resbala un pasajero por la cubierta en la copia de detrás a toda vela
   (`boat/deckdrift.py` y, fotograma a fotograma, `boat/slidetrace.py`). `ASI=<un cdmp.asi> bash shipsession.sh`
   arranca la sesión con ese `cdmp.asi` (el de un kit publicado: `dist/…/cdmp.asi`) para comparar builds en la misma
-  prueba; el arranque siguiente sin `ASI` vuelve a poner el compilado.
+  prueba; el arranque siguiente sin `ASI` vuelve a poner el compilado. `STEER=95 bash slidetest.sh H G 75` lleva
+  antes la proa al este (`steer.py pid rumbo`: aprende hacia dónde gira D y da toques de A o D hasta llegar): así el
+  barco hizo 18 m/s en línea recta y el invitado de la copia de detrás estaba en el agua a los quince segundos, con
+  la `b3` igual que con el código nuevo.
 - `shiphead.py pid`: el rumbo de la proa del barco (su eje -z; 90 = +x, el este) y su posición. Para gobernar una
   prueba de velocidad: el barco encalla enseguida al sur y al suroeste del amarre (bajíos en (-10410, -6373) y
   (-10075, -6913), 15-nov); una y sobre el agua pasa de 350 es que está encallado.

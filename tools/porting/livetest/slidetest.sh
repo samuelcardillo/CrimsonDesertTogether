@@ -17,6 +17,11 @@ if python -I sailstate.py $H "$(python -I sailstate.py $H key)" | grep -q furled
   $UH -Do key -Keys E -HoldMs 150 >/dev/null 2>&1; sleep 4
   $UH -Do hold -Keys LSHIFT -HoldMs 1500 >/dev/null 2>&1; sleep 8
 fi
+# STEER=<heading> in the environment: the bow is brought to that heading in first gear before the run (90 = east:
+# from the Vellua mooring the open water is to the east; left alone the ship ran aground twice on 15-nov).
+if [ -n "$STEER" ]; then
+  timeout 120 python -I steer.py $H $STEER 20 2>&1 | tail -3 | sed 's/^/  steering: /'
+fi
 $UH -Do hold -Keys LSHIFT -HoldMs 1500 >/dev/null 2>&1; sleep 6
 (timeout $((SECS + 20)) python -I "$T/slidetrace.py" $G $SECS > shots/slidetrace_last.txt 2>&1 &)
 timeout $((SECS + 40)) python -I "$T/deckdrift.py" $H $G $SECS 3 2>&1 | tee shots/slidetest_last.txt | python -I -c "
@@ -36,6 +41,7 @@ if rows:
     print(f'  in {t:.0f} s the ship covered about {dist:.0f} m (mean {dist / max(t, 1):.1f} m/s, fastest {max(r[1] for r in on):.1f}); the guest slid {slid:.2f} m: {100 * slid / max(dist, 1):.2f}% of that' + ('; it left the ship' if rows[-1][2] == '0x0' else ''))
 else:
     print('  no samples')"
+echo "  at the end: bow and ship at $(python -I shiphead.py $H)"
 sleep 3
 echo "  frame by frame on the guest (boat/slidetrace.py; the whole trace is in shots/slidetrace_last.txt):"
 head -8 shots/slidetrace_last.txt | cut -c1-170 | sed 's/^/    /'
