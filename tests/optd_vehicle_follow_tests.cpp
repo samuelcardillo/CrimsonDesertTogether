@@ -1,6 +1,7 @@
 // vehicle_follow (src/mod/session2/vehicle_follow_logic.h): the smoothing of the controller's ~1 Hz ship samples and
 // the sector form of the TransformSync position argument. Values from the 2026-11-13 test (host's ship at Vellua).
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -444,192 +445,259 @@ void test_vehicle_poses_timed() {
 }
 }  // namespace
 
-// A passenger in the air keeps up with the ship. Values from the user's sail of 2026-11-15 (the guest's log at
-// 08:24:52): the guest stood at (-2.52, 3.14, 5.30) in the ship's frame, the ship moved 2.3-2.9 m a frame (~200 ms),
-// and once off the part the game left the character where it was in the world.
-void test_air_keep_up() {
-    const double spot[3] = {-2.52, 3.14, 5.30}, still[2] = {0, 0};
-    const float spot_f[3] = {-2.52f, 3.14f, 5.30f}, unit[4] = {0, 0, 0, 1};
-    const Pose then = pose(-9724.43, 351.9, -6538.86, 0.52f);
-    // The ship's own -z (its bow) in the world, and the ship 2.92 m further along it.
-    const float bow_local[3] = {0, 0, -1};
-    double bow[3];
-    rotate(then.q, bow_local, bow);
-    Pose now = then;
-    now.x += bow[0] * 2.92;
-    now.z += bow[2] * 2.92;
-    // to_local undoes attach.
-    {
-        const Pose w = attach(then, spot_f, unit);
-        const double world[3] = {w.x, w.y, w.z};
-        double back[3];
-        to_local(then, world, back);
-        CHECK(near(back[0], spot[0], 1e-3) && near(back[1], spot[1], 1e-3) && near(back[2], spot[2], 1e-3));
+// A passenger in the air keeps up with the ship (air_carry). Values from the user's sail of 2026-11-15 (the guest's
+// log): the guest stood at (-2.52, 3.14, 5.30) in the ship's frame, the ship moved 2.3-2.9 m a frame (~200 ms), and
+// once off the part the game carried the character with the ship in some frames and not in others.
+Pose yawed(double x, double y, double z, double yaw_deg) {
+    Pose p;
+    p.x = x;
+    p.y = y;
+    p.z = z;
+    const double h = yaw_deg * 0.008726646259971648;  // half the angle, in radians
+    p.q[0] = 0;
+    p.q[1] = static_cast<float>(std::sin(h));
+    p.q[2] = 0;
+    p.q[3] = static_cast<float>(std::cos(h));
+    return p;
+}
+// A ship that sails `speed` m/s along its bow (-z of its own frame) and turns `turn` degrees a second.
+struct Sailing {
+    Pose hull = yawed(-9724.43, 351.9, -6538.86, 62.7);
+    double yaw = 62.7, speed = 14.0, turn = 0.0;
+    void step(double dt) {
+        const float bow_local[3] = {0, 0, -1};
+        double bow[3];
+        rotate(hull.q, bow_local, bow);
+        yaw += turn * dt;
+        hull = yawed(hull.x + bow[0] * speed * dt, hull.y, hull.z + bow[2] * speed * dt, yaw);
     }
-    // Left where it was in the world: moved by the whole way the ship went, onto its spot again.
-    {
-        const Pose was = attach(then, spot_f, unit), want = attach(now, spot_f, unit);
-        const double asked[3] = {was.x, was.y + 0.8, was.z};
+};
+// The world place of a point of the ship's frame.
+void on_ship(const Pose& hull, double lx, double ly, double lz, double out[3]) {
+    const float l[3] = {static_cast<float>(lx), static_cast<float>(ly), static_cast<float>(lz)}, unit[4] = {0, 0, 0, 1};
+    const Pose w = attach(hull, l, unit);
+    out[0] = w.x;
+    out[1] = w.y;
+    out[2] = w.z;
+}
+// A flight of `frames` frames of `dt` seconds from the spot (-2.52, 3.14, 5.30). The game carries the character
+// `carried` of the ship's way between two frames (0: left where it is in the world, 1: all the way) and then moves it
+// by its own (`own_x`, `own_z` m/s in the ship's frame: steering in the air). `takes`: the game starts each frame
+// from the request as this module left it (true), or from its own position whatever the request said (false).
+// Returns where the character's request ends, in the ship's frame; `most`: the largest fix of one frame.
+void fly(Sailing ship, int frames, double dt, double carried, double own_x, double own_z, bool takes, double end[3],
+         double* most = nullptr) {
+    double at[3], game[3];
+    on_ship(ship.hull, -2.52, 3.14, 5.30, at);
+    std::memcpy(game, at, sizeof game);
+    Pose prev = ship.hull;
+    if (most) *most = 0;
+    for (int i = 0; i < frames; ++i) {
+        ship.step(dt);
+        // Where the game has the character before its own movement: from the place of the frame before, carried.
+        const double* from = takes ? at : game;
+        double l[3], rode[3];
+        to_local(prev, from, l);
+        on_ship(ship.hull, l[0], l[1], l[2], rode);
+        double body[3];
+        for (int k = 0; k < 3; ++k) body[k] = from[k] + (rode[k] - from[k]) * carried;
+        // Its own movement of the frame, as the game asks for it.
+        double bl[3], asked[3];
+        to_local(ship.hull, body, bl);
+        on_ship(ship.hull, bl[0] + own_x * dt, bl[1], bl[2] + own_z * dt, asked);
+        std::memcpy(game, asked, sizeof game);
         double fix[2];
-        CHECK(air_keep_up(then, now, spot, still, 0.14, asked, fix));
-        CHECK(near(std::hypot(fix[0], fix[1]), 2.92, 0.01));
-        CHECK(near(asked[0] + fix[0], want.x, 0.01) && near(asked[2] + fix[1], want.z, 0.01));
-        // Half carried by the game already: the other half.
-        const double half[3] = {(was.x + want.x) / 2, was.y, (was.z + want.z) / 2};
-        CHECK(air_keep_up(then, now, spot, still, 0.14, half, fix) && near(std::hypot(fix[0], fix[1]), 1.46, 0.01));
-        // Already on its spot: nothing.
-        const double there[3] = {want.x, want.y + 0.3, want.z};
-        CHECK(!air_keep_up(then, now, spot, still, 0.14, there, fix) && fix[0] == 0 && fix[1] == 0);
-        // Ahead of its spot (the game gave it too much): back, by no more than the way the ship went.
-        const double ahead[3] = {want.x + bow[0] * 1.0, want.y, want.z + bow[2] * 1.0};
-        CHECK(air_keep_up(then, now, spot, still, 0.14, ahead, fix) && near(std::hypot(fix[0], fix[1]), 1.0, 0.01));
-        CHECK(near(ahead[0] + fix[0], want.x, 0.01) && near(ahead[2] + fix[1], want.z, 0.01));
-        // 30 m behind (not the ship's doing): never more than the ship's own way.
-        const double far[3] = {was.x - bow[0] * 30.0, was.y, was.z - bow[2] * 30.0};
-        CHECK(air_keep_up(then, now, spot, still, 0.14, far, fix) && near(std::hypot(fix[0], fix[1]), 2.92, 0.01));
-        // Too long in the air, a time that is not one, a pose that is not one: nothing.
-        CHECK(!air_keep_up(then, now, spot, still, kAirMaxS + 0.01, asked, fix));
-        CHECK(!air_keep_up(then, now, spot, still, -0.1, asked, fix));
-        CHECK(!air_keep_up(then, now, spot, still, std::numeric_limits<double>::quiet_NaN(), asked, fix));
-        Pose bad = now;
+        const AirStep s = air_carry(prev, at, ship.hull, body, dt, fix);
+        CHECK(s != AirStep::Over);
+        if (most) *most = std::max(*most, std::hypot(fix[0], fix[1]));
+        at[0] = asked[0] + fix[0];
+        at[1] = asked[1];
+        at[2] = asked[2] + fix[1];
+        prev = ship.hull;
+    }
+    to_local(ship.hull, at, end);
+}
+
+void test_air_carry() {
+    double end[3];
+    // Left where it is in the world (08:24:52), the game taking the moved request: it stays on its spot, at 5 frames a
+    // second and at 60, on a straight course and in a hard turn (20 degrees a second at 14 m/s: release b4's way of
+    // doing it drifted 2.5 m in 1.4 s there).
+    for (const double dt : {0.2, 1.0 / 60}) {
+        for (const double turn : {0.0, 20.0, -20.0}) {
+            Sailing ship;
+            ship.turn = turn;
+            fly(ship, static_cast<int>(1.4 / dt), dt, 0.0, 0, 0, true, end);
+            CHECK(near(end[0], -2.52, 0.02) && near(end[2], 5.30, 0.02));
+        }
+    }
+    // Carried part of the way (74 % and 36 % were seen): the same.
+    for (const double carried : {0.36, 0.74}) {
+        Sailing ship;
+        ship.turn = 10.0;
+        fly(ship, 7, 0.2, carried, 0, 0, true, end);
+        CHECK(near(end[0], -2.52, 0.02) && near(end[2], 5.30, 0.02));
+    }
+    // Carried all the way (a copy that draws 30 frames a second, 08:23:21): nothing is added, on any course.
+    {
+        Sailing ship;
+        ship.turn = 20.0;
+        double most = 0;
+        fly(ship, 42, 1.0 / 30, 1.0, 0, 0, true, end, &most);
+        CHECK(most == 0 && near(end[0], -2.52, 0.02) && near(end[2], 5.30, 0.02));
+    }
+    // Its own movement in the air stays its own, along the ship's course too (b4 undid it): 4 m/s towards the bow
+    // and 1 m/s to starboard for 0.6 s, whether the game carries it or not.
+    for (const double carried : {0.0, 1.0}) {
+        Sailing ship;
+        ship.speed = 10.0;
+        fly(ship, 36, 1.0 / 60, carried, 1.0, -4.0, true, end);
+        CHECK(near(end[0], -2.52 + 0.6, 0.03) && near(end[2], 5.30 - 2.4, 0.03));
+    }
+    // A reversing ship.
+    {
+        Sailing ship;
+        ship.speed = -3.0;
+        fly(ship, 7, 0.2, 0.0, 0, 0, true, end);
+        CHECK(near(end[0], -2.52, 0.02) && near(end[2], 5.30, 0.02));
+    }
+    // The game does NOT take the moved request (it starts each frame from its own position): the request never
+    // goes further from the game's own position than a little over the ship's way of one frame.
+    {
+        Sailing ship;
+        double most = 0;
+        fly(ship, 7, 0.2, 0.0, 0, 0, false, end, &most);
+        CHECK(most <= 14.0 * 0.2 * kAirSlack + kAirSlackM + 1e-6 && most > 2.7);
+        CHECK(end[2] > 5.30 + 10.0);  // and the character is where the game has it, a frame's way less: behind
+    }
+    // One frame, by hand.
+    const Pose then = yawed(-9724.43, 351.9, -6538.86, 62.7);
+    Sailing one;
+    one.hull = then;
+    one.step(0.2);
+    double was[3], rode[3], fix[2];
+    on_ship(then, -2.52, 3.14, 5.30, was);
+    on_ship(one.hull, -2.52, 3.14, 5.30, rode);
+    CHECK(air_carry(then, was, one.hull, was, 0.2, fix) == AirStep::Fix);
+    CHECK(near(std::hypot(fix[0], fix[1]), 2.8, 0.01) && near(was[0] + fix[0], rode[0], 0.01) && near(was[2] + fix[1], rode[2], 0.01));
+    CHECK(air_carry(then, was, one.hull, rode, 0.2, fix) == AirStep::None && fix[0] == 0 && fix[1] == 0);
+    // Something else moved the character 30 m (not the ship's doing): no more than a little over the ship's way.
+    {
+        const double far[3] = {was[0] + 30.0, was[1], was[2]};
+        CHECK(air_carry(then, was, one.hull, far, 0.2, fix) == AirStep::Fix);
+        CHECK(near(std::hypot(fix[0], fix[1]), 2.8 * kAirSlack + kAirSlackM, 0.01));
+    }
+    // The ship is somewhere else altogether (put away and taken out again): over.
+    {
+        Pose gone = then;
+        gone.x += 40.0;
+        CHECK(air_carry(then, was, gone, was, 0.2, fix) == AirStep::Over);
+        Pose bad = one.hull;
         bad.x = std::numeric_limits<double>::infinity();
-        CHECK(!air_keep_up(then, bad, spot, still, 0.14, asked, fix));
+        CHECK(air_carry(then, was, bad, was, 0.2, fix) == AirStep::Over);
+        Pose zero = one.hull;
+        zero.q[0] = zero.q[1] = zero.q[2] = zero.q[3] = 0;
+        CHECK(air_carry(then, was, zero, was, 0.2, fix) == AirStep::Over);
+        const double nan[3] = {std::numeric_limits<double>::quiet_NaN(), was[1], was[2]};
+        CHECK(air_carry(then, was, one.hull, nan, 0.2, fix) == AirStep::Over);
     }
-    // The ship at its mooring (2 cm between two frames): the top of the ladder, 0.78 m to the side and 2.8 m up in
-    // one frame (08:22:34), is left alone.
+    // The ship at its mooring (2 cm in a frame of 40 ms), adrift at half a metre a second, a frame with no time:
+    // nothing (the character may be walking on the quay it stepped onto).
     {
-        Pose moored = then;
-        moored.x += bow[0] * 0.02;
-        moored.z += bow[2] * 0.02;
-        const double ladder[3] = {-4.92, -0.58, -3.82};
-        const float ladder_f[3] = {-4.92f, -0.58f, -3.82f}, top_f[3] = {-4.14f, 2.21f, -3.79f};
-        const Pose top = attach(moored, top_f, unit);
-        const double asked[3] = {top.x, top.y, top.z};
-        double fix[2];
-        CHECK(!air_keep_up(then, moored, ladder, still, 0.04, asked, fix));
-        (void)ladder_f;
+        Sailing moored;
+        moored.hull = then;
+        moored.speed = 0.5;
+        moored.step(0.04);
+        CHECK(air_carry(then, was, moored.hull, was, 0.04, fix) == AirStep::None);
+        Sailing adrift;
+        adrift.hull = then;
+        adrift.speed = 0.5;
+        adrift.step(1.0);
+        CHECK(air_carry(then, was, adrift.hull, was, 1.0, fix) == AirStep::None);
+        CHECK(air_carry(then, was, one.hull, was, 0.0, fix) == AirStep::None);
+        Sailing slow;
+        slow.hull = then;
+        slow.speed = 2.0;
+        slow.step(0.2);
+        CHECK(air_carry(then, was, slow.hull, was, 0.2, fix) == AirStep::Fix && near(std::hypot(fix[0], fix[1]), 0.4, 0.01));
     }
-    // Its own move across the ship (to port, 0.78 m) while the ship goes 1.5 m ahead and the game carries it all
-    // the way: that move stays.
+    // A ship that pitches and rolls between two frames: the spot's own way is made up, not the hull's origin's.
     {
-        Pose ahead = then;
-        ahead.x += bow[0] * 1.5;
-        ahead.z += bow[2] * 1.5;
-        const float moved_f[3] = {-2.52f - 0.78f, 3.14f, 5.30f};
-        const Pose m = attach(ahead, moved_f, unit);
-        const double asked[3] = {m.x, m.y, m.z};
-        double fix[2];
-        CHECK(!air_keep_up(then, ahead, spot, still, 0.1, asked, fix));
-        // The same move with the ship's way missing: the ship's way is given back, the move across stays.
-        const Pose left = attach(then, moved_f, unit);
-        const double behind[3] = {left.x, left.y, left.z};
-        CHECK(air_keep_up(then, ahead, spot, still, 0.1, behind, fix) && near(std::hypot(fix[0], fix[1]), 1.5, 0.01));
-        CHECK(near(behind[0] + fix[0], m.x, 0.01) && near(behind[2] + fix[1], m.z, 0.01));
+        Pose tilted = one.hull;
+        const float roll[4] = {0.0f, 0.0f, 0.0523f, 0.9986f};  // 6 degrees about the ship's length
+        float q[4];
+        mul(one.hull.q, roll, q);
+        std::memcpy(tilted.q, q, sizeof q);
+        double rode_tilted[3];
+        on_ship(tilted, -2.52, 3.14, 5.30, rode_tilted);
+        CHECK(air_carry(then, was, tilted, was, 0.2, fix) == AirStep::Fix);
+        CHECK(near(was[0] + fix[0], rode_tilted[0], 0.01) && near(was[2] + fix[1], rode_tilted[2], 0.01));
     }
-    // Walking to the bow at 3 m/s when it left the part: half a second later its spot is 1.5 m further forward.
+    // to_local undoes attach; over: too long in the air, or down at the water (the lowest deck is at 1.8 in the
+    // ship's frame, the swimmer at the foot of the ladder at -0.58).
     {
-        const double walk[2] = {0, -3.0};
-        Pose later = then;
-        later.x += bow[0] * 9.0;
-        later.z += bow[2] * 9.0;
-        const Pose was = attach(then, spot_f, unit);
-        const double asked[3] = {was.x, was.y, was.z};
-        double fix[2];
-        CHECK(air_keep_up(then, later, spot, walk, 0.5, asked, fix));
-        const float want_f[3] = {-2.52f, 3.14f, 5.30f - 1.5f};
-        const Pose want = attach(later, want_f, unit);
-        // Clamped to the ship's own way (9 m): the 1.5 m of its own are the game's to give.
-        CHECK(near(std::hypot(fix[0], fix[1]), 9.0, 0.01));
-        CHECK(near(std::hypot(asked[0] + fix[0] - want.x, asked[2] + fix[1] - want.z), 1.5, 0.02));
+        double back[3];
+        to_local(then, was, back);
+        CHECK(near(back[0], -2.52, 1e-3) && near(back[1], 3.14, 1e-3) && near(back[2], 5.30, 1e-3));
     }
-    // A ship that drifts at half a metre a second (0.5 m in a second): not kept up with (the character may be walking
-    // on the quay it stepped onto); at 2 m/s it is.
-    {
-        const Pose was = attach(then, spot_f, unit);
-        const double asked[3] = {was.x, was.y, was.z};
-        double fix[2];
-        Pose drift = then;
-        drift.x += bow[0] * 0.5;
-        drift.z += bow[2] * 0.5;
-        CHECK(!air_keep_up(then, drift, spot, still, 1.0, asked, fix));
-        Pose slow = then;
-        slow.x += bow[0] * 2.0;
-        slow.z += bow[2] * 2.0;
-        CHECK(air_keep_up(then, slow, spot, still, 1.0, asked, fix) && near(std::hypot(fix[0], fix[1]), 2.0, 0.01));
-    }
-    // Over: too long in the air, or down at the water (the lowest deck is at 1.8 in the ship's frame, the swimmer at
-    // the foot of the ladder at -0.58).
     CHECK(!air_over(0.0, 1.87) && !air_over(kAirMaxS, 3.14) && air_over(kAirMaxS + 0.01, 3.14));
     CHECK(air_over(0.3, -0.58) && air_over(0.3, 0.19) && !air_over(0.3, 0.21));
     CHECK(air_over(-1.0, 3.0) && air_over(0.3, std::numeric_limits<double>::quiet_NaN()));
-    // The speed over the deck at take-off.
-    {
-        const double a[3] = {0, 3, 5.0}, b[3] = {0.1, 3, 4.7};
-        double v[2];
-        air_rel_speed(a, 1000, b, 1100, v);
-        CHECK(near(v[0], 1.0, 1e-6) && near(v[1], -3.0, 1e-6));
-        air_rel_speed(a, 1000, b, 1002, v);  // two requests 2 ms apart: no speed taken
-        CHECK(v[0] == 0 && v[1] == 0);
-        air_rel_speed(a, 1000, b, 1500, v);  // half a second apart: not two frames in a row
-        CHECK(v[0] == 0 && v[1] == 0);
-        air_rel_speed(a, 1100, b, 1000, v);  // out of order
-        CHECK(v[0] == 0 && v[1] == 0);
-        const double c[3] = {0, 3, -5.0};  // 10 m in 100 ms: capped
-        air_rel_speed(a, 1000, c, 1100, v);
-        CHECK(near(std::hypot(v[0], v[1]), kAirMaxRelSpeed, 1e-6) && v[1] < 0);
-    }
 }
 
-// The frames of 08:24:52 (15-nov, the guest's log, the guest went off the stern): what the module would have asked
-// for. The ship's way and the requests in the ship's frame are the record's; the ship is put on a straight course.
-void test_air_keep_up_recorded() {
-    const float unit[4] = {0, 0, 0, 1}, bow_local[3] = {0, 0, -1};
-    const Pose start = pose(-9724.43, 351.9, -6538.86, 0.52f);
-    double bow[3];
-    rotate(start.q, bow_local, bow);
-    // Its last request on the part (the push), and the two before it: standing still.
-    const double before2[3] = {-2.52, 3.14, 5.30}, before1[3] = {-2.52, 3.14, 5.30}, last[3] = {-2.81, 3.54, 5.51};
-    double rel[2];
-    air_rel_speed(before2, 1000, before1, 1230, rel);
-    CHECK(rel[0] == 0 && rel[1] == 0);
+// The frames of 08:24:52 (15-nov, the guest's log: the guest went off the stern): what the game's carry lacked in each,
+// from the record's own numbers. Each frame: the ship's way, the physics position and the request in the ship's
+// frame. The ship is put on a straight course (the record of that build has no turn; the ship did turn, which is
+// where the recorded sideways shifts come from), so only the part along the ship is checked.
+void test_air_carry_recorded() {
     struct Frame {
-        uint32_t ms;       // since the frame before
-        double ship;       // the ship's way since the frame before, m
-        float asked[3];    // the game's request, in the ship's frame
+        uint32_t ms;
+        double ship;
+        double body[3], asked[3];
     };
-    const Frame frames[] = {{140, 2.92, {-1.96f, 4.34f, 8.61f}},  {233, 1.85, {-2.31f, 4.42f, 9.34f}},
-                            {157, 2.88, {-3.98f, 4.34f, 11.36f}}, {207, 1.96, {-3.25f, 4.25f, 13.51f}},
-                            {4, 2.59, {-2.39f, 4.17f, 16.43f}},   {149, 0.00, {-2.55f, 4.15f, 16.62f}},
-                            {165, 1.89, {-1.99f, 4.05f, 18.74f}}};
-    Pose hull = start;
-    double t = 0;
+    const double last[3] = {-2.81, 3.54, 5.51};  // its last request on the part
+    const Frame frames[] = {{140, 2.92, {-1.77, 3.77, 8.43}, {-1.96, 4.34, 8.61}},
+                            {233, 1.85, {-2.05, 4.60, 9.10}, {-2.31, 4.42, 9.34}},
+                            {157, 2.88, {-3.80, 4.40, 11.17}, {-3.98, 4.34, 11.36}},
+                            {207, 1.96, {-3.22, 4.37, 13.47}, {-3.25, 4.25, 13.51}},
+                            {4, 2.59, {-2.24, 4.25, 16.24}, {-2.39, 4.17, 16.43}},
+                            {149, 0.00, {-2.40, 4.22, 16.43}, {-2.55, 4.15, 16.62}},
+                            {165, 1.89, {-1.88, 4.22, 18.57}, {-1.99, 4.05, 18.74}}};
+    Sailing ship;
+    ship.speed = 1.0;
+    Pose prev = ship.hull;
+    double at[3];
+    on_ship(prev, last[0], last[1], last[2], at);
+    double lacked = 0;
     int n = 0;
     for (const Frame& f : frames) {
-        t += f.ms / 1000.0;
-        hull.x += bow[0] * f.ship;
-        hull.z += bow[2] * f.ship;
-        const Pose a = attach(hull, f.asked, unit);
-        const double asked[3] = {a.x, a.y, a.z};
-        CHECK(!air_over(t, f.asked[1]));
-        double fix[2] = {0, 0};
-        CHECK(air_keep_up(start, hull, last, rel, t, asked, fix));
-        const double moved[3] = {asked[0] + fix[0], asked[1], asked[2] + fix[1]};
-        double l[3];
-        to_local(hull, moved, l);
-        // Along the ship it is back where it left the deck (the first frame: the push took it 0.18 m further than
-        // the ship went in that frame, and the module never gives more than the ship's own way); across the ship
-        // and in height it is where the game put it.
-        CHECK(near(l[2], 5.51, n == 0 ? 0.2 : 0.02));
-        CHECK(near(l[0], f.asked[0], 0.02) && near(l[1], f.asked[1], 0.02));
+        ship.step(f.ship);  // speed 1: the frame's way
+        double body[3], asked[3], fix[2];
+        on_ship(ship.hull, f.body[0], f.body[1], f.body[2], body);
+        on_ship(ship.hull, f.asked[0], f.asked[1], f.asked[2], asked);
+        // (The frame of 4 ms is given 40: the record's clock steps by whole milliseconds and the ship's way of that
+        // frame belongs to the frame before, as the record itself shows.)
+        const AirStep s = air_carry(prev, at, ship.hull, body, std::max<uint32_t>(f.ms, 40) / 1000.0, fix);
+        CHECK(s == (f.ship > 0 ? AirStep::Fix : AirStep::None));
+        // Along the ship (its -z is the bow): how far the fix takes the character towards the bow.
+        double moved[3] = {asked[0] + fix[0], asked[1], asked[2] + fix[1]}, l[3];
+        to_local(ship.hull, moved, l);
+        lacked += f.asked[2] - l[2];
+        CHECK(f.asked[2] - l[2] <= f.ship * kAirSlack + kAirSlackM + 1e-3);
+        // The record is of the game alone (nothing was moved): the frame before is the game's own request.
+        std::memcpy(at, asked, sizeof at);
+        prev = ship.hull;
         ++n;
     }
-    // Without the module the record ends 13.2 m aft of where it stood, past the stern rail (z about 10).
-    CHECK(frames[6].asked[2] - last[2] > 13.0);
+    // The character went 13.2 m aft in the ship's frame; the carry lacked 12.0 m of the ship's 14.1 m, and the rest
+    // (1.2 m) was the character's own movement, which is left alone.
+    CHECK(near(lacked, 12.0, 0.15));
+    CHECK(near(frames[6].asked[2] - last[2] - lacked, 1.2, 0.15));
 }
 
 int main() {
-    test_air_keep_up();
-    test_air_keep_up_recorded();
+    test_air_carry();
+    test_air_carry_recorded();
     test_usable();
     test_track_empty_and_single();
     test_track_interpolates_behind();
