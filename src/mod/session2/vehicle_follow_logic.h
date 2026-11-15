@@ -415,6 +415,8 @@ inline void to_sector(double world, int16_t hint, float* local, int16_t* sector)
 // place of the frame before is now, riding the ship, and where its physics position is. Its own movement of the
 // frame (the request minus the physics position: a jump, steering in the air, a dash) is not touched, and a frame
 // in which the game carried it all the way is not touched either.
+// air_carry is one frame's sum; AirRide is the whole of it, request by request (when the character is in the air,
+// the ship's speed, what is still owed, when it is over), with no game memory in it so that the tests can run it.
 // (Release b4 moved the request to where the take-off spot and the speed over the deck put it, along the straight
 // line the spot had travelled: that undid the character's own movement along the ship's course and drifted sideways
 // in a turn: 1.2 m in 1.4 s at 14 m/s and 10 degrees a second. Found by an independent review the same day, before
@@ -429,13 +431,17 @@ inline void to_local(const Pose& p, const double world[3], double out[3]) {
 }
 
 inline constexpr double kAirMaxS = 1.5;        // a longer flight is not a hop on the deck: the game's own
-inline constexpr double kAirMinTravelM = 0.05; // the ship did not move in this frame: nothing to make up
 // A ship slower than this (at its mooring it bobs a few centimetres a frame; adrift) is not kept up with: without a
 // parent the character may as well be WALKING on the quay it stepped onto, and must not be pulled after the ship.
+// The ship's speed is taken over kAirSpeedWindowMs at least, not over one frame: the character sees the ship one
+// frame late, so one frame's way divided by that frame's length is wrong whenever two frames differ in length.
 inline constexpr double kAirMinSpeed = 1.0;    // m/s
+inline constexpr uint64_t kAirSpeedWindowMs = 250;
+inline constexpr double kAirMaxSpeed = 60.0;   // "faster" than this between two readings: another ship, not a speed
 // Lower than this in the ship's frame the character is at the water (the swimmer at the foot of the ladder is at
 // -0.58, the lowest deck at 1.8: the records of 15-nov): it went overboard, and the game has it from there.
 inline constexpr double kAirWaterlineY = 0.2;
+// What the carry lacked is given once it adds up to this (a copy at 144 frames a second lacks millimetres a frame).
 inline constexpr double kAirMinFixM = 0.03;
 // The ship's way in one frame beyond which it did not sail there (put away and taken out again, a jump of its
 // samples): the time in the air is over. 18 m/s at two and a half frames a second is 7.2 m.
@@ -443,6 +449,12 @@ inline constexpr double kAirMaxStepM = 8.0;
 // The carry cannot have lacked more than the ship's way in the frame (a little more: the game sometimes pushes the
 // character back). Anything beyond is something else's doing and is not made up.
 inline constexpr double kAirSlack = 1.25, kAirSlackM = 0.1;
+// Without a parent the character can also be STANDING: on the quay or the shore it stepped onto from a ship under
+// way. Its physics position then keeps its height: the same within kAirRestM for kAirRestMs and it is taken to
+// stand on something firm, and is left to the game. (A free fall stays within 6 cm for 0.22 s at most, at the top
+// of a jump.)
+inline constexpr double kAirRestM = 0.03;
+inline constexpr uint64_t kAirRestMs = 300;
 
 // The time in the air is over for this module: too long, or down at the water (`asked_y`: the request's height in
 // the ship's frame).
@@ -451,15 +463,15 @@ inline bool air_over(double t_s, double asked_y) {
 }
 
 enum class AirStep : uint8_t {
-    None,  // nothing to make up in this frame
-    Fix,   // `out`: what to add to the request (world x and z)
+    None,  // nothing lacked in this frame
+    Fix,   // `out`: what the game's carry lacked (world x and z)
     Over,  // the ship did not sail there, or a pose is not one: the time in the air is over
 };
 // One frame in the air. `prev_hull` / `prev_at`: the ship's pose and where the character was left (its request as it
 // went to the game) at the frame before; `hull`: the ship's pose now; `body`: the character's physics position now
-// (world; before this frame's own movement); `dt_s`: seconds since the frame before.
+// (world; before this frame's own movement); `ship_speed`: the ship's speed, m/s (AirRide's, over a window).
 inline AirStep air_carry(const Pose& prev_hull, const double prev_at[3], const Pose& hull, const double body[3],
-                         double dt_s, double out[2]) {
+                         double ship_speed, double out[2]) {
     out[0] = out[1] = 0;
     if (!finite_pose(prev_hull) || !finite_pose(hull) || !unit_quat(prev_hull.q) || !unit_quat(hull.q)) return AirStep::Over;
     for (int i = 0; i < 3; ++i)
@@ -472,10 +484,10 @@ inline AirStep air_carry(const Pose& prev_hull, const double prev_at[3], const P
     const Pose ideal = attach(hull, lf, unit);
     const double step = std::hypot(ideal.x - prev_at[0], ideal.z - prev_at[2]);
     if (!std::isfinite(step) || step > kAirMaxStepM) return AirStep::Over;
-    if (!(dt_s > 0) || step < kAirMinTravelM || step < kAirMinSpeed * dt_s) return AirStep::None;
+    if (!(ship_speed >= kAirMinSpeed)) return AirStep::None;
     double lx = ideal.x - body[0], lz = ideal.z - body[2];
     const double lack = std::hypot(lx, lz);
-    if (!std::isfinite(lack) || lack < kAirMinFixM) return AirStep::None;
+    if (!std::isfinite(lack) || lack < 1e-4) return AirStep::None;
     const double most = step * kAirSlack + kAirSlackM;
     if (lack > most) {
         lx *= most / lack;
@@ -485,5 +497,225 @@ inline AirStep air_carry(const Pose& prev_hull, const double prev_at[3], const P
     out[1] = lz;
     return AirStep::Fix;
 }
+
+// One own position request of the client's own character, as the hook reads it.
+struct AirFrame {
+    uint64_t ms = 0;
+    bool on_part = false;       // its hierarchy parent is a part of something (a 0xB key)
+    bool other_parent = false;  // it has a parent that is not a part
+    bool followed = false;      // on a part: of a ship another player's mod places here
+    uint32_t part = 0, root = 0;  // the part, and the actor at the top of what it stands (or stood) on
+    bool hull_ok = false, request_ok = false, body_ok = false;
+    Pose hull;                  // that top actor's pose
+    double request[3]{};        // the request, world
+    double body[3]{};           // its physics position, world
+};
+enum class AirEnd : uint8_t { Landed, Time, Water, Rest, Parent, Unreadable, ShipJump };
+inline const char* air_end_text(AirEnd e) {
+    switch (e) {
+        case AirEnd::Landed: return "stands on a part again";
+        case AirEnd::Time: return "still without a part when the time was up";
+        case AirEnd::Water: return "down at the water";
+        case AirEnd::Rest: return "standing on something firm that is not the ship";
+        case AirEnd::Parent: return "took another parent";
+        case AirEnd::Unreadable: return "a pose could not be read";
+        case AirEnd::ShipJump: return "the ship was somewhere else altogether";
+    }
+    return "?";
+}
+// One time in the air, when it is over.
+struct AirDone {
+    AirEnd why = AirEnd::Landed;
+    uint32_t from = 0, to = 0, root = 0;  // the part left, the part landed on (Landed), the ship
+    uint32_t frames = 0, fixed = 0, air_ms = 0;
+    float total_fix = 0, max_fix = 0;     // metres the requests were moved (or would have been), in all, in one frame
+    float ship_m = -1;                    // the way the ship went meanwhile (-1: landed on something else)
+    float off = -1;                       // Landed on the same ship: metres across the deck from where it left it
+    bool wrote = false;
+};
+
+// The own character on a ship another player's mod places here, request by request: when it is in the air after
+// leaving a part, and what its request lacks. No game memory, no clock: the hook gives it what it read.
+class AirRide {
+public:
+    static constexpr uint64_t kStaleMs = 1000;  // no request for this long (a load, the helm): nothing kept holds
+
+    // One request. True: (add[0], add[1]) is to be added to the request's world x and z. `write`: the caller writes
+    // it (false: it only counts, and the character is taken to be left where the game asked).
+    bool frame(const AirFrame& f, bool write, double add[2]) {
+        add[0] = add[1] = 0;
+        if (last_ms_ && (f.ms < last_ms_ || f.ms - last_ms_ > kStaleMs)) {
+            air_ = false;
+            on_have_ = false;
+            prev_on_part_ = false;
+            speed_have_ = false;
+            speed_ = 0;
+        }
+        last_ms_ = f.ms;
+        track_speed(f);
+        const bool was_on_part = prev_on_part_;
+        prev_on_part_ = f.on_part;
+        if (f.on_part) {
+            if (air_) end(AirEnd::Landed, f);
+            on_have_ = f.followed && f.hull_ok && f.request_ok;
+            if (on_have_) {
+                on_ms_ = f.ms;
+                std::memcpy(on_at_, f.request, sizeof on_at_);
+                to_local(f.hull, f.request, on_local_);
+                on_hull_ = f.hull;
+                on_part_ = f.part;
+                on_root_ = f.root;
+            }
+            return false;
+        }
+        if (!air_ && was_on_part && on_have_ && f.ms - on_ms_ < kStaleMs) {
+            // Taken off the part in this frame: from its last request on it.
+            air_ = true;
+            air_ms_ = prev_ms_ = on_ms_;
+            air_hull_ = prev_hull_ = on_hull_;
+            std::memcpy(air_local_, on_local_, sizeof air_local_);
+            std::memcpy(prev_at_, on_at_, sizeof prev_at_);
+            air_root_ = on_root_;
+            owed_[0] = owed_[1] = 0;
+            rest_have_ = false;
+            cur_ = AirDone{};
+            cur_.from = on_part_;
+            cur_.root = on_root_;
+        }
+        on_have_ = false;
+        if (!air_) return false;
+        if (f.other_parent) return end(AirEnd::Parent, f);
+        if (!f.hull_ok || !f.request_ok || !f.body_ok || f.root != air_root_) return end(AirEnd::Unreadable, f);
+        double l[3];
+        to_local(f.hull, f.request, l);
+        if (f.ms - air_ms_ > static_cast<uint64_t>(kAirMaxS * 1000.0)) return end(AirEnd::Time, f);
+        if (!(l[1] >= kAirWaterlineY)) return end(AirEnd::Water, f);
+        if (!rest_have_ || std::fabs(f.body[1] - rest_y_) > kAirRestM) {
+            rest_have_ = true;
+            rest_y_ = f.body[1];
+            rest_ms_ = f.ms;
+        } else if (f.ms - rest_ms_ >= kAirRestMs) {
+            return end(AirEnd::Rest, f);
+        }
+        double lack[2];
+        const AirStep step = air_carry(prev_hull_, prev_at_, f.hull, f.body, speed_, lack);
+        if (step == AirStep::Over) return end(AirEnd::ShipJump, f);
+        ++cur_.frames;
+        double left[3] = {f.request[0], f.request[1], f.request[2]};
+        bool fix = false;
+        wrote_last_ = false;
+        if (step == AirStep::Fix) {
+            owed_[0] += lack[0];
+            owed_[1] += lack[1];
+            const double m = std::hypot(owed_[0], owed_[1]);
+            if (m >= kAirMinFixM) {
+                fix = true;
+                add[0] = owed_[0];
+                add[1] = owed_[1];
+                owed_[0] = owed_[1] = 0;
+                ++cur_.fixed;
+                cur_.total_fix += static_cast<float>(m);
+                cur_.max_fix = std::max(cur_.max_fix, static_cast<float>(m));
+                if (write) {
+                    left[0] += add[0];
+                    left[2] += add[1];
+                    cur_.wrote = true;
+                    wrote_last_ = true;
+                    last_add_[0] = add[0];
+                    last_add_[1] = add[1];
+                }
+            }
+        }
+        prev_hull_ = f.hull;
+        std::memcpy(prev_at_, left, sizeof prev_at_);
+        prev_ms_ = f.ms;
+        return fix;
+    }
+    // The write of the last frame's fix did not happen: the character was left where the game asked.
+    void unwritten() {
+        if (!wrote_last_) return;
+        wrote_last_ = false;
+        prev_at_[0] -= last_add_[0];
+        prev_at_[2] -= last_add_[1];
+    }
+    bool in_air() const { return air_; }
+    double ship_speed() const { return speed_; }
+    // The time in the air that ended in the last frame(), once.
+    bool done(AirDone* out) {
+        if (!done_have_) return false;
+        done_have_ = false;
+        *out = done_;
+        return true;
+    }
+
+private:
+    void track_speed(const AirFrame& f) {
+        if (!f.hull_ok || !finite_pose(f.hull)) {
+            speed_have_ = false;
+            speed_ = 0;
+            return;
+        }
+        if (!speed_have_ || f.root != speed_root_) {
+            speed_have_ = true;
+            speed_root_ = f.root;
+            speed_ref_ = f.hull;
+            speed_ms_ = f.ms;
+            speed_ = 0;
+            return;
+        }
+        if (f.ms - speed_ms_ < kAirSpeedWindowMs) return;
+        const double v = std::hypot(f.hull.x - speed_ref_.x, f.hull.z - speed_ref_.z) * 1000.0 /
+                         static_cast<double>(f.ms - speed_ms_);
+        speed_ = std::isfinite(v) && v <= kAirMaxSpeed ? v : 0;
+        speed_ref_ = f.hull;
+        speed_ms_ = f.ms;
+    }
+    bool end(AirEnd why, const AirFrame& f) {
+        air_ = false;
+        cur_.why = why;
+        cur_.air_ms = f.ms > air_ms_ ? static_cast<uint32_t>(std::min<uint64_t>(f.ms - air_ms_, 600000)) : 0;
+        if (f.hull_ok && f.root == air_root_) {
+            cur_.ship_m = static_cast<float>(std::hypot(f.hull.x - air_hull_.x, f.hull.z - air_hull_.z));
+            if (why == AirEnd::Landed && f.request_ok) {
+                double l[3];
+                to_local(f.hull, f.request, l);
+                cur_.off = static_cast<float>(std::hypot(l[0] - air_local_[0], l[2] - air_local_[2]));
+            }
+        }
+        if (why == AirEnd::Landed) cur_.to = f.part;
+        done_ = cur_;
+        done_have_ = true;
+        return false;
+    }
+
+    uint64_t last_ms_ = 0;
+    bool prev_on_part_ = false;
+    // The ship's speed over a window.
+    bool speed_have_ = false;
+    uint32_t speed_root_ = 0;
+    Pose speed_ref_;
+    uint64_t speed_ms_ = 0;
+    double speed_ = 0;
+    // Its last request on a part of a followed ship.
+    bool on_have_ = false;
+    uint64_t on_ms_ = 0;
+    double on_at_[3]{}, on_local_[3]{};
+    Pose on_hull_;
+    uint32_t on_part_ = 0, on_root_ = 0;
+    // In the air.
+    bool air_ = false;
+    uint64_t air_ms_ = 0, prev_ms_ = 0;
+    Pose air_hull_, prev_hull_;
+    double air_local_[3]{}, prev_at_[3]{};
+    uint32_t air_root_ = 0;
+    double owed_[2]{};         // what lacked and has not been given yet (too little so far)
+    bool rest_have_ = false;
+    double rest_y_ = 0;
+    uint64_t rest_ms_ = 0;
+    bool wrote_last_ = false;
+    double last_add_[2]{};
+    AirDone cur_, done_;
+    bool done_have_ = false;
+};
 
 }  // namespace cdmp::session2::vfl

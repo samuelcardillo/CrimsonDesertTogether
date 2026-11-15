@@ -620,10 +620,11 @@ bool network_pose(uintptr_t ts, vfl::Pose* p) noexcept {
 // stayed where it was in the world and the ship left from under it (the guest in the water).
 //  - passenger_air_follow = 1: while the own character is in the air after leaving a part of a ship that another
 //    player's mod places here, its own position request (once a frame, position_mid) is moved by what the game's
-//    carry lacked in that frame (vfl::air_carry: where its place of the frame before is now, riding the ship,
-//    against its physics position), until it stands on a part again, is down at the water or vfl::kAirMaxS have
-//    passed; not in a frame in which the ship goes slower than vfl::kAirMinSpeed (without a parent it may be walking
-//    on the quay it stepped onto). `probe` works it out and counts, and writes nothing.
+//    carry lacked (vfl::AirRide, vfl::air_carry: where its place of the frame before is now, riding the ship,
+//    against its physics position), until it stands on a part again, is down at the water, stands on something
+//    firm or vfl::kAirMaxS have passed; not while the ship goes slower than vfl::kAirMinSpeed. `probe` works it out
+//    and counts, and writes nothing. The whole of it is in vfl::AirRide (no game memory there: the tests run it);
+//    this function reads what it needs and writes the request.
 //  - a record: the last kOwnRing own requests around the frame in which the game took it off the part (when, its
 //    parent, the request, its physics position and the ship's pose), handed to the worker, which logs them
 //    (kOwnMaxDumps times a session), and one line for each time in the air.
@@ -632,7 +633,6 @@ constexpr uint32_t kComps_Control = 0x40, kControl_Inner = 0x140, kInner_Physics
 constexpr uint32_t kChunkOrigin3663 = 0x7231330;
 constexpr size_t kOwnRing = 24, kOwnAfter = 8;
 constexpr uint32_t kOwnMaxDumps = 24, kOwnMaxAirLines = 60;
-constexpr uint64_t kOwnStaleMs = 1000;  // no own request for this long (a load, the helm): what was kept is forgotten
 struct OwnFrame {
     uint64_t ms = 0;
     uint32_t parent = 0, root = 0;
@@ -642,16 +642,8 @@ struct OwnFrame {
     double request[3]{};  // the request as the game made it, world
     double capsule[3]{};  // the physics position, world
     vfl::Pose hull;       // the ship's pose, world
-    double fix[2]{};      // what the request was moved by (world x, z); zeros: not moved
-};
-// One time in the air, for the worker's line.
-struct OwnAirDone {
-    uint32_t from = 0, to = 0, root = 0;  // the part left, the part landed on (0: none within the time)
-    uint32_t frames = 0, fixed = 0, air_ms = 0;
-    float total_fix = 0, max_fix = 0;     // metres the requests were moved, in all and in one frame
-    float ship_m = 0;                     // the way the ship went meanwhile
-    float off = 0;                        // landing: metres across the deck from where it left it
-    bool wrote = false;
+    double fix[2]{};      // what the request lacked (world x, z); zeros: nothing
+    bool wrote = false;   // and it was moved by that (false with a fix: worked out only)
 };
 struct OwnTrace {  // the hook's own, under g_own_trace_busy
     std::array<OwnFrame, kOwnRing> ring{};
@@ -662,19 +654,7 @@ struct OwnTrace {  // the hook's own, under g_own_trace_busy
     bool root_followed = false;
     int after = -1;       // frames still to record after the change; -1: none waited for
     size_t event = 0;     // `pushed` of the frame in which the parent was gone
-    // Its last request on a part of a followed ship: when, the request, the ship's pose, its place in the ship's frame.
-    bool on_have = false;
-    uint64_t on_ms = 0;
-    double on_at[3]{}, on_local[3]{};
-    vfl::Pose on_hull;
-    uint32_t on_part = 0;
-    // In the air: when it left the part, the ship's pose then and its place on it; the frame before (the ship's pose,
-    // the request as it went to the game, when).
-    bool air = false;
-    uint64_t air_ms = 0, prev_ms = 0;
-    vfl::Pose air_hull, prev_hull;
-    double air_local[3]{}, prev_at[3]{};
-    OwnAirDone done;
+    vfl::AirRide ride;
 };
 OwnTrace g_own_trace;
 std::atomic_flag g_own_trace_busy = ATOMIC_FLAG_INIT;
@@ -685,32 +665,10 @@ size_t g_own_dump_n = 0, g_own_dump_event = 0;
 std::atomic<bool> g_own_dump_ready{false};
 std::atomic<uint32_t> g_own_dumps{0};
 // The times in the air: written at [g_air_w % size] by the hook, read up to g_air_w by the worker.
-std::array<OwnAirDone, 8> g_air_done{};
+std::array<vfl::AirDone, 8> g_air_done{};
 std::atomic<uint32_t> g_air_w{0};
 uint32_t g_air_r = 0, g_air_lines = 0;  // worker only
 std::atomic<uint64_t> g_air_times{0}, g_air_landed{0}, g_air_fixed_frames{0}, g_air_max_fix_cm{0};
-
-// The time in the air is over: its line goes to the worker.
-void own_air_end(OwnTrace& t, uint32_t landed_on, const OwnFrame* f) noexcept {
-    t.air = false;
-    OwnAirDone d = t.done;
-    d.to = landed_on;
-    d.root = t.root_key;
-    d.air_ms = f && f->ms > t.air_ms ? static_cast<uint32_t>(std::min<uint64_t>(f->ms - t.air_ms, 600000)) : 0;
-    if (f && f->hull_ok) {
-        d.ship_m = static_cast<float>(std::hypot(f->hull.x - t.air_hull.x, f->hull.z - t.air_hull.z));
-        if (landed_on && f->request_ok) {
-            double l[3];
-            vfl::to_local(f->hull, f->request, l);
-            d.off = static_cast<float>(std::hypot(l[0] - t.air_local[0], l[2] - t.air_local[2]));
-        }
-    }
-    g_air_times.fetch_add(1, std::memory_order_relaxed);
-    if (landed_on) g_air_landed.fetch_add(1, std::memory_order_relaxed);
-    const uint32_t w = g_air_w.load(std::memory_order_relaxed);
-    g_air_done[w % g_air_done.size()] = d;
-    g_air_w.store(w + 1, std::memory_order_release);
-}
 
 // The own character's own request (position_mid, its own type): the record and, in the air off a followed ship, the
 // request moved.
@@ -728,12 +686,10 @@ void own_frame(safetyhook::Context& ctx) noexcept {
     if (!hier) return;
     const uint32_t parent = rd<uint32_t>(hier + kHier_Parent);
     const uint64_t now = now_ms();
-    if (t.last_ms && now - t.last_ms > kOwnStaleMs) {
+    if (t.last_ms && now - t.last_ms > vfl::AirRide::kStaleMs) {
         // No own request for a while (a load, the helm, nobody else here): nothing kept is about the frame before.
-        // (A part it stands on now is looked up below, as one just stepped on.)
+        // (A part it stands on now is looked up below, as one just stepped on; vfl::AirRide forgets by itself.)
         t.last_parent = 0;
-        t.on_have = false;
-        t.air = false;
         t.after = -1;
         t.root_ts = 0;
         t.root_key = 0;
@@ -741,7 +697,7 @@ void own_frame(safetyhook::Context& ctx) noexcept {
     }
     t.last_ms = now;
     const bool on_part = (parent >> 28) == 0xB, was_on_part = (t.last_parent >> 28) == 0xB;
-    if (!on_part && !was_on_part && t.after < 0 && !t.air) {
+    if (!on_part && !was_on_part && t.after < 0 && !t.ride.in_air()) {
         t.last_parent = parent;
         return;
     }
@@ -771,10 +727,19 @@ void own_frame(safetyhook::Context& ctx) noexcept {
         const Vehicle* v = find(t.root_ts);
         t.root_followed = v && v->key.load(std::memory_order_relaxed) == t.root_key &&
                           v->near_seen.load(std::memory_order_relaxed);
-        if (!t.root_followed) t.on_have = false;
     }
-    if (!t.root_followed && t.after < 0 && !t.air) {
-        // On something that is not another player's ship (a plank of the quay, its own ship): the game's own.
+    vfl::AirFrame a;
+    a.ms = now;
+    a.on_part = on_part;
+    a.other_parent = parent && !on_part;
+    a.followed = on_part && t.root_followed;
+    a.part = on_part ? parent : 0;
+    a.root = t.root_key;
+    double add[2] = {0, 0};
+    if (!t.root_followed && t.after < 0 && !t.ride.in_air()) {
+        // On something that is not another player's ship (a plank of the quay, its own ship), or just off it: the
+        // game's own. AirRide is told (what it kept of a ship no longer holds).
+        t.ride.frame(a, false, add);
         t.last_parent = parent;
         return;
     }
@@ -821,80 +786,35 @@ void own_frame(safetyhook::Context& ctx) noexcept {
         f.hull_ok = ra && rd<uint32_t>(ra + kActor_Key) == t.root_key && ts_pose(t.root_ts, true, &f.hull, unused);
     }
 
-    if (on_part) {
-        if (t.air) own_air_end(t, parent, &f);
-        if (t.root_followed && f.hull_ok && f.request_ok) {
-            // Its place on the ship at this request, for the next take-off.
-            t.on_have = true;
-            t.on_ms = f.ms;
-            std::memcpy(t.on_at, f.request, sizeof t.on_at);
-            vfl::to_local(f.hull, f.request, t.on_local);
-            t.on_hull = f.hull;
-            t.on_part = parent;
-        } else {
-            t.on_have = false;
+    a.hull_ok = f.hull_ok;
+    a.request_ok = f.request_ok;
+    a.body_ok = f.capsule_ok;
+    a.hull = f.hull;
+    std::memcpy(a.request, f.request, sizeof a.request);
+    std::memcpy(a.body, f.capsule, sizeof a.body);
+    // (With passenger_air_follow=0 it is still worked out, for the line of each time in the air; nothing is written.)
+    const auto mode = static_cast<gil::Mode>(g_air_mode.load(std::memory_order_relaxed));
+    if (t.ride.frame(a, mode == gil::Mode::On, add)) {
+        f.fix[0] = add[0];
+        f.fix[1] = add[1];
+        if (mode == gil::Mode::On) {
+            PositionArg w = arg;
+            vfl::to_sector(f.request[0] + add[0], arg.sx, &w.x, &w.sx);
+            vfl::to_sector(f.request[2] + add[1], arg.sz, &w.z, &w.sz);
+            f.wrote = write_bytes(ctx.rdx, &w, sizeof w);
+            if (!f.wrote) t.ride.unwritten();
         }
-    } else {
-        if (!t.air && was_on_part && t.on_have && f.ms - t.on_ms < kOwnStaleMs) {
-            // Taken off the part in this frame: from its last request on it.
-            t.air = true;
-            t.air_ms = t.prev_ms = t.on_ms;
-            t.air_hull = t.prev_hull = t.on_hull;
-            std::memcpy(t.air_local, t.on_local, sizeof t.air_local);
-            std::memcpy(t.prev_at, t.on_at, sizeof t.prev_at);
-            t.done = OwnAirDone{};
-            t.done.from = t.on_part;
-        }
-        t.on_have = false;
-        if (t.air) {
-            const double secs = (f.ms - t.air_ms) / 1000.0;
-            double asked_local[3] = {0, 0, 0};
-            if (f.hull_ok && f.request_ok) vfl::to_local(f.hull, f.request, asked_local);
-            if (parent || !f.hull_ok || !f.request_ok || !f.capsule_ok || vfl::air_over(secs, asked_local[1])) {
-                own_air_end(t, 0, &f);
-            } else {
-                double fix[2];
-                const vfl::AirStep step = vfl::air_carry(t.prev_hull, t.prev_at, f.hull, f.capsule,
-                                                         (f.ms - t.prev_ms) / 1000.0, fix);
-                if (step == vfl::AirStep::Over) {
-                    own_air_end(t, 0, &f);
-                } else {
-                    ++t.done.frames;
-                    double left_at[3] = {f.request[0], f.request[1], f.request[2]};
-                    const auto mode = static_cast<gil::Mode>(g_air_mode.load(std::memory_order_relaxed));
-                    if (step == vfl::AirStep::Fix && mode != gil::Mode::Off) {
-                        const double m = std::hypot(fix[0], fix[1]);
-                        bool wrote = false;
-                        if (mode == gil::Mode::On) {
-                            PositionArg w = arg;
-                            vfl::to_sector(f.request[0] + fix[0], arg.sx, &w.x, &w.sx);
-                            vfl::to_sector(f.request[2] + fix[1], arg.sz, &w.z, &w.sz);
-                            wrote = write_bytes(ctx.rdx, &w, sizeof w);
-                        }
-                        if (wrote) {
-                            left_at[0] += fix[0];
-                            left_at[2] += fix[1];
-                        }
-                        if (wrote || mode == gil::Mode::Trace) {
-                            f.fix[0] = fix[0];
-                            f.fix[1] = fix[1];
-                            ++t.done.fixed;
-                            t.done.wrote |= wrote;
-                            t.done.total_fix += static_cast<float>(m);
-                            t.done.max_fix = std::max(t.done.max_fix, static_cast<float>(m));
-                            g_air_fixed_frames.fetch_add(1, std::memory_order_relaxed);
-                            const auto cm = static_cast<uint64_t>(m * 100.0);
-                            if (cm > g_air_max_fix_cm.load(std::memory_order_relaxed))
-                                g_air_max_fix_cm.store(cm, std::memory_order_relaxed);
-                        }
-                    }
-                    // The frame before, for the next one: where the character was left, and the ship then.
-                    t.prev_hull = f.hull;
-                    std::memcpy(t.prev_at, left_at, sizeof t.prev_at);
-                    t.prev_ms = f.ms;
-                }
-            }
-        }
+        g_air_fixed_frames.fetch_add(1, std::memory_order_relaxed);
+        const auto cm = static_cast<uint64_t>(std::hypot(add[0], add[1]) * 100.0);
+        if (cm > g_air_max_fix_cm.load(std::memory_order_relaxed)) g_air_max_fix_cm.store(cm, std::memory_order_relaxed);
+    }
+    if (vfl::AirDone d; t.ride.done(&d)) {
+        // A time in the air is over: its line goes to the worker.
+        g_air_times.fetch_add(1, std::memory_order_relaxed);
+        if (d.why == vfl::AirEnd::Landed) g_air_landed.fetch_add(1, std::memory_order_relaxed);
+        const uint32_t w = g_air_w.load(std::memory_order_relaxed);
+        g_air_done[w % g_air_done.size()] = d;
+        g_air_w.store(w + 1, std::memory_order_release);
     }
 
     if (g_own_dumps.load(std::memory_order_relaxed) < kOwnMaxDumps || t.after >= 0) {
@@ -922,17 +842,20 @@ void own_frame(safetyhook::Context& ctx) noexcept {
 void own_trace_flush() {
     for (const uint32_t w = g_air_w.load(std::memory_order_acquire); g_air_r != w; ++g_air_r) {
         if (w - g_air_r > g_air_done.size()) g_air_r = w - static_cast<uint32_t>(g_air_done.size());
-        const OwnAirDone d = g_air_done[g_air_r % g_air_done.size()];
+        const vfl::AirDone d = g_air_done[g_air_r % g_air_done.size()];
         if (g_air_lines >= kOwnMaxAirLines) continue;
         ++g_air_lines;
-        const std::string end = d.to ? std::format("stands on 0x{:08X} again, {:.2f} m across the deck from where "
-                                                   "it left it", d.to, d.off)
-                                     : std::string("did not come down on the ship in that time");
+        std::string end = vfl::air_end_text(d.why);
+        if (d.why == vfl::AirEnd::Landed)
+            end = d.off >= 0 ? std::format("stands on 0x{:08X} again, {:.2f} m across the deck from where it left it",
+                                           d.to, d.off)
+                             : std::format("stands on 0x{:08X}, a part of something else", d.to);
         log::info("VehicleFollow: this client's own character was in the air for {} ms after leaving 0x{:08X} of "
-                  "0x{:08X} (the ship went {:.1f} m meanwhile): in {} of its {} frames the game carried it less than "
-                  "the ship went, and its position request {} by {:.2f} m in all ({:.2f} m at most); it {}",
-                  d.air_ms, d.from, d.root, d.ship_m, d.fixed, d.frames,
-                  d.wrote ? "was moved" : "would have been moved", d.total_fix, d.max_fix, end);
+                  "0x{:08X}{}: in {} of its {} frames the game had carried it less than the ship went, and its "
+                  "position request {} by {:.2f} m in all ({:.2f} m at most); it ended: {}",
+                  d.air_ms, d.from, d.root,
+                  d.ship_m >= 0 ? std::format(" (the ship went {:.1f} m meanwhile)", d.ship_m) : std::string(),
+                  d.fixed, d.frames, d.wrote ? "was moved" : "would have been moved", d.total_fix, d.max_fix, end);
     }
     if (!g_own_dump_ready.load(std::memory_order_acquire)) return;
     const size_t n = std::min(g_own_dump_n, kOwnRing), ev = std::min(g_own_dump_event, n ? n - 1 : 0);
@@ -953,7 +876,8 @@ void own_trace_flush() {
                     if (f.fix[0] != 0 || f.fix[1] != 0) {
                         const double moved[3] = {f.request[0] + f.fix[0], f.request[1], f.request[2] + f.fix[1]};
                         vfl::to_local(f.hull, moved, r);
-                        where += std::format(", moved {:.2f} m to ({:.2f}, {:.2f}, {:.2f})",
+                        where += std::format(", {} {:.2f} m to ({:.2f}, {:.2f}, {:.2f})",
+                                             f.wrote ? "moved" : "not moved; it lacked",
                                              std::hypot(f.fix[0], f.fix[1]), r[0], r[1], r[2]);
                     }
                 }
@@ -973,8 +897,8 @@ void own_trace_flush() {
                     const OwnFrame& p = g_own_dump[i - 1];
                     if (f.capsule_ok && p.request_ok)
                         where += std::format(" | physics {:.2f} m from the request before",
-                                             std::hypot(f.capsule[0] - (p.request[0] + p.fix[0]),
-                                                        f.capsule[2] - (p.request[2] + p.fix[1])));
+                                             std::hypot(f.capsule[0] - (p.request[0] + (p.wrote ? p.fix[0] : 0.0)),
+                                                        f.capsule[2] - (p.request[2] + (p.wrote ? p.fix[1] : 0.0))));
                 }
             } else {
                 where = " | the ship's pose could not be read";
@@ -1987,8 +1911,9 @@ DWORD WINAPI worker(LPVOID) {
                     if (const uint64_t m = v.far_measured.load()) {
                         total += m;
                         line += std::format(" | 0x{:08X} left to the game (far requests only, {} of {} with the other "
-                                            "mod's samples fresh): the game's pose {:.1f} m from the other mod's on "
-                                            "average, {:.1f} m now, {:.1f} m at most",
+                                            "mod's samples fresh): the game's pose {:.1f} m from where the other mod "
+                                            "has it now on average (the game's own delay included), {:.1f} m now, "
+                                            "{:.1f} m at most",
                                             v.key.load(), m, v.far_only.load(), v.far_err_sum_cm.load() / 100.0 / m,
                                             v.far_err_last_cm.load() / 100.0, v.far_err_max_cm.load() / 100.0);
                     }
@@ -2062,10 +1987,12 @@ DWORD WINAPI worker(LPVOID) {
             }
             if (const uint64_t air = g_air_times.load()) {
                 total += air + g_air_fixed_frames.load();
+                const auto air_mode = static_cast<gil::Mode>(g_air_mode.load());
                 line += std::format(" | this client's own character in the air off another player's ship {} time(s), "
-                                    "down on it again {} (passenger_air_follow={}: {} requests moved, {:.2f} m at most)",
-                                    air, g_air_landed.load(), gil::mode_name(static_cast<gil::Mode>(g_air_mode.load())),
-                                    g_air_fixed_frames.load(), g_air_max_fix_cm.load() / 100.0);
+                                    "down on a part again {} (passenger_air_follow={}: {} requests {}, {:.2f} m at most)",
+                                    air, g_air_landed.load(), gil::mode_name(air_mode), g_air_fixed_frames.load(),
+                                    air_mode == gil::Mode::On ? "moved" : "that lacked something, none moved",
+                                    g_air_max_fix_cm.load() / 100.0);
             }
             if (total == last_total && line.empty()) continue;
             last_total = total;
@@ -2439,7 +2366,8 @@ void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms
         if (*air != gil::Mode::Off)
             log::info("VehicleFollow: passenger_air_follow={}: while this client's own character is in the air after "
                       "leaving a part of another player's ship, its position requests {} by what the game's carry "
-                      "lacked (for {:.1f} s at most, never down at the water, never for a ship slower than {:.0f} m/s)",
+                      "lacked (for {:.1f} s at most, never down at the water or standing on firm ground, never for a "
+                      "ship slower than {:.0f} m/s)",
                       gil::mode_name(*air),
                       *air == gil::Mode::On ? "are moved" : "are only worked out", vfl::kAirMaxS, vfl::kAirMinSpeed);
     }
