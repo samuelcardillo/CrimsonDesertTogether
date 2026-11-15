@@ -542,6 +542,26 @@ void test_air_keep_up() {
         CHECK(near(std::hypot(fix[0], fix[1]), 9.0, 0.01));
         CHECK(near(std::hypot(asked[0] + fix[0] - want.x, asked[2] + fix[1] - want.z), 1.5, 0.02));
     }
+    // A ship that drifts at half a metre a second (0.5 m in a second): not kept up with (the character may be walking
+    // on the quay it stepped onto); at 2 m/s it is.
+    {
+        const Pose was = attach(then, spot_f, unit);
+        const double asked[3] = {was.x, was.y, was.z};
+        double fix[2];
+        Pose drift = then;
+        drift.x += bow[0] * 0.5;
+        drift.z += bow[2] * 0.5;
+        CHECK(!air_keep_up(then, drift, spot, still, 1.0, asked, fix));
+        Pose slow = then;
+        slow.x += bow[0] * 2.0;
+        slow.z += bow[2] * 2.0;
+        CHECK(air_keep_up(then, slow, spot, still, 1.0, asked, fix) && near(std::hypot(fix[0], fix[1]), 2.0, 0.01));
+    }
+    // Over: too long in the air, or down at the water (the lowest deck is at 1.8 in the ship's frame, the swimmer at
+    // the foot of the ladder at -0.58).
+    CHECK(!air_over(0.0, 1.87) && !air_over(kAirMaxS, 3.14) && air_over(kAirMaxS + 0.01, 3.14));
+    CHECK(air_over(0.3, -0.58) && air_over(0.3, 0.19) && !air_over(0.3, 0.21));
+    CHECK(air_over(-1.0, 3.0) && air_over(0.3, std::numeric_limits<double>::quiet_NaN()));
     // The speed over the deck at take-off.
     {
         const double a[3] = {0, 3, 5.0}, b[3] = {0.1, 3, 4.7};

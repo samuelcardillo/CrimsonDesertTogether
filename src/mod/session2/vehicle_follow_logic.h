@@ -419,8 +419,14 @@ inline void to_local(const Pose& p, const double world[3], double out[3]) {
     rotate(inv, v, out);
 }
 
-inline constexpr double kAirMaxS = 2.0;        // a longer flight is not a hop on the deck: the game's own
+inline constexpr double kAirMaxS = 1.5;        // a longer flight is not a hop on the deck: the game's own
 inline constexpr double kAirMinTravelM = 0.05; // the ship stands still: nothing to keep up with
+// A ship slower than this (at its mooring it bobs a few centimetres a frame; adrift) is not kept up with: without a
+// parent the character may as well be WALKING on the quay it stepped onto, and must not be pulled after the ship.
+inline constexpr double kAirMinSpeed = 1.0;    // m/s
+// Lower than this in the ship's frame the character is at the water (the swimmer at the foot of the ladder is at
+// -0.58, the lowest deck at 1.8: the records of 15-nov): it went overboard, and the game has it from there.
+inline constexpr double kAirWaterlineY = 0.2;
 inline constexpr double kAirMinFixM = 0.03;
 inline constexpr double kAirMaxRelSpeed = 9.0; // m/s over the deck at take-off (a run and a jump)
 
@@ -441,11 +447,17 @@ inline void air_rel_speed(const double local_a[3], uint64_t ms_a, const double l
     out[1] = vz;
 }
 
+// The time in the air is over for this module: too long, or down at the water (`asked_y`: the request's height in
+// the ship's frame).
+inline bool air_over(double t_s, double asked_y) {
+    return !(t_s >= 0) || t_s > kAirMaxS || !(asked_y >= kAirWaterlineY);
+}
+
 // How far (world x and z) the request `asked` has to move. `hull_then` / `local_then`: the ship's pose and the
 // character's place in its frame at its last request on the part; `rel`: its speed over the deck then; `t_s`: seconds
 // since; `hull_now`: the ship's pose now. Only along the way the take-off spot has travelled with the ship, and never
 // further than that way is long: a move of its own (the top of a ladder, a dash, a glide) is left alone, and so is
-// everything on a ship that stands still. False: nothing to move.
+// everything on a ship that stands still or goes slower than kAirMinSpeed. False: nothing to move.
 inline bool air_keep_up(const Pose& hull_then, const Pose& hull_now, const double local_then[3], const double rel[2],
                         double t_s, const double asked[3], double out[2]) {
     out[0] = out[1] = 0;
@@ -455,7 +467,7 @@ inline bool air_keep_up(const Pose& hull_then, const Pose& hull_now, const doubl
     const float unit[4] = {0, 0, 0, 1};
     const Pose then = attach(hull_then, spot, unit), now = attach(hull_now, spot, unit);
     const double dx = now.x - then.x, dz = now.z - then.z, travel = std::hypot(dx, dz);
-    if (!std::isfinite(travel) || travel < kAirMinTravelM) return false;
+    if (!std::isfinite(travel) || travel < std::max(kAirMinTravelM, kAirMinSpeed * t_s)) return false;
     // Where it would be: the spot moved on by its own speed over the deck, at the height the game gives it.
     double asked_local[3];
     to_local(hull_now, asked, asked_local);

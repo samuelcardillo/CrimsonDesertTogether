@@ -616,8 +616,9 @@ bool network_pose(uintptr_t ts, vfl::Pose* p) noexcept {
 // the world and the ship leaves from under it (the guest in the water, 08:24:52).
 //  - passenger_air_follow = 1: while the own character is in the air after leaving a part of a ship that another
 //    player's mod places here, its own position request (once a frame, position_mid) is moved along the way its
-//    take-off spot has travelled with the ship (vfl::air_keep_up), until it stands on a part again or
-//    vfl::kAirMaxS have passed. `probe` works it out and counts, and writes nothing.
+//    take-off spot has travelled with the ship (vfl::air_keep_up), until it stands on a part again, is down at
+//    the water or vfl::kAirMaxS have passed; not for a ship slower than vfl::kAirMinSpeed (without a parent it may
+//    be walking on the quay it stepped onto). `probe` works it out and counts, and writes nothing.
 //  - a record: the last kOwnRing own requests around the frame in which the game took it off the part (when, its
 //    parent, the request, its physics position and the ship's pose), handed to the worker, which logs them
 //    (kOwnMaxDumps times a session), and one line for each time in the air.
@@ -827,7 +828,9 @@ void own_frame(safetyhook::Context& ctx) noexcept {
         }
         if (t.air) {
             const double secs = (f.ms - t.air_ms) / 1000.0;
-            if (parent || !f.hull_ok || !f.request_ok || secs > vfl::kAirMaxS) {
+            double asked_local[3] = {0, 0, 0};
+            if (f.hull_ok && f.request_ok) vfl::to_local(f.hull, f.request, asked_local);
+            if (parent || !f.hull_ok || !f.request_ok || vfl::air_over(secs, asked_local[1])) {
                 own_air_end(t, 0, &f);
             } else {
                 ++t.done.frames;
@@ -2367,8 +2370,9 @@ void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms
         if (*air != gil::Mode::Off)
             log::info("VehicleFollow: passenger_air_follow={}: while this client's own character is in the air after "
                       "leaving a part of another player's ship, its position requests {} along the ship's way (for "
-                      "{:.0f} s at most)", gil::mode_name(*air),
-                      *air == gil::Mode::On ? "are moved" : "are only worked out", vfl::kAirMaxS);
+                      "{:.1f} s at most, never down at the water, never for a ship slower than {:.0f} m/s)",
+                      gil::mode_name(*air),
+                      *air == gil::Mode::On ? "are moved" : "are only worked out", vfl::kAirMaxS, vfl::kAirMinSpeed);
     }
     log::info("VehicleFollow ON ({}, vehicle_follow={}, delay {} ms): hooked once a ship of another user is found",
               guest ? "guest" : "host", gil::mode_name(*m), g_delay_ms.load());
