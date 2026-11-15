@@ -27,3 +27,5 @@ tools/porting/livetest/shops/
 tools/porting/livetest/pids.txt
 tools/porting/livetest/launchX.txt
 tools/porting/livetest/joinV.txt
+tools/porting/livetest/launchM.txt
+tools/porting/livetest/joinM.txt

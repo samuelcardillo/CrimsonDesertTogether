@@ -108,6 +108,9 @@ Las capturas `.bin` de `bin64` guardan los paquetes ENTEROS con los códigos NAT
   la velocidad del barco y la posición local de cada personaje propio, con lo que se ha movido desde el principio.
   El 15-nov el invitado resbaló 5,3 m hacia popa en minuto y medio a 5,5–7,3 m/s con su copia detrás (y se cayó a
   18 m/s); a 0,5–3,3 m/s no se movió.
+- `mvts.py captura.bin clave[,clave] t0 t1 [max]`: lo mismo con el `ts` de cada paquete (+212) y lo que dista del
+  anterior del mismo actor, para ver el orden de dos corrientes sobre un actor (una montura cabalgada: sus paquetes
+  propios, uno por segundo, y los que `horse_follow` fabrica a partir de los del jinete). 16-nov.
 - `movedump.py captura.bin clave[-clave] [t0 t1] [max]`: los `MoveActorAck` de un actor, descifrados (padre, posición
   local, posición del mundo). Los de la tripulación llegan al invitado EN BLANCO (identidad, sin padre), uno por
   segundo.

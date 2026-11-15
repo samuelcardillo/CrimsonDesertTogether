@@ -435,7 +435,13 @@ inline constexpr size_t kGeoNotLinked = 0, kGeoLinked = 1, kGeoSeated = 2, kGeoL
 // [[CC+0x100]+8] (see "seat the remote rider" below). [V Ghidra/capstone, S22] 9 is "not attached": the info reset
 // 0x9E990E0 (thunk 0xA65170) starts `mov byte [rcx],9`, the CC constructor 0x85CB00 builds it that way and every detach
 // (0xA65960, 0xA6A120) writes it back; 0xA651E0 skips the hierarchy parent for 9. Type 0 is never written.
-inline constexpr uint8_t kAttachNone = 9, kAttachSeat = 4;
+// That 9 is build 2976's. From 3527 on "not attached" is 12 (every native seat in the logs since 2026-11-05 reads
+// "attach type 12 -> 4"; on 3663 a character without a parent has 12 in its hierarchy type too and 0 standing on a
+// ship's part): with 9 the judge below refused every seat as "attached some other way", so from the 3527 port until
+// 2026-11-16 a remote rider was never seated (linked only: placed by its own samples beside the mount's, and drawn at
+// the world origin for most of a second when it mounted). The seat is still 4. SeatState::none_type carries the
+// running build's value (mount_sync.cpp attach_none()).
+inline constexpr uint8_t kAttachNone = 9, kAttachNone3527 = 12, kAttachSeat = 4;
 inline size_t geo_link(bool linked, uint8_t attach_type) {
     return attach_type == kAttachSeat ? kGeoSeated : linked ? kGeoLinked : kGeoNotLinked;
 }
@@ -1249,6 +1255,7 @@ struct SeatState {
     bool has_mc = false;         // CC+0xC8 (its movement controller)
     bool has_cc100 = false;      // [CC+0x100] (the attach struct) and its +8 readable
     uint8_t attach_type = 0xFF;  // [[CC+0x100]+8] (0xFF unreadable)
+    uint8_t none_type = kAttachNone;  // what "not attached" reads on the running build (9 on 2976, 12 from 3527 on)
     bool has_parent = false;     // [[actor+0x68]+0x1B8] and its +0x1C readable
     uint32_t parent_key = 0;     // [[[actor+0x68]+0x1B8]+0x1C]
     uint8_t cc228 = 0xFF;        // CC+0x228: 1 once CC vf19 (0x85E2B0) ran (component initialised); vf42 detaches only then
@@ -1336,7 +1343,7 @@ inline SeatJudge seat_judge(Mode m, const PairState& p, const SeatState& s, uint
     if (!s.has_cc || !s.has_mc) return {SeatVerdict::Refused, SeatWhy::NoMc};
     if (!s.has_cc100 || s.attach_type == 0xFF) return {SeatVerdict::Refused, SeatWhy::NoAttach};
     if (s.attach_type == kAttachSeat && s.has_parent && s.parent_key == horse) return {SeatVerdict::AlreadySeated, SeatWhy::None};
-    if (s.attach_type != kAttachNone) return {SeatVerdict::Refused, SeatWhy::AttachBusy};
+    if (s.attach_type != s.none_type) return {SeatVerdict::Refused, SeatWhy::AttachBusy};
     if (!s.has_parent || s.parent_key != 0) return {SeatVerdict::Refused, SeatWhy::ParentSet};
     if (s.cc228 != 1) return {SeatVerdict::Refused, SeatWhy::NotInit};
     // S22: the remote player's character reads +0x94 = 1 (both PCs); what counts is its vf178's answer.

@@ -57,7 +57,7 @@ on an older version were ported to 3663 but not all were tried again.
 | Joining the host's world; leaving to the title and joining again | Played | 3663 |
 | Seeing each other and moving, smoothed against network hiccups | Played | 3663 |
 | Climbing: each player sees the other climb | Played | 3527 |
-| Mounts: calling, riding and dismounting, both players | Played | 3549 |
+| Mounts: calling, riding and dismounting, both players | Played | 3663 (the host riding, as the guest sees it), 3549 (the guest riding) |
 | Fighting: the guest hurts and kills enemies, enemies can kill the guest, dying and reviving | Played | 3663 (hits, being killed, reviving), 3527 (a kill by the guest) |
 | Same time of day; the guest shows the host's weather | Played | 3663 (weather) |
 | Shopkeepers (buy, sell) and market stalls, with the guest's own money and inventory | Played | 3663 |

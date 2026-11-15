@@ -385,7 +385,9 @@ void on_delay_read(safetyhook::Context& c) noexcept {
                 }
             }
             const uint32_t dh = rip::from_fix(slot->d_fix.load(std::memory_order_relaxed));
-            g_pair_diff.add(dh > gd ? dh - gd : gd - dh);
+            // Against the delay the rider really has (the players' own with remote_interp_players=1; until 2026-11-16
+            // this compared with the game's 200 ms and the line said "D rider 200 ms" whatever the rider had).
+            g_pair_diff.add(dh > pair_delay ? dh - pair_delay : pair_delay - dh);
             g_pair_last_horse.store(r.key, std::memory_order_relaxed);
             g_pair_last_d.store(dh, std::memory_order_relaxed);
         }
@@ -641,7 +643,9 @@ std::string pairs_text() {
             d = std::format("D horse {} ms (gaps {}/{}/{})", rip::from_fix(s.d_fix.load(std::memory_order_relaxed)),
                             g[0], g[1], g[2]);
         });
-        live += std::format("{}0x{:08X} on 0x{:08X}: D rider {} ms, {}", live.empty() ? "" : "; ", rider, horse, gd, d);
+        const uint32_t pd = g_player_delay.load(std::memory_order_relaxed);
+        const uint32_t rider_d = static_cast<Mode>(g_players.load(std::memory_order_relaxed)) == Mode::On && pd ? pd : gd;
+        live += std::format("{}0x{:08X} on 0x{:08X}: D rider {} ms, {}", live.empty() ? "" : "; ", rider, horse, rider_d, d);
     });
     return std::format("RemoteInterp summary pairs (remote_interp_pair=1): riding now [{}] | began {} ended {} | paired "
                        "horse frames {} (rider's delay taken {}, own target kept: its samples not dense enough {}; D "

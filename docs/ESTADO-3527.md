@@ -2,6 +2,16 @@
 
 **13-nov-2026, ~19:28: Steam actualizó el juego a 1.0.0.3663 (PE `0x6AF5D198`). Portado esa misma noche (estático, por módulos) y probado en vivo en dos copias: la unión y la despedida con vuelta FUNCIONAN, 0 errores; el resto sin volver a probar. Kit `dist/cdmp-coop-20261113-3663-v22.zip`. Detalle: `docs/research/port-3663.md`. Lo de abajo es de 3527/3549/3576.**
 
+**16-nov-2026 (madrugada, 3663, dos copias): MONTURAS.** Primera vez que se monta en 3663 (un Wyvern). El jinete
+del otro jugador no se sentaba en su montura desde el port a 3527 (el «sin enganche» del juego pasó de 9 a 12 y
+`mount_seat` rechazaba todos los asientos): parpadeaba al montar (0,8 s dibujado hacia el origen del mundo), iba a
+1–2 m de la silla al galope y dejaba atrás a la montura cuando estaba lejos. Arreglado y **visto en vivo** con el
+anfitrión montando: sentado, sin parpadeo, a 0,15–0,37 m de la silla (como en su propia copia), desmontar bien, `ERR`
+0. En `main`, sin release. Sin ver: el invitado montando con el anfitrión mirando. Y un fallo por explicar: el
+anfitrión murió de una caída al desmontar en una ladera y no salió la pantalla de muerte. Además, la nota de qué
+haría falta para más de un invitado: `docs/research/varios-invitados.md`. Detalle: `docs/research/port-3663.md`,
+«Monturas en 3663».
+
 **15-nov-2026 (madrugada, 3663, dos copias en este PC, cinco sesiones sin nadie al teclado): lo que la `b2` llevaba
 sin jugar FUNCIONA** (las barcas de la IA seguidas y las poses de vehículos de mod a mod: `ERR` 0, ningún volcado), y
 hay código nuevo en `main`, **sin release** (la release se pide): cada pose de vehículo va con su hora

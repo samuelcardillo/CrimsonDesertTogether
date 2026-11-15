@@ -829,6 +829,17 @@ void test_seat_judge() {
     CHECK(kAttachNone == 9 && judged(seat_judge(Mode::On, p, s, kHHorse, 0, kHRider, kGRider), SeatVerdict::Apply));
     s.attach_type = 0;
     CHECK(judged(seat_judge(Mode::On, p, s, kHHorse, 0, kHRider, kGRider), SeatVerdict::Refused, SeatWhy::AttachBusy));
+    // From 3527 on "none" is 12 (the running build's value comes in the state): with 9 expected, every remote rider
+    // of 3527..3663 was refused as busy and never seated. 2976's 9 is then an attachment like any other.
+    s = free_rider();
+    s.none_type = kAttachNone3527;
+    CHECK(judged(seat_judge(Mode::On, p, s, kHHorse, 0, kHRider, kGRider), SeatVerdict::Refused, SeatWhy::AttachBusy));
+    s.attach_type = kAttachNone3527;
+    CHECK(kAttachNone3527 == 12 &&
+          judged(seat_judge(Mode::On, p, s, kHHorse, 0, kHRider, kGRider), SeatVerdict::Apply));
+    s.attach_type = kAttachSeat;
+    s.parent_key = kHHorse;
+    CHECK(judged(seat_judge(Mode::On, p, s, kHHorse, 0, kHRider, kGRider), SeatVerdict::AlreadySeated));
     s = free_rider();
     s.parent_key = kGHorse;
     CHECK(judged(seat_judge(Mode::On, p, s, kHHorse, 0, kHRider, kGRider), SeatVerdict::Refused, SeatWhy::ParentSet));

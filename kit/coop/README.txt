@@ -13,8 +13,9 @@ shop, bought a Water with its own money, sold it back and left) and MARKET STALL
 and a Rosemary from two stalls, holding E), with no error. FIGHTING was checked on 3663 on 15 November: the guest's
 hits take the same health off an enemy on both screens, enemies hurt and kill both players, the death screen comes
 up, and both revive at the checkpoint (HOLD U: a tap does nothing). Not seen again on 3663: the guest finishing an
-enemy off, and loot. Not tried on 3663 yet: mounts; please tell
-us if something that worked before no longer does. Looks only: next to the host's house the guest's ground looked
+enemy off, and loot. MOUNTS were tried on 3663 on 16 November (the host calling, riding and dismounting a Wyvern
+while the guest watched; see "NEW on 16 November" below); the guest riding while the host watches was not seen on
+3663 yet. Please tell us if something that worked before no longer does. Looks only: next to the host's house the guest's ground looked
 wet (puddles) while the host's was dry. And the guest always shows the HOST's weather and daylight as the host's own
 camera has them: while the host is outdoors, a room the guest walks into is lit like the outdoors (a blue tint), and
 while the host is inside a building the guest's sky may look dimmer. It matches again when you are in the same place.
@@ -107,6 +108,14 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
     runs at very few frames a second), the game stopped carrying it with the ship and it could end in the water
     behind. The mod now keeps it moving with the ship until it lands. If anything looks wrong when you jump on a
     moving ship, turn it off: [session2] passenger_air_follow=0 in cdmp.ini.
+  NEW on 16 November (in the code, not in a release yet when this was written):
+  * The other player on a mount. Since the game moved past version 2976 the other player was never really seated on
+    their mount on your screen. You saw them vanish for most of a second when they mounted, sit a metre or two off
+    the saddle at a gallop, and leave the mount behind when they rode far away. They are seated again. Measured with
+    the host on a Wyvern at 10 m/s: the rider within 0.4 m of the saddle on the guest's screen (the same as on the
+    rider's own), no vanishing, and dismounting works.
+    Still there: a mount more than about 100 m away moves in small jumps, rider and all. That is how often the game
+    itself updates distant creatures.
   BOTH PCs need the same kit, as always (the panel says so when they differ). A PC with an older kit still
   connects, but sails, crew, lanterns and other ships stay as they were for it.
   Not covered yet: the guest's own ship as the host sees it (not tested). Carts and other AI vehicles on land can

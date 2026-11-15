@@ -82,6 +82,15 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   (`boat/tagmon.py`), los demás barcos en las dos copias (`boat/vehwatch.py`) y lo que dice el seguidor del invitado.
   `smooth2.sh` mete la segunda marcha con el anfitrión delante y mide con el invitado delante (ver «la copia de
   detrás va lenta», abajo). `reboard.sh pid`: sube a un personaje que se ha quedado en el agua o en el muelle.
+- `mountsession.sh [etapa] [H G]` (16-nov): de cero a «los dos en la loma del nexo de Vellua, la montura del
+  anfitrión llamada y él a su lado» (~12 min; etapas `launch`, `join`, `travel`, `call`). `mounttest.sh H G`: monta
+  (E), cuatro tramos de 5,5 s al galope a menos de 50 m del invitado, uno de 12 s alejándose y desmonta (R), midiendo
+  todo el rato; al final, lo que dijo el mod del invitado (transacción, asiento) y los `ERR`. Ojo: el tramo largo
+  acaba en una ladera; al desmontar ahí el anfitrión cayó y murió (ver `port-3663.md`, «Monturas en 3663»).
+  `mountmon.py dueño observador segundos [csv]`: a qué retardo dibuja el observador al personaje y a la montura del
+  otro, cuánto se sale de su camino, si la reproducción va a tirones, y a cuánto de la silla está el jinete
+  (`--csv fichero` repite el informe). `interpmon.py pid clave segundos [fichero]`: el búfer de interpolación de un
+  actor remoto (muestras, sellos de tiempo) y su posición dibujada, con las veces que se queda quieto y salta.
 - `shopsession.sh`: de cero a «el invitado compra una Water a Delkin y un saco en el puesto de al lado» (Hernand,
   ~25 min): lanzar, anfitrión al nexo de Hernand y a la calle de las tiendas, unir al invitado, llevarlo al
   mostrador, R, comprar, salir, y E mantenida en el puesto. No vende nada (vender exige mirar antes la pantalla).

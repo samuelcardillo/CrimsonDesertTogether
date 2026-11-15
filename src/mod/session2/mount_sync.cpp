@@ -515,6 +515,11 @@ uint8_t actor_type(uintptr_t actor) noexcept {
     const uintptr_t t = actor ? rdp(actor + kActorTypeTab) : 0;
     return t ? rdv<uint8_t>(t + 1, 0xFF) : 0xFF;
 }
+// "Not attached" in [[CC+0x100]+8] on the running build (mount_sync_logic.h kAttachNone).
+uint8_t attach_none() noexcept {
+    static const uint8_t v = game::current_build() == game::Build::v2976 ? msl::kAttachNone : msl::kAttachNone3527;
+    return v;
+}
 uint8_t attach_type_of(uintptr_t actor) noexcept {
     const uintptr_t cc = cc_of(actor);
     const uintptr_t at = cc ? rdp(cc + kCcAttach) : 0;
@@ -523,6 +528,7 @@ uint8_t attach_type_of(uintptr_t actor) noexcept {
 uint32_t rva_of(uintptr_t va);
 msl::SeatState read_seat(uintptr_t rider, uintptr_t horse) noexcept {
     msl::SeatState s;
+    s.none_type = attach_none();
     const uintptr_t comps = rider ? rdp(rider + kActorComps) : 0;
     const uintptr_t cc = comps ? rdp(comps + kCompsCC) : 0;
     s.has_cc = cc != 0;
@@ -995,7 +1001,7 @@ uint64_t enter_common(SafetyHookInline& h, bool off_method, uintptr_t m, uint64_
     // origin) unless vf54 seated the rider first (0xA651E0 writes its current transform): an unseated remote rider
     // here is the mount blink.
     e.v[9] = attach_type_of(actor);
-    if (!off_method && key == remote && e.v[9] == msl::kAttachNone && seat_mode() == Mode::On) {
+    if (!off_method && key == remote && e.v[9] == attach_none() && seat_mode() == Mode::On) {
         c_enter_unseated.fetch_add(1, std::memory_order_relaxed);
     }
     diag(kEnter, e);
@@ -1912,7 +1918,7 @@ std::string line_of(const p8p::Event& e) {
                                v[4] == 1 ? "remote player" : v[4] == 2 ? "local player" : "other", v[1],
                                link_text(v[2] | (v[3] << 32)), v[7], v[5] >> 32, v[5] & 0xFFFFFFFF, v[6],
                                phase_text(v[8]), v[9],
-                               !e.flags && v[4] == 1 && v[9] == msl::kAttachNone
+                               !e.flags && v[4] == 1 && v[9] == attach_none()
                                    ? " | NOT SEATED: its warp starts at the world origin (the mount blink)"
                                    : "");
         case kInter:
