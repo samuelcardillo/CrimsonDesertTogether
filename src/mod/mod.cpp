@@ -1271,7 +1271,8 @@ DWORD WINAPI worker(LPVOID) {
                 session2::shop_ui_trace_start(cfg.s2_shop_ui_trace, /*guest=*/true);
                 session2::guest_shop_window_start(cfg.s2_guest_shop_window, /*guest=*/true);
                 // 13-nov (vehicle_follow.h): the host's ship drawn where the host has it. Nothing with 0.
-                session2::vehicle_follow_start(cfg.s2_vehicle_follow, /*guest=*/true, cfg.s2_vehicle_follow_delay_ms);
+                session2::vehicle_follow_start(cfg.s2_vehicle_follow, /*guest=*/true, cfg.s2_vehicle_follow_delay_ms,
+                                               cfg.s2_passenger_air_follow);
             }
             session2 = false;  // nothing of the host's side on the guest's PC
         }
@@ -1311,7 +1312,8 @@ DWORD WINAPI worker(LPVOID) {
             session2::store_gate_start(cfg.s2_store_gate, /*guest=*/false);
             session2::shop_ui_trace_start(cfg.s2_shop_ui_trace, /*guest=*/false);
             // 13-nov (vehicle_follow.h): user 2's ships drawn where user 2 has them. Nothing with 0.
-            session2::vehicle_follow_start(cfg.s2_vehicle_follow, /*guest=*/false, cfg.s2_vehicle_follow_delay_ms);
+            session2::vehicle_follow_start(cfg.s2_vehicle_follow, /*guest=*/false, cfg.s2_vehicle_follow_delay_ms,
+                                           cfg.s2_passenger_air_follow);
         }
         // The same read-only schedule self-check on the host (its client is the reference: p8-impl-horarios.md §8).
         if (session2) session2::schedule_selfcheck_start(cfg.s2_schedule_load_selfcheck, /*host=*/true);

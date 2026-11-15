@@ -89,7 +89,9 @@
 namespace cdmp::session2 {
 
 // delay_ms: [session2] vehicle_follow_delay_ms (default 300; 0..3000).
-void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms);
+// `air_mode`: [session2] passenger_air_follow = 0 | probe | 1 (3663 only): this client's own character, in the air
+// after leaving a part of another player's ship, keeps up with the ship (vehicle_follow_logic.h, air_keep_up).
+void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms, const std::string& air_mode);
 // Guest: every packet of the host before the client gets it (the mod's network thread). Keeps the controller's last
 // local position of the watched ship parts (MoveActorAck, logical 2697); nothing else. Off or no part watched: nothing.
 void vehicle_follow_on_in(uint16_t opcode, std::span<const uint8_t> payload) noexcept;

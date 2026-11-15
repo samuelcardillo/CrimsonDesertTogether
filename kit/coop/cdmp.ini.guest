@@ -58,6 +58,10 @@ interact_gate_types=3,4,7
 ; it 3 m above the deck), and the host standing on the ship (at the wheel) is drawn on this game's copy of the ship.
 ; probe = measure only; 0 = off.
 vehicle_follow=1
+; SHIPS, a passenger in the air (3663): when this player's character leaves the deck of the host's ship for a moment
+; (a jump, a step down, a hop when the ship moves a lot between two frames), it keeps moving with the ship until
+; it lands, instead of being left behind in the water. probe = measure only; 0 = off (the game's own).
+passenger_air_follow=1
 ; SHIPS, the sails (session2/gimmick_relay.h; checked live on 14 November): this copy of the host's sail follows the
 ; changes the host's mod sends. 0 = the sails stay furled here.
 gimmick_take=1

@@ -744,6 +744,10 @@ struct Config {
     // it (build 3576). Either PC.
     std::string s2_vehicle_follow = "0";
     uint32_t s2_vehicle_follow_delay_ms = 300;
+    // [session2] passenger_air_follow = 0 | probe | 1 (vehicle_follow.h, build 3663): this client's own character, in the
+    // air after leaving a part of another player's ship (a jump, a hop when the deck moves a lot between two frames),
+    // keeps up with the ship until it stands on a part again. Either PC; needs vehicle_follow.
+    std::string s2_passenger_air_follow = "0";
     // [session2] store_gate = 0 | probe | 1 (store_gate.h), both roles: the guest's buy/sell passes the shop-scene test.
     std::string s2_store_gate = "0";
     // [session2] guest_shop_branch = 0 | 1 (guest_shop_branch.h), guest: the shopkeepers' window on the guest.

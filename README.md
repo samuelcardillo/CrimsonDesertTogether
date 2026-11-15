@@ -83,9 +83,13 @@ on an older version were ported to 3663 but not all were tried again.
 - On ships: boarding a ship that is already under way is not checked; the guest's own ship as the host sees it
   is not tested. Carts and other AI vehicles on land are not followed: the guest can see them a few metres from
   where the host has them.
+- A passenger who leaves the deck of the other player's moving ship for a moment (a jump, a step down) was left
+  behind by the game and could end in the water. The mod now keeps it moving with the ship until it lands
+  (`passenger_air_follow`); this is in the release but **has not been played yet**. If it misbehaves, set
+  `passenger_air_follow=0` under `[session2]` in `cdmp.ini`.
 - Two copies of the game on one PC (how the mod is developed): the copy whose window is behind draws a handful
-  of frames a second and its world runs slowly. Ships look less smooth from it, and a passenger in it drops off
-  the ship at full sail (the game lets go of a character whose deck moves several metres in one frame).
+  of frames a second. Ships look less smooth from it, and the deck moves so far between two frames that a
+  passenger standing still gets bounced off it now and then (the case above).
 - Loot from enemies killed by the guest is not tested.
 
 Each feature can be switched off in `cdmp.ini`; the kit's README says which setting does what.

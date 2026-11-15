@@ -7,6 +7,7 @@
 // vehicle_follow replaces that request's pose with one built from those network samples (interpolated, extrapolated
 // past the newest for up to a second), so the ship and everything attached to it is drawn where the controller has it.
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -399,6 +400,75 @@ inline void to_sector(double world, int16_t hint, float* local, int16_t* sector)
     const int s = static_cast<int>(world / 1000.0);
     *sector = static_cast<int16_t>(s);
     *local = static_cast<float>(world - s * 1000.0);
+}
+
+// ---------------------------------------------------------------- a passenger in the air keeps up with the ship
+// Live, 2026-11-15 (3663, the user's own sail, the guest's copy behind at 5-7 frames a second, ship at 16-18 m/s): a
+// character that stands on a deck part stays on its spot frame after frame, but in the frames in which the game has
+// taken it off the part (a hop when the deck moves a lot between two frames, a step off a platform, a jump) the game
+// no longer carries it with the ship: at 08:24:52 the guest's character stayed where it was in the world while the
+// ship moved 2-3 m a frame, and was off the stern 1.1 s later. So, for the client's OWN character, while it is in the
+// air after leaving a part of a ship that another player's mod places here: its position request is moved, along the
+// way its take-off spot has travelled with the ship since, to where it would be had it kept its speed over the deck.
+
+// A world position in the frame of `p` (the inverse of attach's position).
+inline void to_local(const Pose& p, const double world[3], double out[3]) {
+    const float inv[4] = {-p.q[0], -p.q[1], -p.q[2], p.q[3]};
+    const float v[3] = {static_cast<float>(world[0] - p.x), static_cast<float>(world[1] - p.y),
+                        static_cast<float>(world[2] - p.z)};
+    rotate(inv, v, out);
+}
+
+inline constexpr double kAirMaxS = 2.0;        // a longer flight is not a hop on the deck: the game's own
+inline constexpr double kAirMinTravelM = 0.05; // the ship stands still: nothing to keep up with
+inline constexpr double kAirMinFixM = 0.03;
+inline constexpr double kAirMaxRelSpeed = 9.0; // m/s over the deck at take-off (a run and a jump)
+
+// The character's speed over the deck at take-off, from its last two requests on the part (the ship's frame, m/s; x
+// and z only). Nothing when the two are not 5-400 ms apart; capped at kAirMaxRelSpeed.
+inline void air_rel_speed(const double local_a[3], uint64_t ms_a, const double local_b[3], uint64_t ms_b, double out[2]) {
+    out[0] = out[1] = 0;
+    if (ms_b <= ms_a || ms_b - ms_a < 5 || ms_b - ms_a > 400) return;
+    const double dt = static_cast<double>(ms_b - ms_a) / 1000.0;
+    double vx = (local_b[0] - local_a[0]) / dt, vz = (local_b[2] - local_a[2]) / dt;
+    const double v = std::hypot(vx, vz);
+    if (!std::isfinite(v)) return;
+    if (v > kAirMaxRelSpeed) {
+        vx *= kAirMaxRelSpeed / v;
+        vz *= kAirMaxRelSpeed / v;
+    }
+    out[0] = vx;
+    out[1] = vz;
+}
+
+// How far (world x and z) the request `asked` has to move. `hull_then` / `local_then`: the ship's pose and the
+// character's place in its frame at its last request on the part; `rel`: its speed over the deck then; `t_s`: seconds
+// since; `hull_now`: the ship's pose now. Only along the way the take-off spot has travelled with the ship, and never
+// further than that way is long: a move of its own (the top of a ladder, a dash, a glide) is left alone, and so is
+// everything on a ship that stands still. False: nothing to move.
+inline bool air_keep_up(const Pose& hull_then, const Pose& hull_now, const double local_then[3], const double rel[2],
+                        double t_s, const double asked[3], double out[2]) {
+    out[0] = out[1] = 0;
+    if (!(t_s >= 0) || t_s > kAirMaxS || !finite_pose(hull_then) || !finite_pose(hull_now)) return false;
+    const float spot[3] = {static_cast<float>(local_then[0]), static_cast<float>(local_then[1]),
+                           static_cast<float>(local_then[2])};
+    const float unit[4] = {0, 0, 0, 1};
+    const Pose then = attach(hull_then, spot, unit), now = attach(hull_now, spot, unit);
+    const double dx = now.x - then.x, dz = now.z - then.z, travel = std::hypot(dx, dz);
+    if (!std::isfinite(travel) || travel < kAirMinTravelM) return false;
+    // Where it would be: the spot moved on by its own speed over the deck, at the height the game gives it.
+    double asked_local[3];
+    to_local(hull_now, asked, asked_local);
+    const float want[3] = {static_cast<float>(local_then[0] + rel[0] * t_s), static_cast<float>(asked_local[1]),
+                           static_cast<float>(local_then[2] + rel[1] * t_s)};
+    const Pose there = attach(hull_now, want, unit);
+    const double along = ((there.x - asked[0]) * dx + (there.z - asked[2]) * dz) / travel;
+    if (!std::isfinite(along)) return false;
+    const double fix = std::clamp(along, -travel, travel);
+    if (std::fabs(fix) < kAirMinFixM) return false;
+    out[0] = fix * dx / travel;
+    out[1] = fix * dz / travel;
+    return true;
 }
 
 }  // namespace cdmp::session2::vfl

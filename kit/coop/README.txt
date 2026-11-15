@@ -102,6 +102,11 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
   * A rare bad start. Once in many launches the host's mod could not put most of its hooks in (the game had already
     used up the memory they need), and the session half-worked: no mounts for the other player, the guest without
     the host's ship. The mod now takes that memory the moment the game starts.
+  * A passenger in the air (NOT PLAYED YET, new on 15 November in the morning). When your character left the deck
+    of the other player's moving ship for a moment (a jump, a step down from a platform, or a bounce when your game
+    runs at very few frames a second), the game stopped carrying it with the ship and it could end in the water
+    behind. The mod now keeps it moving with the ship until it lands. If anything looks wrong when you jump on a
+    moving ship, turn it off: [session2] passenger_air_follow=0 in cdmp.ini.
   BOTH PCs need the same kit, as always (the panel says so when they differ). A PC with an older kit still
   connects, but sails, crew, lanterns and other ships stay as they were for it.
   Not covered yet: the guest's own ship as the host sees it (not tested). Carts and other AI vehicles on land can

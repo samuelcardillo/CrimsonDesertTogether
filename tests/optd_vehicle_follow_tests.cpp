@@ -444,7 +444,124 @@ void test_vehicle_poses_timed() {
 }
 }  // namespace
 
+// A passenger in the air keeps up with the ship. Values from the user's sail of 2026-11-15 (the guest's log at
+// 08:24:52): the guest stood at (-2.52, 3.14, 5.30) in the ship's frame, the ship moved 2.3-2.9 m a frame (~200 ms),
+// and once off the part the game left the character where it was in the world.
+void test_air_keep_up() {
+    const double spot[3] = {-2.52, 3.14, 5.30}, still[2] = {0, 0};
+    const float spot_f[3] = {-2.52f, 3.14f, 5.30f}, unit[4] = {0, 0, 0, 1};
+    const Pose then = pose(-9724.43, 351.9, -6538.86, 0.52f);
+    // The ship's own -z (its bow) in the world, and the ship 2.92 m further along it.
+    const float bow_local[3] = {0, 0, -1};
+    double bow[3];
+    rotate(then.q, bow_local, bow);
+    Pose now = then;
+    now.x += bow[0] * 2.92;
+    now.z += bow[2] * 2.92;
+    // to_local undoes attach.
+    {
+        const Pose w = attach(then, spot_f, unit);
+        const double world[3] = {w.x, w.y, w.z};
+        double back[3];
+        to_local(then, world, back);
+        CHECK(near(back[0], spot[0], 1e-3) && near(back[1], spot[1], 1e-3) && near(back[2], spot[2], 1e-3));
+    }
+    // Left where it was in the world: moved by the whole way the ship went, onto its spot again.
+    {
+        const Pose was = attach(then, spot_f, unit), want = attach(now, spot_f, unit);
+        const double asked[3] = {was.x, was.y + 0.8, was.z};
+        double fix[2];
+        CHECK(air_keep_up(then, now, spot, still, 0.14, asked, fix));
+        CHECK(near(std::hypot(fix[0], fix[1]), 2.92, 0.01));
+        CHECK(near(asked[0] + fix[0], want.x, 0.01) && near(asked[2] + fix[1], want.z, 0.01));
+        // Half carried by the game already: the other half.
+        const double half[3] = {(was.x + want.x) / 2, was.y, (was.z + want.z) / 2};
+        CHECK(air_keep_up(then, now, spot, still, 0.14, half, fix) && near(std::hypot(fix[0], fix[1]), 1.46, 0.01));
+        // Already on its spot: nothing.
+        const double there[3] = {want.x, want.y + 0.3, want.z};
+        CHECK(!air_keep_up(then, now, spot, still, 0.14, there, fix) && fix[0] == 0 && fix[1] == 0);
+        // Ahead of its spot (the game gave it too much): back, by no more than the way the ship went.
+        const double ahead[3] = {want.x + bow[0] * 1.0, want.y, want.z + bow[2] * 1.0};
+        CHECK(air_keep_up(then, now, spot, still, 0.14, ahead, fix) && near(std::hypot(fix[0], fix[1]), 1.0, 0.01));
+        CHECK(near(ahead[0] + fix[0], want.x, 0.01) && near(ahead[2] + fix[1], want.z, 0.01));
+        // 30 m behind (not the ship's doing): never more than the ship's own way.
+        const double far[3] = {was.x - bow[0] * 30.0, was.y, was.z - bow[2] * 30.0};
+        CHECK(air_keep_up(then, now, spot, still, 0.14, far, fix) && near(std::hypot(fix[0], fix[1]), 2.92, 0.01));
+        // Too long in the air, a time that is not one, a pose that is not one: nothing.
+        CHECK(!air_keep_up(then, now, spot, still, kAirMaxS + 0.01, asked, fix));
+        CHECK(!air_keep_up(then, now, spot, still, -0.1, asked, fix));
+        CHECK(!air_keep_up(then, now, spot, still, std::numeric_limits<double>::quiet_NaN(), asked, fix));
+        Pose bad = now;
+        bad.x = std::numeric_limits<double>::infinity();
+        CHECK(!air_keep_up(then, bad, spot, still, 0.14, asked, fix));
+    }
+    // The ship at its mooring (2 cm between two frames): the top of the ladder, 0.78 m to the side and 2.8 m up in
+    // one frame (08:22:34), is left alone.
+    {
+        Pose moored = then;
+        moored.x += bow[0] * 0.02;
+        moored.z += bow[2] * 0.02;
+        const double ladder[3] = {-4.92, -0.58, -3.82};
+        const float ladder_f[3] = {-4.92f, -0.58f, -3.82f}, top_f[3] = {-4.14f, 2.21f, -3.79f};
+        const Pose top = attach(moored, top_f, unit);
+        const double asked[3] = {top.x, top.y, top.z};
+        double fix[2];
+        CHECK(!air_keep_up(then, moored, ladder, still, 0.04, asked, fix));
+        (void)ladder_f;
+    }
+    // Its own move across the ship (to port, 0.78 m) while the ship goes 1.5 m ahead and the game carries it all
+    // the way: that move stays.
+    {
+        Pose ahead = then;
+        ahead.x += bow[0] * 1.5;
+        ahead.z += bow[2] * 1.5;
+        const float moved_f[3] = {-2.52f - 0.78f, 3.14f, 5.30f};
+        const Pose m = attach(ahead, moved_f, unit);
+        const double asked[3] = {m.x, m.y, m.z};
+        double fix[2];
+        CHECK(!air_keep_up(then, ahead, spot, still, 0.1, asked, fix));
+        // The same move with the ship's way missing: the ship's way is given back, the move across stays.
+        const Pose left = attach(then, moved_f, unit);
+        const double behind[3] = {left.x, left.y, left.z};
+        CHECK(air_keep_up(then, ahead, spot, still, 0.1, behind, fix) && near(std::hypot(fix[0], fix[1]), 1.5, 0.01));
+        CHECK(near(behind[0] + fix[0], m.x, 0.01) && near(behind[2] + fix[1], m.z, 0.01));
+    }
+    // Walking to the bow at 3 m/s when it left the part: half a second later its spot is 1.5 m further forward.
+    {
+        const double walk[2] = {0, -3.0};
+        Pose later = then;
+        later.x += bow[0] * 9.0;
+        later.z += bow[2] * 9.0;
+        const Pose was = attach(then, spot_f, unit);
+        const double asked[3] = {was.x, was.y, was.z};
+        double fix[2];
+        CHECK(air_keep_up(then, later, spot, walk, 0.5, asked, fix));
+        const float want_f[3] = {-2.52f, 3.14f, 5.30f - 1.5f};
+        const Pose want = attach(later, want_f, unit);
+        // Clamped to the ship's own way (9 m): the 1.5 m of its own are the game's to give.
+        CHECK(near(std::hypot(fix[0], fix[1]), 9.0, 0.01));
+        CHECK(near(std::hypot(asked[0] + fix[0] - want.x, asked[2] + fix[1] - want.z), 1.5, 0.02));
+    }
+    // The speed over the deck at take-off.
+    {
+        const double a[3] = {0, 3, 5.0}, b[3] = {0.1, 3, 4.7};
+        double v[2];
+        air_rel_speed(a, 1000, b, 1100, v);
+        CHECK(near(v[0], 1.0, 1e-6) && near(v[1], -3.0, 1e-6));
+        air_rel_speed(a, 1000, b, 1002, v);  // two requests 2 ms apart: no speed taken
+        CHECK(v[0] == 0 && v[1] == 0);
+        air_rel_speed(a, 1000, b, 1500, v);  // half a second apart: not two frames in a row
+        CHECK(v[0] == 0 && v[1] == 0);
+        air_rel_speed(a, 1100, b, 1000, v);  // out of order
+        CHECK(v[0] == 0 && v[1] == 0);
+        const double c[3] = {0, 3, -5.0};  // 10 m in 100 ms: capped
+        air_rel_speed(a, 1000, c, 1100, v);
+        CHECK(near(std::hypot(v[0], v[1]), kAirMaxRelSpeed, 1e-6) && v[1] < 0);
+    }
+}
+
 int main() {
+    test_air_keep_up();
     test_usable();
     test_track_empty_and_single();
     test_track_interpolates_behind();

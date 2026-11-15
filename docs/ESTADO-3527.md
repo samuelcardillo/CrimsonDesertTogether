@@ -13,6 +13,13 @@ demás barcos se ven como antes de la `b2`. Abierto, y no es de esa noche (la `b
 un PC, en la de detrás el juego suelta al pasajero del casco cuando el barco corre, y a 18 m/s acaba en el agua.
 Las velas y la tripulación, vueltas a comprobar con el código final. Detalle: `docs/research/port-3663.md`, «Barco,
 madrugada del 15-nov».
+**15-nov por la mañana: por qué se cae el pasajero, y un arreglo publicado SIN EJECUTAR en el juego.** El dueño
+navegó con un `cdmp.asi` que registra cada fotograma del personaje propio: de pie en la cubierta no se mueve ni a
+18 m/s; lo que pasa es que el juego le quita la pieza en cuanto pierde la cubierta bajo los pies (un salto, o un bote
+cuando su copia va a 5–7 fotogramas por segundo) y en el aire no lo lleva con el barco (al agua en 1,1 s). Nuevo:
+`[session2] passenger_air_follow=1` (los dos perfiles del kit): en el aire, su petición de posición sigue al barco
+hasta que vuelve a pisar una pieza. El dueño pidió publicarlo sin otra prueba; falta verlo (`port-3663.md`, «Barco,
+mañana del 15-nov»).
 **Y la primera PELEA vista en 3663** (esa misma madrugada, con ese código): los golpes del invitado quitan la misma
 vida a un enemigo en las dos copias (160 → 14), los enemigos hieren y matan a los dos, pantalla de muerte, y revivir
 en el punto de control (manteniendo U); `ERR` 0. Sin ver: que el invitado mate a un enemigo, y el botín

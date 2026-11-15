@@ -48,6 +48,10 @@ attack_probe=0
 ; here too (not tested).
 ; probe = measure only; 0 = off.
 vehicle_follow=1
+; SHIPS, a passenger in the air (3663): when this player's character leaves the deck of the guest's ship for a moment
+; (a jump, a step down, a hop when the ship moves a lot between two frames), it keeps moving with the ship until
+; it lands, instead of being left behind in the water. probe = measure only; 0 = off (the game's own).
+passenger_air_follow=1
 ; SHIPS, the sails (session2/gimmick_relay.h; checked live on 14 November): the host's sail changes go to the guest,
 ; whose copy of the sail then follows them. 0 = the guest's sails stay furled.
 gimmick_relay=1
