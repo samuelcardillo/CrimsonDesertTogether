@@ -270,6 +270,42 @@ void test_retry_rule() {
     CHECK(!hook_try_again(3, true, false));
 }
 
+// reserve_trampoline_memory (2026-11-15): the blocks it takes at the mod's start are the ones the hooks get their
+// trampolines from afterwards, with no further search of the address space. Here the "exe" is this test program.
+void test_start_reservation() {
+    using namespace safetyhook;
+    const auto exe = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
+    const uint64_t failures_before = cdmp::game::near_search_failures();
+    const std::vector<uintptr_t> reserved = cdmp::game::reserve_trampoline_memory();
+    CHECK(reserved.size() == static_cast<size_t>(cdmp::game::kStartBlocks));
+    // They are still this process' memory after the call (the allocator did not give them back).
+    for (const uintptr_t r : reserved) {
+        MEMORY_BASIC_INFORMATION mbi{};
+        CHECK(VirtualQuery(reinterpret_cast<void*>(r), &mbi, sizeof mbi) == sizeof mbi && mbi.State == MEM_COMMIT &&
+              reinterpret_cast<uintptr_t>(mbi.AllocationBase) == r);
+    }
+    // What a hook asks for: a little memory within reach of its target (somewhere in the image).
+    std::vector<Allocation> taken;
+    std::vector<uintptr_t> bases;
+    for (int i = 0; i < 300; ++i) {  // 300 x 400 bytes: more than one block's worth
+        auto a = Allocator::global()->allocate_near({exe + 0x1000}, 400);
+        CHECK(a.has_value());
+        if (!a) break;
+        MEMORY_BASIC_INFORMATION mbi{};
+        CHECK(VirtualQuery(a->data(), &mbi, sizeof mbi) == sizeof mbi);
+        const auto base = reinterpret_cast<uintptr_t>(mbi.AllocationBase);
+        CHECK(std::find(reserved.begin(), reserved.end(), base) != reserved.end());  // one of the blocks taken at start
+        if (std::find(bases.begin(), bases.end(), base) == bases.end()) bases.push_back(base);
+        const uint64_t at = a->address(), image = reinterpret_cast<uintptr_t>(exe);
+        CHECK((at > image ? at - image : image - at) < k2GB);
+        taken.push_back(std::move(*a));
+    }
+    // 120 000 bytes of trampolines came out of at most the three blocks taken at the start (64 KB each).
+    std::printf("  300 allocations of 400 bytes near the exe came from %zu block(s)\n", bases.size());
+    CHECK(bases.size() >= 2 && bases.size() <= static_cast<size_t>(cdmp::game::kStartBlocks));
+    CHECK(cdmp::game::near_search_failures() == failures_before);
+}
+
 }  // namespace
 
 int main() {
@@ -280,6 +316,7 @@ int main() {
         return 1;
     }
     test_retry_rule();
+    test_start_reservation();  // first: with this process' address space as it starts
     const uint64_t base = free_span(3 * k2GB);  // 6 GB of free address space
     if (!base) {
         std::printf("no 6 GB free run found in this process\n");

@@ -99,6 +99,9 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
   * The name tag over the other player stays over their head on a moving ship (it used to drift away, the faster
     the ship the further: about 3 m at 5 m/s), and the panel's "m away" is right there too.
   * The panel shows your stamina again (it said "Stamina 0/0" on this game version).
+  * A rare bad start. Once in many launches the host's mod could not put most of its hooks in (the game had already
+    used up the memory they need), and the session half-worked: no mounts for the other player, the guest without
+    the host's ship. The mod now takes that memory the moment the game starts.
   BOTH PCs need the same kit, as always (the panel says so when they differ). A PC with an older kit still
   connects, but sails, crew, lanterns and other ships stay as they were for it.
   Not covered yet: the guest's own ship as the host sees it (not tested). Carts and other AI vehicles on land can

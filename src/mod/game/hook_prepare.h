@@ -61,4 +61,19 @@ std::string near_search_last_failure_text();
 // below / above the image, the regions right next to it. One text; read-only (VirtualQuery).
 std::string exe_neighbourhood_text();
 
+// At the mod's start, before anything is hooked (the worker thread's first lines; never DllMain): takes
+// kStartBlocks blocks of 64 KB within reach of the whole exe image and hands them to safetyhook's allocator, which
+// gives every later hook in the exe its trampoline from them. Why: the game and the DLLs in its process fill the
+// 4 GB around the image within seconds (a 2 GB block right above it, hundreds of small regions below), and what is
+// left is a handful of 64 KB slots that vary from one launch to the next. The mod used to ask for its first block
+// when its first hook went in, ten seconds after start. On 2026-11-15 (host, 04:31) there was no slot left by then
+// (the one right below the image held somebody else's 4 KB): 80 "no trampoline memory" lines, most of the host's
+// hooks refused, a session in which the guest never got the host's ship. Seen once in the logs of two weeks; the
+// same shape as P8 session 26 (hook_prepare.h, top). Logs what it took and the address space as it is then.
+// The allocator itself is kept for the life of the process: safetyhook's global one lives only while something
+// holds memory from it, and gives every block back to the system when the last holder goes (the first version of
+// this function took three blocks and lost them a line later). Returns the blocks' addresses (for the tests).
+inline constexpr int kStartBlocks = 3;
+std::vector<uintptr_t> reserve_trampoline_memory();
+
 }  // namespace cdmp::game

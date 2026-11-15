@@ -15,6 +15,9 @@ el barco corre (se cayó a 18 m/s). Detalle: `docs/research/port-3663.md`, «Bar
 vida a un enemigo en las dos copias (160 → 14), los enemigos hieren y matan a los dos, pantalla de muerte, y revivir
 en el punto de control (manteniendo U); `ERR` 0. Sin ver: que el invitado mate a un enemigo, y el botín
 (`port-3663.md`, «Pelea en 3663»).
+**Y un fallo raro del arranque, arreglado:** en una de las siete sesiones el anfitrión se quedó sin casi ningún gancho
+(«no trampoline memory within +-2 GB»: el juego llena los 4 GB de alrededor del exe en sus primeros diez segundos y
+esa vez no quedó sitio). El mod coge ahora esa memoria nada más arrancar (`port-3663.md`, «Memoria de trampolines»).
 
 **14-nov-2026 (noche, 3663, dos copias): BARCO.** El invitado sube al barco del anfitrión y navega en él (se queda en
 cubierta y puede andar por ella a 14 m/s); el barco se sigue a 1,5–2,5 m a velocidad de crucero; el timón ya no flota

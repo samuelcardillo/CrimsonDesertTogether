@@ -192,6 +192,53 @@ std::string near_search_last_failure_text() {
     return s;
 }
 
+std::vector<uintptr_t> reserve_trampoline_memory() {
+    std::vector<uintptr_t> taken;
+    const uintptr_t base = exe_base();
+    const uint64_t size = exe_size();
+    if (!base || !size) {
+        log::warn("HookPrepare (start): the exe image could not be read; no trampoline memory taken in advance");
+        return taken;
+    }
+    // The allocator, held for good (never destroyed, on purpose: its blocks carry the trampolines of live hooks, and
+    // without a holder it would free them as soon as the requests below are given back).
+    static const auto* const keep = new std::shared_ptr<safetyhook::Allocator>(safetyhook::Allocator::global());
+    const std::shared_ptr<safetyhook::Allocator>& allocator = *keep;
+    // Within reach of the first and of the last byte of the image: of any hook in it.
+    const std::vector<uint8_t*> desired{reinterpret_cast<uint8_t*>(base), reinterpret_cast<uint8_t*>(base + size - 1)};
+    // Nearly a whole block each: the next request does not fit in what the block before has left, so each one opens
+    // a block of its own.
+    constexpr size_t kTake = kGranule - 0x1000;
+    std::string blocks, error;
+    int got = 0;
+    {
+        std::vector<safetyhook::Allocation> held;
+        for (int i = 0; i < kStartBlocks; ++i) {
+            auto a = allocator->allocate_near(desired, kTake);
+            if (!a) {
+                error = alloc_error_name(a.error());
+                break;
+            }
+            blocks += std::format("{}0x{:X} ({})", got ? ", " : "", a->address(), signed_mb(a->address(), base));
+            taken.push_back(a->address());
+            ++got;
+            held.push_back(std::move(*a));
+        }
+        // Leaving the scope gives the memory back to the ALLOCATOR, not to the system: the blocks stay its own,
+        // whole, and the hooks that come take their trampolines from them.
+    }
+    if (got == kStartBlocks) {
+        log::info("HookPrepare (start): {} blocks of 64 KB of trampoline memory taken near the exe before any hook: {}", got,
+                  blocks);
+    } else {
+        log::warn("HookPrepare (start): {} of {} blocks of 64 KB of trampoline memory could be taken near the exe{}{} "
+                  "(the allocator said: {}); hooks that find none later are refused, as before",
+                  got, kStartBlocks, got ? ": " : "", blocks, error.empty() ? "nothing" : error);
+    }
+    log::info("HookPrepare (start): {}", exe_neighbourhood_text());
+    return taken;
+}
+
 std::string exe_neighbourhood_text() {
     const uintptr_t base = exe_base();
     const uint64_t size = exe_size();

@@ -56,6 +56,9 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   punto de control es MANTENER U (`ui.ps1 -Do hold -Keys U -HoldMs 2000`). Ojo: el nexo está en lo alto de un
   peñasco y el guion anda y apunta en planta; en cuanto el invitado cae a la repisa de abajo pega a la roca (así
   acabó la etapa `kill` la única vez que se usó).
+- `nearmem.py pid`: las regiones ejecutables justo debajo de la imagen del juego (donde van los trampolines de
+  los ganchos): los tres bloques de 64 KB que el mod coge al arrancar y cualquier otro. Si el log del anfitrión
+  trae líneas «no trampoline memory» o `REFUSED`, esa sesión no vale: el mod va a medias (15-nov, 04:31).
 - `tagcheck.sh H G [aboard]` (anfitrión al timón, invitado en cubierta): el cartel del otro jugador navegando
   (`boat/tagmon.py`, la línea `Overlay diag` de cada copia y una captura desde cada lado) y, con `aboard`, si el
   invitado sigue a bordo a toda vela con la copia del anfitrión delante.

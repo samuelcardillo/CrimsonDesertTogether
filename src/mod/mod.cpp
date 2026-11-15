@@ -18,6 +18,7 @@
 #include "common/udp.h"
 #include "mod/config.h"
 #include "mod/game/game_errors.h"
+#include "mod/game/hook_prepare.h"
 #include "mod/game/offsets.h"
 #include "mod/game/build_profile.h"
 #include "mod/game/player_reader.h"
@@ -983,6 +984,8 @@ DWORD WINAPI worker(LPVOID) {
     log::open(dir + role::log_name(rs.role, rs.extra));
     log::info("=== Crimson Desert Multiplayer {} (build {:08X}{}, protocol {}) ===", CDMP_VERSION, kModBuild,
               CDMP_BUILD_DIRTY ? " + local changes" : "", proto::kVersion);
+    // The trampoline memory of every hook to come, while there still is some near the exe (hook_prepare.h).
+    game::reserve_trampoline_memory();
     const auto file_exists = [](const std::wstring& p) { return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES; };
     const role::IniChoice ini = role::choose_ini(rs.role, file_exists(dir + role::tagged(L"cdmp", rs.role) + L".ini"),
                                                  file_exists(dir + L"cdmp.ini"));
