@@ -1,6 +1,9 @@
 # Close both copies, deploy, launch host + guest (guest waits at its title), host into the world. Prints the pids.
 # Then: move the host (bash), and run_join.ps1 -Attach -AttachHost <h> -AttachGuest <g> for the guest's join.
-param([string]$HostIni = '', [string]$GuestIni = '')
+# -Asi <file>: after the deploy, that cdmp.asi goes over the one in the game folder (a released kit's, to compare a
+# release with the working tree in the same test: dist\cdmp-coop-...-b3\cdmp.asi). The next launch without -Asi
+# puts the built one back.
+param([string]$HostIni = '', [string]$GuestIni = '', [string]$Asi = '')
 $ErrorActionPreference = 'Stop'
 # One launcher at a time: on 2026-11-07 08:32 two ran together (a stale bash resumed an edited script) and started
 # two host copies; the game closed one of them. The mutex is released when this process ends.
@@ -15,6 +18,11 @@ Get-Process CrimsonDesert -ErrorAction SilentlyContinue | Stop-Process -Force
 while (Get-Process CrimsonDesert -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 500 }
 Start-Sleep -Seconds 2
 & .\scripts\deploy.ps1 *>&1 | Select-Object -Last 1
+if ($Asi) {
+    if (-not (Test-Path -LiteralPath $Asi)) { throw "launch failed: -Asi $Asi not found" }
+    Copy-Item -LiteralPath $Asi -Destination (Join-Path $bin 'cdmp.asi') -Force
+    "cdmp.asi replaced by $Asi"
+}
 $cfg = Join-Path $root 'tools\porting\configs'
 $out = & .\scripts\launch-2inst.ps1 -GuestSlot slot2 -HostIni $(if ($HostIni) { $HostIni } else { "$cfg\cdmp.3527-2inst-host.ini" }) -GuestIni $(if ($GuestIni) { $GuestIni } else { "$cfg\cdmp.3527-2inst-guest.ini" }) -BackupDir "$root\backups" *>&1 | Out-String
 if ($out -notmatch 'Host:\s+PID (\d+)') { throw "launch failed: $($out.Substring([Math]::Max(0,$out.Length-400)))" }

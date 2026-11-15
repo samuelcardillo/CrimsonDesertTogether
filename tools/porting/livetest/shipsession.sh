@@ -65,6 +65,8 @@ if from launch; then
   rm -f pids.txt launchX.txt
   INI=()
   [ -n "$SAIL_EXP" ] && INI=(-HostIni "$SP\\profiles\\host-sail-exp.ini" -GuestIni "$SP\\profiles\\guest-sail-exp.ini")
+  # ASI=<a cdmp.asi> in the environment: that file instead of the built one (a released kit's, to compare).
+  [ -n "$ASI" ] && INI+=(-Asi "$(cygpath -w "$ASI")")
   pwsh -NoProfile -ExecutionPolicy Bypass -File "$SP\launch_house.ps1" "${INI[@]}" > launchX.txt 2>&1 < /dev/null &
   for i in $(seq 1 200); do grep -q "host in world" launchX.txt 2>/dev/null && break; grep -q -E "launch failed|is gone|Exception" launchX.txt 2>/dev/null && { tail -c 800 launchX.txt; exit 1; }; sleep 2; done
   H=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\1/p' pids.txt); G=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\2/p' pids.txt)

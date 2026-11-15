@@ -57,6 +57,14 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   punto de control es MANTENER U (`ui.ps1 -Do hold -Keys U -HoldMs 2000`). Ojo: el nexo está en lo alto de un
   peñasco y el guion anda y apunta en planta; en cuanto el invitado cae a la repisa de abajo pega a la roca (así
   acabó la etapa `kill` la única vez que se usó).
+- `sailcrew.sh H G` (anfitrión al timón, invitado en cubierta): lo que se pidió al principio del trabajo del barco,
+  sobre el `cdmp.asi` que haya instalado: el estado de la vela en las dos copias tras cada marcha
+  (`sailstate.py pid key` da la clave de la vela, `sailstate.py pid CLAVE` su estado) con lo que apuntó cada mod, y a
+  cuánto de su puesto dibuja el invitado a cada tripulante con el barco en marcha (`boat/npcmon.py`, resumido).
+- `slidetest.sh H G [s]`: cuánto resbala un pasajero por la cubierta en la copia de detrás a toda vela
+  (`boat/deckdrift.py` y, fotograma a fotograma, `boat/slidetrace.py`). `ASI=<un cdmp.asi> bash shipsession.sh`
+  arranca la sesión con ese `cdmp.asi` (el de un kit publicado: `dist/…/cdmp.asi`) para comparar builds en la misma
+  prueba; el arranque siguiente sin `ASI` vuelve a poner el compilado.
 - `nearmem.py pid`: las regiones ejecutables justo debajo de la imagen del juego (donde van los trampolines de
   los ganchos): los tres bloques de 64 KB que el mod coge al arrancar y cualquier otro. Si el log del anfitrión
   trae líneas «no trampoline memory» o `REFUSED`, esa sesión no vale: el mod va a medias (15-nov, 04:31).
