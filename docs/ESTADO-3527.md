@@ -11,6 +11,10 @@ segundo, antes de 0,60 a 1,44), el cartel del otro jugador se queda sobre su cab
 llegan después de otros más nuevos. `kVersion` sigue en 10; con una `b2`/`b3` al otro lado se conecta igual y los
 demás barcos se ven como antes de la `b2`. Abierto: un pasajero resbala por la cubierta en la copia de detrás cuando
 el barco corre (se cayó a 18 m/s). Detalle: `docs/research/port-3663.md`, «Barco, madrugada del 15-nov».
+**Y la primera PELEA vista en 3663** (esa misma madrugada, con ese código): los golpes del invitado quitan la misma
+vida a un enemigo en las dos copias (160 → 14), los enemigos hieren y matan a los dos, pantalla de muerte, y revivir
+en el punto de control (manteniendo U); `ERR` 0. Sin ver: que el invitado mate a un enemigo, y el botín
+(`port-3663.md`, «Pelea en 3663»).
 
 **14-nov-2026 (noche, 3663, dos copias): BARCO.** El invitado sube al barco del anfitrión y navega en él (se queda en
 cubierta y puede andar por ella a 14 m/s); el barco se sigue a 1,5–2,5 m a velocidad de crucero; el timón ya no flota

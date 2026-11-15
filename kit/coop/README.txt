@@ -10,7 +10,10 @@ checked: JOINING (the guest loads into the host's world), the guest going back t
 weather, SHIPS (the host sailing with the guest on board, see below), the HOST'S HOUSE as the guest sees it (the
 whole house and the pets; the building mode was not tried), SHOPKEEPERS (Delkin in Hernand: the guest opened the
 shop, bought a Water with its own money, sold it back and left) and MARKET STALLS (the guest bought a Harvest Sack
-and a Rosemary from two stalls, holding E), with no error. Not tried on 3663 yet: mounts and fighting; please tell
+and a Rosemary from two stalls, holding E), with no error. FIGHTING was checked on 3663 on 15 November: the guest's
+hits take the same health off an enemy on both screens, enemies hurt and kill both players, the death screen comes
+up, and both revive at the checkpoint (HOLD U: a tap does nothing). Not seen again on 3663: the guest finishing an
+enemy off, and loot. Not tried on 3663 yet: mounts; please tell
 us if something that worked before no longer does. Looks only: next to the host's house the guest's ground looked
 wet (puddles) while the host's was dry. And the guest always shows the HOST's weather and daylight as the host's own
 camera has them: while the host is outdoors, a room the guest walks into is lit like the outdoors (a blue tint), and

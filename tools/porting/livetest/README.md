@@ -44,7 +44,18 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   baja 440 → 410,7 → 383,5 y vuelve a 440 dos segundos y medio después de soltar; 26 (170) y 27 (120) no se mueven.
 - `nearactors.py pid [radio] [tipos]`: los actores cercanos al personaje propio (por defecto los de tipo 3), con su
   distancia, posición y vida si tienen componente de estado: para buscar un enemigo y mirar su vida desde las dos
-  copias. `caminfo.py pid`: a qué distancia y altura está la cámara del personaje, con su inclinación y rumbo.
+  copias. `actorhp.py pid clave [clave ...]`: la vida de esos actores en una copia, y la del personaje propio.
+  `caminfo.py pid`: a qué distancia y altura está la cámara del personaje, con su inclinación y rumbo; `pitch.py pid
+  grados` pone la inclinación.
+- `fightcheck.sh etapa H G` (con los dos en el mundo; 15-nov, la primera pelea vista en 3663): `travel` lleva a los
+  dos por viaje rápido al nexo junto a Valvegard Garrison (-4710, -5348), en medio de los mechas; `list` da los
+  enemigos cercanos de cada copia; `hit CLAVE [n]` hace que el invitado se gire hacia ese enemigo, se acerque y dé n
+  golpes con el botón izquierdo, y cada cuatro dice la vida del enemigo en las dos copias y la del invitado;
+  `report`, lo que dice el log del anfitrión (`User2Funnels rank` / `dead`), errores y volcados. Los dos mueren
+  enseguida ahí: revivir en el punto de control es MANTENER U (`ui.ps1 -Do hold -Keys U -HoldMs 2000`).
+- `tagcheck.sh H G [aboard]` (anfitrión al timón, invitado en cubierta): el cartel del otro jugador navegando
+  (`boat/tagmon.py`, la línea `Overlay diag` de cada copia y una captura desde cada lado) y, con `aboard`, si el
+  invitado sigue a bordo a toda vela con la copia del anfitrión delante.
 - `smoothtest.sh H G` y `smooth2.sh H G [clave_IA ...]` (con el anfitrión al timón y el invitado en cubierta): zarpar
   y medir en el invitado cómo se mueve su copia del barco del anfitrión (`boat/smoothmon.py`), los carteles
   (`boat/tagmon.py`), los demás barcos en las dos copias (`boat/vehwatch.py`) y lo que dice el seguidor del invitado.
