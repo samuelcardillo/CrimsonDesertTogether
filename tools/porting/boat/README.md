@@ -85,7 +85,29 @@ Las capturas `.bin` de `bin64` guardan los paquetes ENTEROS con los códigos NAT
   vehículo alimentado de dos formas con el mismo movimiento real: (A) las posiciones del juego tal como le llegaron
   al invitado (una por segundo) y (B) diez por segundo, como las manda ahora el mod (`EventKind::Vehicles`). Cuenta
   los fotogramas en que el barco dibujado RETROCEDE o se queda quieto. (A) son tiempos y posiciones reales; en (B) la
-  trayectoria entre dos posiciones es una curva suave: un modelo. Sin juego.
+  trayectoria entre dos posiciones es una curva suave: un modelo. Sin juego. Desde el 15-nov también (C) y (D): el
+  canal del mod con el emisor a 7 fotogramas por segundo (dos copias en un PC, la de detrás) y con una red de
+  20 ±30 ms (dos PC), cada uno con las muestras fechadas a su llegada (b2) y con la hora que les pone el emisor
+  (`EventKind::VehiclesTimed`), y lo uniforme que sale el movimiento: la velocidad dibujada entre la real, por
+  fotograma y por cuartos de segundo (b2: de 0,69 a 1,39 y de 0,76 a 1,27 veces; con la hora del emisor, de 0,93 a 1,06
+  y de 0,97 a 1,04).
+- `smoothmon.py pid clave segundos [vel_mínima]`: lo mismo medido en el juego, en UNA copia: muestrea a toda
+  velocidad la posición del `TransformSync` de un actor (el vehículo de un barco en el invitado), cuenta los fotogramas
+  en que retrocede, el tiempo que pasa parado y lo uniforme del movimiento (la distancia de cada cuarto de segundo
+  entre la media de los cinco de alrededor: desviación y extremos). Con dos copias en un PC la de detrás va lenta y
+  el barco hace ~1 m/s en ella: `vel_mínima` 0,5. La copia que se mide tiene que estar delante.
+- `tagmon.py anfitrión invitado segundos [periodo]`: para el cartel con el nombre del otro jugador. En cada copia, la
+  posición que LEE el mod de su propio personaje (el cuerpo físico más el origen del trozo de mapa, como
+  `PlayerReader`) contra dónde está el personaje (su `TransformSync` compuesto con los de sus padres: coinciden en
+  0,05 m, también en una cubierta en marcha), y a cuánto del personaje que dibuja la OTRA copia quedaría el cartel
+  en la posición mandada (lo que dibujaba el mod hasta el 15-nov) y a cuánto queda ahora (la copia de la pieza de
+  barco en esa copia, con la pose local del personaje: `vehicle_follow_peer_world`). Hasta las 03:35 del 15-nov
+  componía con la rotación local del padre en vez de la del mundo y daba metros de más para un personaje sobre el
+  casco en cuanto el barco cambiaba de rumbo: lo medido con ella antes de esa hora no vale.
+- `deckdrift.py anfitrión invitado segundos [periodo]`: si un personaje quieto en la cubierta se queda donde está:
+  la velocidad del barco y la posición local de cada personaje propio, con lo que se ha movido desde el principio.
+  El 15-nov el invitado resbaló 5,3 m hacia popa en minuto y medio a 5,5–7,3 m/s con su copia detrás (y se cayó a
+  18 m/s); a 0,5–3,3 m/s no se movió.
 - `movedump.py captura.bin clave[-clave] [t0 t1] [max]`: los `MoveActorAck` de un actor, descifrados (padre, posición
   local, posición del mundo). Los de la tripulación llegan al invitado EN BLANCO (identidad, sin padre), uno por
   segundo.

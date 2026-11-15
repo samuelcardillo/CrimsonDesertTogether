@@ -6,6 +6,13 @@
 // with finite-difference tangents), so (B) is a model; (A) is the real arrival times and positions.
 // Every 1/60 s it compares what is drawn with the true pose one delay (300 ms) earlier, and counts the frames in
 // which the drawn ship goes BACK along its course or stands still while the real one moves.
+// (C) and (D) are the mod's channel under the two conditions it meets in play, each with the samples stamped when
+// they ARRIVE (release b2) and stamped with the moment the sender saw the pose change (carried in the event and
+// moved to the receiver's clock by the fastest transit seen):
+//   (C) the sender's game draws 7 frames a second (two copies on one PC: the copy behind), no network to speak of;
+//   (D) the sender's game draws 60 frames a second and the network adds 20 ms +-30 ms (two PCs over a relay).
+// For those the line also gives how even the drawn motion is: the drawn step of each frame as a fraction of the real
+// one (1 = the same speed), its standard deviation and its extremes over a quarter of a second.
 //   track_replay moves.txt [delay_ms]
 // Build (x64 Native Tools prompt of VS 2022, from the repository's root):
 //   cl /nologo /std:c++20 /EHsc /O2 /W4 /Isrc tools\porting\boat\track_replay.cpp /Fe:build\track_replay.exe
@@ -59,9 +66,15 @@ struct Result {
     size_t frames = 0, back = 0, still = 0;
     double err_sum = 0, err_max = 0, back_max = 0, step_max_ratio = 0;
     std::vector<double> errs;
+    std::vector<double> ratios;  // drawn step / real step, frame by frame
 };
-// feed: (arrival time ms, pose) in order.
-Result run(const std::vector<std::pair<uint64_t, Pose>>& feed, uint64_t delay_ms, double t0, double t1) {
+// One sample as the receiver gets it: when it arrives, and the time it is given in the track.
+struct Fed {
+    uint64_t arrive, stamp;
+    Pose p;
+};
+// feed: in the order of arrival.
+Result run(const std::vector<Fed>& feed, uint64_t delay_ms, double t0, double t1) {
     Track track(delay_ms);
     Result r;
     size_t next = 0;
@@ -70,8 +83,8 @@ Result run(const std::vector<std::pair<uint64_t, Pose>>& feed, uint64_t delay_ms
     const double dt = 1.0 / 60.0;
     for (double t = t0; t < t1; t += dt) {
         const auto now = static_cast<uint64_t>(t * 1000.0);
-        while (next < feed.size() && feed[next].first <= now) {
-            track.push(feed[next].first, feed[next].second);
+        while (next < feed.size() && feed[next].arrive <= now) {
+            track.push(feed[next].stamp, feed[next].p);
             ++next;
         }
         Pose out;
@@ -100,6 +113,7 @@ Result run(const std::vector<std::pair<uint64_t, Pose>>& feed, uint64_t delay_ms
                 ++r.still;
             }
             r.step_max_ratio = std::max(r.step_max_ratio, along / true_step);
+            r.ratios.push_back(along / true_step);
         }
         prev = out;
         have_prev = true;
@@ -118,6 +132,54 @@ void print(const char* name, Result& r) {
                 "the real one\n",
                 name, r.frames, r.frames / 60.0, r.err_sum / r.frames, r.errs[r.errs.size() * 95 / 100], r.err_max,
                 r.back, r.back * 3600.0 / r.frames, r.back_max, r.still, r.still / 60.0, r.step_max_ratio);
+}
+// How even the drawn motion is: the drawn speed as a fraction of the real one.
+void print_evenness(const Result& r) {
+    if (r.ratios.size() < 30) return;
+    double sum = 0, sq = 0;
+    for (const double v : r.ratios) sum += v, sq += v * v;
+    const double mean = sum / r.ratios.size(), sd = std::sqrt(std::max(0.0, sq / r.ratios.size() - mean * mean));
+    // Over a quarter of a second (15 frames): the slowest and the fastest the ship is seen to go.
+    double lo = 1e9, hi = -1e9, acc = 0;
+    for (size_t i = 0; i < r.ratios.size(); ++i) {
+        acc += r.ratios[i];
+        if (i >= 15) acc -= r.ratios[i - 15];
+        if (i >= 14) lo = std::min(lo, acc / 15), hi = std::max(hi, acc / 15);
+    }
+    std::printf("        drawn speed against the real one: mean %.2f, frame to frame +-%.0f%% (standard deviation); over a "
+                "quarter of a second from %.2f to %.2f times the real speed\n", mean, 100 * sd, lo, hi);
+}
+// The mod's channel: the sender's game draws a frame every frame_ms (the pose only changes then); the sender looks
+// at the pose every poll_ms and, every 100 ms, sends the newest one if it changed; the datagram takes 20 ms +-jitter.
+// stamped: the receiver gives the sample the time the sender saw the change (plus the fastest transit); else its
+// arrival time.
+std::vector<Fed> channel(double frame_ms, double poll_ms, double jitter_ms, bool stamped) {
+    std::vector<Fed> out;
+    uint32_t seed = 777;
+    auto rnd = [&seed] {  // 0..1
+        seed = seed * 1664525u + 1013904223u;
+        return ((seed >> 8) & 0xFFFF) / 65535.0;
+    };
+    const double t0 = g_u.front().t * 1000.0, t1 = g_u.back().t * 1000.0;
+    double sent_frame = -1;
+    for (double tick = t0; tick < t1; tick += 100.0) {
+        // The newest frame at or before this tick.
+        const double frame = t0 + std::floor((tick - t0) / frame_ms) * frame_ms;
+        if (frame == sent_frame) continue;
+        sent_frame = frame;
+        // When the sender's poll saw it: the first poll at or after the frame.
+        const double seen = t0 + std::ceil((frame - t0) / poll_ms) * poll_ms;
+        double x, y, z;
+        truth(frame / 1000.0, &x, &y, &z);
+        const double transit = 20.0 + (2 * rnd() - 1) * jitter_ms;
+        Fed f;
+        f.arrive = static_cast<uint64_t>(tick + std::max(1.0, transit));
+        f.stamp = stamped ? static_cast<uint64_t>(seen + std::max(1.0, 20.0 - jitter_ms)) : f.arrive;
+        f.p = pose_at(x, y, z);
+        out.push_back(f);
+    }
+    std::sort(out.begin(), out.end(), [](const Fed& a, const Fed& b) { return a.arrive < b.arrive; });
+    return out;
 }
 }  // namespace
 
@@ -155,22 +217,42 @@ int main(int argc, char** argv) {
                 argv[1], n, g_u.back().t - g_u.front().t, gaps, n - 1, static_cast<unsigned long long>(delay));
 
     // (A) the game's updates, as they arrived.
-    std::vector<std::pair<uint64_t, Pose>> a;
-    for (const Upd& u : g_u) a.emplace_back(static_cast<uint64_t>(u.t * 1000.0), pose_at(u.x, u.y, u.z));
+    std::vector<Fed> a;
+    for (const Upd& u : g_u) {
+        const auto t = static_cast<uint64_t>(u.t * 1000.0);
+        a.push_back({t, t, pose_at(u.x, u.y, u.z)});
+    }
     // (B) the mod's channel: the path ten times a second, 20 ms later, +-10 ms of jitter (a fixed pattern).
-    std::vector<std::pair<uint64_t, Pose>> b;
+    std::vector<Fed> b;
     uint32_t seed = 12345;
     for (double t = g_u.front().t; t < g_u.back().t; t += 0.1) {
         seed = seed * 1664525u + 1013904223u;
         const double jitter = ((seed >> 16) % 21) - 10.0;
         double x, y, z;
         truth(t, &x, &y, &z);
-        b.emplace_back(static_cast<uint64_t>(t * 1000.0 + 20.0 + jitter), pose_at(x, y, z));
+        const auto arrive = static_cast<uint64_t>(t * 1000.0 + 20.0 + jitter);
+        b.push_back({arrive, arrive, pose_at(x, y, z)});
     }
-    std::sort(b.begin(), b.end(), [](const auto& p, const auto& q) { return p.first < q.first; });
+    std::sort(b.begin(), b.end(), [](const Fed& p, const Fed& q) { return p.arrive < q.arrive; });
     Result ra = run(a, delay, g_u.front().t + 2.0, g_u.back().t);
     Result rb = run(b, delay, g_u.front().t + 2.0, g_u.back().t);
     print("  (A) the game's updates (what b1 and the build of 16:33 draw)", ra);
     print("  (B) the mod's ten a second (release b2)                      ", rb);
+    struct Case {
+        const char* name;
+        double frame_ms, jitter_ms;
+        bool stamped;
+    };
+    const Case cases[] = {
+        {"  (C) sender at 7 frames a second, stamped on arrival (b2)     ", 143.0, 2.0, false},
+        {"  (C) sender at 7 frames a second, stamped by the sender       ", 143.0, 2.0, true},
+        {"  (D) sender at 60, network 20 +-30 ms, stamped on arrival (b2)", 16.7, 30.0, false},
+        {"  (D) sender at 60, network 20 +-30 ms, stamped by the sender  ", 16.7, 30.0, true},
+    };
+    for (const Case& c : cases) {
+        Result r = run(channel(c.frame_ms, 5.0, c.jitter_ms, c.stamped), delay, g_u.front().t + 2.0, g_u.back().t);
+        print(c.name, r);
+        print_evenness(r);
+    }
     return 0;
 }

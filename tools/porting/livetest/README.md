@@ -38,8 +38,18 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   Ejecutado el 14-nov por la tarde: los pasos sirven, pero LSHIFT no siempre engrana a la primera (ver abajo) y las
   capturas «mirando arriba» no llegan a enseñar las velas (la cámara del timonel apenas sube).
 - `statdump.py pid`: las entradas de estadísticas del personaje propio tal como las recorre `PlayerReader` (id,
-  actual, máximo, regeneración). En 3663 el lector encuentra la vida (id 0) pero no el aguante (id 22 hasta 3576: el
-  panel dice «Stamina 0/0»); `sailtest.sh` lo vuelca al final para dar con el id nuevo.
+  actual, máximo, regeneración). `statwatch.py pid segundos`: cuáles CAMBIAN en ese rato y entre qué valores.
+  `statseries.py pid segundos id [id ...]`: el valor de esas entradas cuatro veces por segundo. Con ellas se vio el
+  15-nov que el aguante en 3663 es el id 25 (el 22 de las builds anteriores no existe): con W y SHIFT seis segundos
+  baja 440 → 410,7 → 383,5 y vuelve a 440 dos segundos y medio después de soltar; 26 (170) y 27 (120) no se mueven.
+- `nearactors.py pid [radio] [tipos]`: los actores cercanos al personaje propio (por defecto los de tipo 3), con su
+  distancia, posición y vida si tienen componente de estado: para buscar un enemigo y mirar su vida desde las dos
+  copias. `caminfo.py pid`: a qué distancia y altura está la cámara del personaje, con su inclinación y rumbo.
+- `smoothtest.sh H G` y `smooth2.sh H G [clave_IA ...]` (con el anfitrión al timón y el invitado en cubierta): zarpar
+  y medir en el invitado cómo se mueve su copia del barco del anfitrión (`boat/smoothmon.py`), los carteles
+  (`boat/tagmon.py`), los demás barcos en las dos copias (`boat/vehwatch.py`) y lo que dice el seguidor del invitado.
+  `smooth2.sh` mete la segunda marcha con el anfitrión delante y mide con el invitado delante (ver «la copia de
+  detrás va lenta», abajo). `reboard.sh pid`: sube a un personaje que se ha quedado en el agua o en el muelle.
 - `shopsession.sh`: de cero a «el invitado compra una Water a Delkin y un saco en el puesto de al lado» (Hernand,
   ~25 min): lanzar, anfitrión al nexo de Hernand y a la calle de las tiendas, unir al invitado, llevarlo al
   mostrador, R, comprar, salir, y E mantenida en el puesto. No vende nada (vender exige mirar antes la pantalla).
@@ -69,6 +79,26 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   atiende también por la tarde (18:43 de juego). `run_join.ps1` puede decir «guest idle: False» con el invitado ya
   dentro: la prueba es `posnow.py`. El invitado aparece en su último nexo, no junto al anfitrión.
 - La copia que no está delante va a ~7 fotogramas/s: las medidas de «un fotograma de retraso» en esa copia salen
-  veinte veces peores que con ella delante.
+  veinte veces peores que con ella delante. **Y su mundo va lento:** el 15-nov el barco en primera hacía 3,3 m/s con
+  el anfitrión delante y ~1 m/s en cuanto se ponía delante el invitado (`boat/smoothmon.py` en el anfitrión: 97
+  fotogramas en 20 s). Lo que se mida en el invitado con el barco «en marcha» hay que medirlo sabiendo eso
+  (`smooth2.sh`: segunda marcha y `smoothmon.py … 0.5`).
+- **La escala del barco (15-nov):** con W mantenida 3,5 s + 3 s + 0,9 s, como hasta entonces, el primer tramo ya
+  llegó a la cubierta y los siguientes cruzaron la cubierta y bajaron por otra escala: el invitado acabó en el agua y
+  el anfitrión colgado de la escala, y las etapas decían «on deck» y «helm» (el barco no se movió en toda la prueba
+  siguiente). `shipsession.sh` sube ahora en tramos de 1,2 s mirando después de cada uno dónde está el personaje
+  (`where`: `deck`, `ladder`, `wheel` u `off`, por su padre y su posición local), da un paso hacia dentro al llegar
+  arriba (justo en lo alto, un W corto vuelve a agarrar la escala) y cada etapa falla si no acaba donde dice. El
+  timón se toma con E desde dos metros («Ship's Wheel / Operate»), también con el otro jugador en medio.
+- **Hopkins, otra vez la postura:** el 15-nov a las 02:04, desde (-10471,93, -6138,02) el aviso no salió y R abrió
+  el mapa; una hora antes había salido desde (-10471,81, -6138,06), y salió desde (-10471,85, -6138,49) tras un paso
+  corto con W hacia él. La etapa exige ahora z al sur de -6138,15. **No basta:** a las 03:55, desde
+  (-10471,91, -6138,47) y desde (-10471,57, -6138,75), el foco se quedó en un saco de trigo («Wheat / Carry») con
+  todas las punterías probadas (`look` 10/20 y 30/50, cámara a -7° con `pitch.py`, rumbo 121° a 151°, también en
+  primera persona, donde el foco fue a un reloj de arena de su mesa); R abre entonces el mapa, y tras
+  Espacio-Espacio-Esc el mapa sigue abierto (otro Esc lo cierra). Tres sesiones de cinco lo consiguieron a la
+  primera con la misma etapa. Sin regla todavía: lo que se sabe es que el aviso «Hopkins … / CTRL» de abajo a la
+  derecha sale siempre y no es el de la interacción, que CTRL pasa el foco de un saco a otro, y que la rueda del
+  ratón acerca y aleja la cámara (20 pasos la dejan en primera persona; `caminfo.py` dice a qué distancia está).
 - Medir: `tools/porting/boat/ridemon.py` (barco en las dos copias y el invitado en cubierta) y `passmon.py` (a qué
   distancia de su sitio dibuja cada cliente al otro jugador).
