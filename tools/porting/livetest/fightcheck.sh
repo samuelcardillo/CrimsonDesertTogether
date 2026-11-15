@@ -5,6 +5,8 @@
 #   list [radius]     the type-3 actors near each copy's own character, with their health (nearactors.py)
 #   hit KEY [n]       the guest turns to the actor KEY, walks up to it and presses the left button n times (12);
 #                     every four presses: the actor's health on the host's copy and on the guest's, and the guest's own
+#   kill KEY [n]      the same without the pauses, until the actor is gone or at 0 health or n presses (40) are
+#                     spent: turns to it every three presses and looks at its health on the host's copy then
 #   report            what the host's log says of the fight (User2Funnels rank / dead), errors, crash captures
 # Nothing here writes game memory: keys and the mouse to the game's window, and reads.
 cd "$(dirname "$0")"; mkdir -p shots
@@ -57,10 +59,30 @@ hit)
   done
   $UG -Do shot -Out "$SP\\shots\\fight_guest.png" >/dev/null 2>&1
   ;;
+kill)
+  K=$1; N=${2:-40}
+  echo "before: host $(python -I actorhp.py $H $K) || guest $(python -I actorhp.py $G $K)"
+  set -- $(python -I actorhp.py $G $K | sed -E 's/.* m \(([-0-9.]+), ([-0-9.]+)\).*/\1 \2/')
+  case "$1" in ''|*[!-0-9.]*) echo "the guest's copy has no $K"; exit 1;; esac
+  timeout 60 python -I walk.py $G -s 2.0 -n 6 $1 $2 2>&1 | grep "^at" | tail -1
+  for i in $(seq 1 $N); do
+    if [ $((i % 3)) = 1 ]; then
+      L=$(python -I actorhp.py $G $K)
+      case "$L" in *absent*) echo "after $((i - 1)): gone from the guest's copy"; break;; esac
+      set -- $(echo "$L" | sed -E 's/.* m \(([-0-9.]+), ([-0-9.]+)\).*/\1 \2/')
+      case "$1" in ''|*[!-0-9.]*) ;; *) timeout 20 python -I face.py $G $1 $2 >/dev/null 2>&1;; esac
+      HL=$(python -I actorhp.py $H $K); echo "after $((i - 1)): host $HL"
+      case "${HL%%|*}" in *" 0/"*|*absent*) break;; esac  # the actor's part of the line, not the host's own health
+    fi
+    $UG -Do lmb -HoldMs 90 >/dev/null 2>&1; sleep 0.45
+  done
+  echo "end: host $(python -I actorhp.py $H $K) || guest $(python -I actorhp.py $G $K)"
+  $UG -Do shot -Out "$SP\\shots\\fight_kill.png" >/dev/null 2>&1
+  ;;
 report)
   echo "host log: User2Funnels rank lines $(grep -a -c 'User2Funnels rank' "$B/cdmp.host.log"), dead lines $(grep -a -c 'User2Funnels dead' "$B/cdmp.host.log")"
   grep -a 'User2Funnels dead' "$B/cdmp.host.log" | tail -3 | cut -c1-260
   echo "ERR host $(grep -a -c '] ERR ' "$B/cdmp.host.log") guest $(grep -a -c '] ERR ' "$B/cdmp.guest.log"); crash captures host $(grep -a -c 'crash capture (' "$B/cdmp.host.log") guest $(grep -a -c 'crash capture (' "$B/cdmp.guest.log")"
   ;;
-*) echo "stages: travel, list, hit, report"; exit 2;;
+*) echo "stages: travel, list, hit, kill, report"; exit 2;;
 esac
