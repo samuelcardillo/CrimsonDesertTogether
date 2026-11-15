@@ -580,8 +580,56 @@ void test_air_keep_up() {
     }
 }
 
+// The frames of 08:24:52 (15-nov, the guest's log, the guest went off the stern): what the module would have asked
+// for. The ship's way and the requests in the ship's frame are the record's; the ship is put on a straight course.
+void test_air_keep_up_recorded() {
+    const float unit[4] = {0, 0, 0, 1}, bow_local[3] = {0, 0, -1};
+    const Pose start = pose(-9724.43, 351.9, -6538.86, 0.52f);
+    double bow[3];
+    rotate(start.q, bow_local, bow);
+    // Its last request on the part (the push), and the two before it: standing still.
+    const double before2[3] = {-2.52, 3.14, 5.30}, before1[3] = {-2.52, 3.14, 5.30}, last[3] = {-2.81, 3.54, 5.51};
+    double rel[2];
+    air_rel_speed(before2, 1000, before1, 1230, rel);
+    CHECK(rel[0] == 0 && rel[1] == 0);
+    struct Frame {
+        uint32_t ms;       // since the frame before
+        double ship;       // the ship's way since the frame before, m
+        float asked[3];    // the game's request, in the ship's frame
+    };
+    const Frame frames[] = {{140, 2.92, {-1.96f, 4.34f, 8.61f}},  {233, 1.85, {-2.31f, 4.42f, 9.34f}},
+                            {157, 2.88, {-3.98f, 4.34f, 11.36f}}, {207, 1.96, {-3.25f, 4.25f, 13.51f}},
+                            {4, 2.59, {-2.39f, 4.17f, 16.43f}},   {149, 0.00, {-2.55f, 4.15f, 16.62f}},
+                            {165, 1.89, {-1.99f, 4.05f, 18.74f}}};
+    Pose hull = start;
+    double t = 0;
+    int n = 0;
+    for (const Frame& f : frames) {
+        t += f.ms / 1000.0;
+        hull.x += bow[0] * f.ship;
+        hull.z += bow[2] * f.ship;
+        const Pose a = attach(hull, f.asked, unit);
+        const double asked[3] = {a.x, a.y, a.z};
+        CHECK(!air_over(t, f.asked[1]));
+        double fix[2] = {0, 0};
+        CHECK(air_keep_up(start, hull, last, rel, t, asked, fix));
+        const double moved[3] = {asked[0] + fix[0], asked[1], asked[2] + fix[1]};
+        double l[3];
+        to_local(hull, moved, l);
+        // Along the ship it is back where it left the deck (the first frame: the push took it 0.18 m further than
+        // the ship went in that frame, and the module never gives more than the ship's own way); across the ship
+        // and in height it is where the game put it.
+        CHECK(near(l[2], 5.51, n == 0 ? 0.2 : 0.02));
+        CHECK(near(l[0], f.asked[0], 0.02) && near(l[1], f.asked[1], 0.02));
+        ++n;
+    }
+    // Without the module the record ends 13.2 m aft of where it stood, past the stern rail (z about 10).
+    CHECK(frames[6].asked[2] - last[2] > 13.0);
+}
+
 int main() {
     test_air_keep_up();
+    test_air_keep_up_recorded();
     test_usable();
     test_track_empty_and_single();
     test_track_interpolates_behind();

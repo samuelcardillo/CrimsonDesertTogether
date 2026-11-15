@@ -655,11 +655,13 @@ struct OwnTrace {  // the hook's own, under g_own_trace_busy
     bool root_followed = false;
     int after = -1;       // frames still to record after the change; -1: none waited for
     size_t event = 0;     // `pushed` of the frame in which the parent was gone
-    // The last two requests on a part of a followed ship: its place in the ship's frame, when, and the ship's pose
-    // at the later one.
+    // The last three requests on a part of a followed ship (oldest first): its place in the ship's frame, when, and
+    // the ship's pose at the last one. Its speed over the deck at take-off is taken from the two BEFORE the last:
+    // the last one is often already the push that takes it off the deck (08:24:52 on 15-nov: 0.29 m to port, 0.40 m
+    // up and 0.21 m aft in one frame, standing still), and that is not a speed it had.
     int on_n = 0;
-    double on_local[2][3]{};
-    uint64_t on_ms[2]{};
+    double on_local[3][3]{};
+    uint64_t on_ms[3]{};
     vfl::Pose on_hull;
     uint32_t on_part = 0;
     // In the air.
@@ -799,16 +801,17 @@ void own_frame(safetyhook::Context& ctx) noexcept {
         if (t.air) own_air_end(t, parent, &f);
         if (t.root_followed && f.hull_ok && f.request_ok) {
             // Its place on the ship at this request, for the next take-off.
-            if (t.on_n == 2) {
-                std::memcpy(t.on_local[0], t.on_local[1], sizeof t.on_local[0]);
+            if (t.on_n == 3) {
+                std::memmove(t.on_local[0], t.on_local[1], 2 * sizeof t.on_local[0]);
                 t.on_ms[0] = t.on_ms[1];
+                t.on_ms[1] = t.on_ms[2];
+                t.on_n = 2;
             }
-            const int i = t.on_n == 0 ? 0 : 1;
-            vfl::to_local(f.hull, f.request, t.on_local[i]);
-            t.on_ms[i] = f.ms;
+            vfl::to_local(f.hull, f.request, t.on_local[t.on_n]);
+            t.on_ms[t.on_n] = f.ms;
             t.on_hull = f.hull;
             t.on_part = parent;
-            t.on_n = std::min(t.on_n + 1, 2);
+            ++t.on_n;
         } else {
             t.on_n = 0;
         }
@@ -821,7 +824,7 @@ void own_frame(safetyhook::Context& ctx) noexcept {
             t.air_hull = t.on_hull;
             std::memcpy(t.air_local, t.on_local[last], sizeof t.air_local);
             t.air_rel[0] = t.air_rel[1] = 0;
-            if (t.on_n == 2) vfl::air_rel_speed(t.on_local[0], t.on_ms[0], t.on_local[1], t.on_ms[1], t.air_rel);
+            if (t.on_n == 3) vfl::air_rel_speed(t.on_local[0], t.on_ms[0], t.on_local[1], t.on_ms[1], t.air_rel);
             t.done = OwnAirDone{};
             t.done.from = t.on_part;
             t.on_n = 0;
