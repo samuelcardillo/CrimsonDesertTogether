@@ -7,6 +7,8 @@
 #                     every four presses: the actor's health on the host's copy and on the guest's, and the guest's own
 #   kill KEY [n]      the same without the pauses, until the actor is gone or at 0 health or n presses (40) are
 #                     spent: turns to it every three presses and looks at its health on the host's copy then
+#   pick              the key of the enemy to try: the nearest to the guest with 100 to 200 health that stands on
+#                     the guest's level (within 1.5 m of its height)
 #   report            what the host's log says of the fight (User2Funnels rank / dead), errors, crash captures
 # Nothing here writes game memory: keys and the mouse to the game's window, and reads.
 cd "$(dirname "$0")"; mkdir -p shots
@@ -64,7 +66,11 @@ kill)
   echo "before: host $(python -I actorhp.py $H $K) || guest $(python -I actorhp.py $G $K)"
   set -- $(python -I actorhp.py $G $K | sed -E 's/.* m \(([-0-9.]+), ([-0-9.]+)\).*/\1 \2/')
   case "$1" in ''|*[!-0-9.]*) echo "the guest's copy has no $K"; exit 1;; esac
-  timeout 60 python -I walk.py $G -s 2.0 -n 6 $1 $2 2>&1 | grep "^at" | tail -1
+  # No walking when it is already within reach: the nexus stands on a crag, and a walk towards an enemy that is on
+  # the ledge below takes the guest over the edge (15-nov, 04:26).
+  if python -I actorhp.py $G $K | python -I -c "import re, sys; m = re.search(r'at ([0-9.]+) m', sys.stdin.read()); sys.exit(0 if m and float(m.group(1)) > 3.5 else 1)"; then
+    timeout 60 python -I walk.py $G -s 2.0 -n 6 $1 $2 2>&1 | grep "^at" | tail -1
+  fi
   for i in $(seq 1 $N); do
     if [ $((i % 3)) = 1 ]; then
       L=$(python -I actorhp.py $G $K)
@@ -79,10 +85,21 @@ kill)
   echo "end: host $(python -I actorhp.py $H $K) || guest $(python -I actorhp.py $G $K)"
   $UG -Do shot -Out "$SP\\shots\\fight_kill.png" >/dev/null 2>&1
   ;;
+pick)
+  timeout 60 python -I nearactors.py $G 25 3 2>/dev/null | python -I -c "
+import re, sys
+own = None
+for l in sys.stdin:
+    m = re.search(r'own character at \(([-0-9.]+), ([-0-9.]+), ([-0-9.]+)\)', l)
+    if m: own = float(m.group(2)); continue
+    m = re.search(r'^\s+(\w{8}) type 3\s+([0-9.]+) m at \(([-0-9.]+), ([-0-9.]+), ([-0-9.]+)\) health ([0-9]+)/([0-9]+)', l)
+    if m and own is not None and 100 <= int(m.group(7)) <= 200 and int(m.group(6)) > 0 and abs(float(m.group(4)) - own) < 1.5:
+        print(m.group(1)); break"
+  ;;
 report)
   echo "host log: User2Funnels rank lines $(grep -a -c 'User2Funnels rank' "$B/cdmp.host.log"), dead lines $(grep -a -c 'User2Funnels dead' "$B/cdmp.host.log")"
   grep -a 'User2Funnels dead' "$B/cdmp.host.log" | tail -3 | cut -c1-260
   echo "ERR host $(grep -a -c '] ERR ' "$B/cdmp.host.log") guest $(grep -a -c '] ERR ' "$B/cdmp.guest.log"); crash captures host $(grep -a -c 'crash capture (' "$B/cdmp.host.log") guest $(grep -a -c 'crash capture (' "$B/cdmp.guest.log")"
   ;;
-*) echo "stages: travel, list, hit, kill, report"; exit 2;;
+*) echo "stages: travel, list, hit, kill, pick, report"; exit 2;;
 esac

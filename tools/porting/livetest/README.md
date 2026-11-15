@@ -51,7 +51,8 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   dos por viaje rápido al nexo junto a Valvegard Garrison (-4710, -5348), en medio de los mechas; `list` da los
   enemigos cercanos de cada copia; `hit CLAVE [n]` hace que el invitado se gire hacia ese enemigo, se acerque y dé n
   golpes con el botón izquierdo, y cada cuatro dice la vida del enemigo en las dos copias y la del invitado;
-  `kill CLAVE [n]`, lo mismo sin pausas hasta que el enemigo muere o se acaban los golpes; `report`, lo que dice el
+  `kill CLAVE [n]`, lo mismo sin pausas hasta que el enemigo muere o se acaban los golpes (sin andar si ya está a
+  mano); `pick`, la clave del enemigo más cercano al invitado con 100–200 de vida y a su altura; `report`, lo que dice el
   log del anfitrión (`User2Funnels rank` / `dead`), errores y volcados. Los dos mueren enseguida ahí: revivir en el
   punto de control es MANTENER U (`ui.ps1 -Do hold -Keys U -HoldMs 2000`). Ojo: el nexo está en lo alto de un
   peñasco y el guion anda y apunta en planta; en cuanto el invitado cae a la repisa de abajo pega a la roca (así
