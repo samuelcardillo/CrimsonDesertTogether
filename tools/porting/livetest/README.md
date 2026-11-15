@@ -65,6 +65,9 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   (`boat/deckdrift.py` y, fotograma a fotograma, `boat/slidetrace.py`). `ASI=<un cdmp.asi> bash shipsession.sh`
   arranca la sesión con ese `cdmp.asi` (el de un kit publicado: `dist/…/cdmp.asi`) para comparar builds en la misma
   prueba; el arranque siguiente sin `ASI` vuelve a poner el compilado.
+- `shiphead.py pid`: el rumbo de la proa del barco (su eje -z; 90 = +x, el este) y su posición. Para gobernar una
+  prueba de velocidad: el barco encalla enseguida al sur y al suroeste del amarre (bajíos en (-10410, -6373) y
+  (-10075, -6913), 15-nov); una y sobre el agua pasa de 350 es que está encallado.
 - `nearmem.py pid`: las regiones ejecutables justo debajo de la imagen del juego (donde van los trampolines de
   los ganchos): los tres bloques de 64 KB que el mod coge al arrancar y cualquier otro. Si el log del anfitrión
   trae líneas «no trampoline memory» o `REFUSED`, esa sesión no vale: el mod va a medias (15-nov, 04:31).
