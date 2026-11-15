@@ -33,6 +33,8 @@ inline constexpr uint32_t kMagic = 0x504D4443;  // bytes "CDMP"
 // local to it), for ship passengers (session2/vehicle_follow.h).
 // Still 10 (2026-11-14): EventKind::Riders and EventKind::Vehicles are new. No message changed, and a peer without
 // them drops the events as newer kinds (kMaxEventKind), so its ships and their crews stay as they were.
+// Still 10 (2026-11-15): EventKind::VehiclesTimed is what a mod sends now instead of Vehicles (which it still takes
+// from an older peer); an older peer drops it and draws the other ships from the game's own updates, as before b2.
 inline constexpr uint16_t kVersion = 10;
 // Hello and Welcome start the same in every version from 5 (name, then the
 // rest), so a peer with another version is recognised and reported instead
@@ -81,9 +83,13 @@ enum class EventKind : uint8_t {
                       // session gives it to its side handler (ClientSession::set_side_handler).
     Vehicles = 14,    // where the sender has the vehicles its client controls (its ship, the NPCs' ships), ten times
                       // a second while they move (session2/vehicle_follow.h): u8 n | n x (u32 vehicle actor key |
-                      // f32 x, y, z | f32 qx, qy, qz, qw), world. Side handler too.
+                      // f32 x, y, z | f32 qx, qy, qz, qw), world. Side handler too. Sent by releases b2 and b3 only.
+    VehiclesTimed = 15,  // the same, with the time of each pose: u8 n | u64 the sender's clock now (ms) | n x (u32
+                      // vehicle actor key | u16 how long ago the sender saw this pose appear (ms) | f32 x, y, z |
+                      // f32 qx, qy, qz, qw). The receiver places each sample at that time on its own clock instead
+                      // of at its arrival (session2/vehicle_follow.h). Side handler too.
 };
-inline constexpr uint8_t kMaxEventKind = 14;  // newer kinds decode; the session drops them
+inline constexpr uint8_t kMaxEventKind = 15;  // newer kinds decode; the session drops them
 
 // Wire: u32 copy key | u64 game clock ms | f32 x, y, z | f32 qx, qy, qz, qw.
 inline constexpr size_t kEnemyPosEventSize = 40;

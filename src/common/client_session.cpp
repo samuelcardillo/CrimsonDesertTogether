@@ -93,6 +93,20 @@ void ClientSession::check_build(const std::string& name, uint32_t build) {
     event("warning: peer " + peer_problem_);
 }
 
+// Is this datagram newer than the last one taken of its kind? The sender numbers every datagram it sends (send()),
+// so the numbers of one kind only grow; an equal or older one came late (or twice). Wrap-safe.
+bool ClientSession::newest(uint32_t seq, uint32_t* last) {
+    if (*last && static_cast<int32_t>(seq - *last) <= 0) {
+        ++stats_.out_of_order;
+        return false;
+    }
+    *last = seq;
+    return true;
+}
+
+// Another partner, or the same one started again: its numbers start over.
+void ClientSession::forget_order() { last_state_seq_ = last_riders_seq_ = last_vehicles_seq_ = 0; }
+
 void ClientSession::on_datagram(std::span<const uint8_t> bytes, uint32_t now_ms) {
     auto packet = proto::decode(bytes);
     if (!packet) {
@@ -121,6 +135,7 @@ void ClientSession::on_datagram(std::span<const uint8_t> bytes, uint32_t now_ms)
         } else {
             event("connected to peer '" + hello->name + "'");
         }
+        forget_order();
         peer_name_ = hello->name;
         state_ = State::Connected;
         last_ping_ms_ = now_ms;
@@ -137,6 +152,7 @@ void ClientSession::on_datagram(std::span<const uint8_t> bytes, uint32_t now_ms)
             state_ = State::Connected;
             last_ping_ms_ = now_ms;
             ++epoch_;
+            forget_order();
             event("connected to peer '" + peer_name_ + "'");
         } else if (welcome->name != peer_name_) {
             // A relay announces who is on the other side when that changes:
@@ -145,6 +161,7 @@ void ClientSession::on_datagram(std::span<const uint8_t> bytes, uint32_t now_ms)
             remote_state_.reset();
             reliable_.reset();
             ++epoch_;
+            forget_order();
             event("peer is now '" + peer_name_ + "'");
         }
         last_recv_ms_ = now_ms;
@@ -162,13 +179,17 @@ void ClientSession::on_datagram(std::span<const uint8_t> bytes, uint32_t now_ms)
         const float sample = static_cast<float>(now_ms - pong->origin_ms);
         stats_.rtt_ms = stats_.rtt_ms == 0.0f ? sample : stats_.rtt_ms * 0.8f + sample * 0.2f;
     } else if (auto* state = std::get_if<proto::PlayerState>(&packet->body)) {
+        if (!newest(packet->seq, &last_state_seq_)) return;
         remote_state_ = *state;
         ++stats_.remote_states;
     } else if (auto* ev = std::get_if<proto::GameEvent>(&packet->body)) {
         ++stats_.events_received;
         if (static_cast<uint8_t>(ev->kind) > proto::kMaxEventKind) {
             ++stats_.unknown_kinds;  // a newer peer's event
-        } else if (ev->kind == proto::EventKind::Riders || ev->kind == proto::EventKind::Vehicles) {
+        } else if (ev->kind == proto::EventKind::Riders || ev->kind == proto::EventKind::Vehicles ||
+                   ev->kind == proto::EventKind::VehiclesTimed) {
+            if (!newest(packet->seq, ev->kind == proto::EventKind::Riders ? &last_riders_seq_ : &last_vehicles_seq_))
+                return;
             if (side_event_fn_) side_event_fn_(*ev, now_ms);
         } else if (game_event_fn_) {
             game_event_fn_(*ev, now_ms);
@@ -210,6 +231,7 @@ void ClientSession::reset_to_connecting(uint32_t now_ms) {
     state_ = State::Connecting;
     peer_name_.clear();
     remote_state_.reset();
+    forget_order();
     reliable_.reset();
     // Retry Hello on the next tick rather than waiting a full interval.
     started_ = false;

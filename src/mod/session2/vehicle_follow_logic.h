@@ -15,6 +15,8 @@
 #include <span>
 #include <vector>
 
+#include "common/clock_mapper.h"
+
 namespace cdmp::session2::vfl {
 
 struct Pose {
@@ -255,6 +257,7 @@ inline size_t decode_riders(std::span<const uint8_t> payload, Rider* out) {
 struct VehiclePose {
     uint32_t key = 0;
     float pos[3]{}, q[4]{0, 0, 0, 1};
+    uint16_t age_ms = 0;  // VehiclesTimed only: how long before the event was sent the sender saw this pose appear
 };
 inline constexpr size_t kVehicleWire = 32, kMaxVehiclePoses = 16;
 inline bool vehicle_pose_ok(const VehiclePose& v) {
@@ -295,6 +298,96 @@ inline size_t decode_vehicles(std::span<const uint8_t> payload, VehiclePose* out
     }
     return n;
 }
+
+// ---------------------------------------------------------------- timed vehicle poses (proto::EventKind::VehiclesTimed)
+// The same poses with their time. A sample stamped when it ARRIVES carries two errors that have nothing to do with
+// the ship: the sender's game only moves a vehicle once a frame and the sender looks ten times a second (a copy of the
+// game running behind another window draws 7 frames a second: its poses are 143 ms apart and arrive 100 or 200 ms
+// apart, so the receiver saw the ship at 0.7 and 1.4 times its speed by turns), and the network's own unevenness
+// (20 +-30 ms: 0.76 to 1.27 times). So the sender looks at its vehicles every few milliseconds, notes when each pose
+// appeared and sends that as an age; the receiver turns it into its own clock with the fastest transit seen
+// (common/clock_mapper.h). tools/porting/boat/track_replay.cpp, cases (C) and (D): the drawn speed stays within 3-5%.
+// Wire: u8 n | u64 sender's clock now, ms | n x (u32 key | u16 age ms | f32 x, y, z | f32 qx, qy, qz, qw).
+inline constexpr size_t kVehicleTimedHead = 9, kVehicleTimedWire = 34;
+inline std::vector<uint8_t> encode_vehicles_timed(uint64_t sender_ms, std::span<const VehiclePose> poses) {
+    std::vector<uint8_t> out(kVehicleTimedHead, 0);
+    std::memcpy(&out[1], &sender_ms, 8);
+    for (const VehiclePose& v : poses) {
+        if (out[0] == kMaxVehiclePoses) break;
+        if (!vehicle_pose_ok(v)) continue;
+        const size_t at = out.size();
+        out.resize(at + kVehicleTimedWire);
+        std::memcpy(&out[at], &v.key, 4);
+        std::memcpy(&out[at + 4], &v.age_ms, 2);
+        std::memcpy(&out[at + 6], v.pos, 12);
+        std::memcpy(&out[at + 18], v.q, 16);
+        ++out[0];
+    }
+    return out;
+}
+// As decode_vehicles; *sender_ms gets the sender's clock.
+inline size_t decode_vehicles_timed(std::span<const uint8_t> payload, uint64_t* sender_ms, VehiclePose* out) {
+    if (payload.size() < kVehicleTimedHead || payload[0] > kMaxVehiclePoses ||
+        payload.size() != kVehicleTimedHead + payload[0] * kVehicleTimedWire)
+        return 0;
+    std::memcpy(sender_ms, payload.data() + 1, 8);
+    size_t n = 0;
+    for (size_t i = 0; i < payload[0]; ++i) {
+        const uint8_t* p = payload.data() + kVehicleTimedHead + i * kVehicleTimedWire;
+        VehiclePose v;
+        std::memcpy(&v.key, p, 4);
+        std::memcpy(&v.age_ms, p + 4, 2);
+        std::memcpy(v.pos, p + 6, 12);
+        std::memcpy(v.q, p + 18, 16);
+        if (!vehicle_pose_ok(v)) continue;
+        bool twice = false;
+        for (size_t j = 0; j < n; ++j) twice |= out[j].key == v.key;
+        if (!twice) out[n++] = v;
+    }
+    return n;
+}
+// The time, on the receiver's clock, of a sample the sender saw `age_ms` before it sent the event at `sender_ms`:
+// `offset` is receiver clock - sender clock (the fastest transit included). Never later than now (a sample cannot
+// come from the future) and never more than kMaxSampleAgeMs before it (an offset that went wrong: the arrival then).
+inline constexpr uint64_t kMaxSampleAgeMs = 1000;
+inline uint64_t sample_time(uint64_t now_ms, uint64_t sender_ms, uint16_t age_ms, int64_t offset) {
+    const int64_t t = static_cast<int64_t>(sender_ms) - age_ms + offset;
+    const auto now = static_cast<int64_t>(now_ms);
+    if (t > now) return now_ms;
+    if (now - t > static_cast<int64_t>(kMaxSampleAgeMs)) return now_ms;
+    return static_cast<uint64_t>(t);
+}
+// The other mod's clock on this one's, kept from its timed events. Each event gives (its arrival here - the sender's
+// clock when it was sent) = the clocks' difference plus that datagram's transit; ClockMapper keeps the smallest of the
+// last seconds and moves towards it slowly. An event whose own send time would land more than kFutureMs after its
+// arrival, or more than kMaxSampleAgeMs before it, does not fit the offset in use: the other game was started again
+// (another clock), or the first events of this one came late; the offset is then taken anew from that event at once
+// (the mapper alone would crawl there a millisecond per event, or hold the old minimum for seconds).
+class SampleClock {
+public:
+    static constexpr int64_t kFutureMs = 50;
+    // An event that the sender sent at sender_ms (its clock) and that arrived at now_ms (this clock).
+    void on_event(uint64_t now_ms, uint64_t sender_ms) {
+        mapper_.add(now_ms, sender_ms, static_cast<uint32_t>(now_ms));
+        const int64_t at = static_cast<int64_t>(sender_ms) + mapper_.offset().value_or(0) - static_cast<int64_t>(now_ms);
+        if (at > kFutureMs || at < -static_cast<int64_t>(kMaxSampleAgeMs)) {
+            mapper_.reset();
+            mapper_.add(now_ms, sender_ms, static_cast<uint32_t>(now_ms));
+            ++resets_;
+        }
+    }
+    // The time on this clock of a sample of the event just given to on_event (the same now_ms and sender_ms).
+    uint64_t at(uint64_t now_ms, uint64_t sender_ms, uint16_t age_ms) const {
+        const auto o = mapper_.offset();
+        return o ? sample_time(now_ms, sender_ms, age_ms, *o) : now_ms;
+    }
+    uint64_t resets() const { return resets_; }
+    void reset() { mapper_.reset(); }
+
+private:
+    ClockMapper mapper_;
+    uint64_t resets_ = 0;
+};
 
 inline void to_sector(double world, int16_t hint, float* local, int16_t* sector) {
     const double l = world - hint * 1000.0;

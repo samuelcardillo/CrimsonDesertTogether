@@ -44,6 +44,14 @@ uint32_t inner_physics_offset() {
     return current_build() == Build::v3663 ? 0x2D0 : off::kControlInner_Physics;
 }
 
+// The stamina entry's id in the stat container. 22 up to 3576. On 3663 there is no entry 22 (the panel said "Stamina
+// 0/0"); live, 2026-11-15, two copies (tools/porting/livetest/statseries.py): with W and SHIFT held for six seconds
+// entry 25 goes 440 -> 410.7 -> 383.5 and is back at 440 two and a half seconds after the keys are released; 26
+// (170) and 27 (120) do not move, and nothing else does on a run from the Vellua nexus to the quay (statwatch.py).
+uint64_t stamina_stat_id() {
+    return current_build() == Build::v3663 ? 25 : off::kStatId_Stamina;
+}
+
 }  // namespace
 
 bool PlayerReader::init() {
@@ -174,7 +182,7 @@ void PlayerReader::read_stats(uintptr_t components, PlayerSnapshot& out) {
         if (*id == off::kStatId_Health) {
             cur_out = &out.health;
             max_out = &out.health_max;
-        } else if (*id == off::kStatId_Stamina) {
+        } else if (*id == stamina_stat_id()) {
             cur_out = &out.stamina;
             max_out = &out.stamina_max;
         } else {

@@ -374,7 +374,8 @@ void run_network(const Config& cfg, LocalSource& local) {
     // side handler stays whatever sets the game handlers later (the co-op link, the Troc tunnel).
     session.set_side_handler([](const proto::GameEvent& ev, uint32_t) {
         if (ev.kind == proto::EventKind::Riders) session2::vehicle_follow_on_peer_riders(ev.payload);
-        if (ev.kind == proto::EventKind::Vehicles) session2::vehicle_follow_on_peer_vehicles(ev.payload);
+        if (ev.kind == proto::EventKind::Vehicles) session2::vehicle_follow_on_peer_vehicles(ev.payload, false);
+        if (ev.kind == proto::EventKind::VehiclesTimed) session2::vehicle_follow_on_peer_vehicles(ev.payload, true);
     });
     bool was_connected = false;
     uint64_t last_channel_state = 0;  // session.stats().remote_states at the last divergence_probe publication
@@ -551,6 +552,8 @@ void run_network(const Config& cfg, LocalSource& local) {
         }
         health.mark(Phase::Coop, now_us());
 
+        // Ships: when each vehicle this client controls got the pose it has (the poses below go with their time).
+        if (connected) session2::vehicle_follow_observe();
         // Ships: the riders of this client's own ship (its crew), ten times a second while there are any.
         if (now - last_riders >= 100) {
             last_riders = now;
@@ -559,7 +562,7 @@ void run_network(const Config& cfg, LocalSource& local) {
                     session.send_event(proto::GameEvent{proto::EventKind::Riders, std::move(riders)}, now);
                 // ... and where this client has the vehicles it controls, while they move.
                 if (auto vehicles = session2::vehicle_follow_own_vehicles(); vehicles.size() > 1)
-                    session.send_event(proto::GameEvent{proto::EventKind::Vehicles, std::move(vehicles)}, now);
+                    session.send_event(proto::GameEvent{proto::EventKind::VehiclesTimed, std::move(vehicles)}, now);
             }
         }
         if (now - last_state >= state_interval) {
@@ -614,10 +617,11 @@ void run_network(const Config& cfg, LocalSource& local) {
                                      rs->pos.z, rs->health);
             }
             log::info("Net: {} | sent {} recv {} rejected {} | rtt {:.1f} ms | remote states {} | "
-                      "last remote {} | reliable pending {} refused {} resent {} held back {} | unknown kinds {} | {} | {}",
+                      "last remote {} | reliable pending {} refused {} resent {} held back {} | unknown kinds {} | "
+                      "late states and poses dropped {} | {} | {}",
                       state, st.sent, st.received, st.rejected, st.rtt_ms, st.remote_states, remote,
                       session.reliable_pending(), session.reliable_refused(), session.reliable_resent(),
-                      session.reliable_held_back(), st.unknown_kinds, transport->status(),
+                      session.reliable_held_back(), st.unknown_kinds, st.out_of_order, transport->status(),
                       health.window_text(health.take_window(now_us())));
             if (!session.peer_problem().empty()) log::warn("Net: {}", session.peer_problem());
             log::info("Local: {}", local.describe());
@@ -1353,7 +1357,7 @@ DWORD WINAPI worker(LPVOID) {
             }
         }
         if (overlay || sniffer || session2) {
-            if (overlay) render::hud_configure({cfg.overlay_self_marker});
+            if (overlay) render::hud_configure({cfg.overlay_self_marker, &session2::vehicle_follow_peer_world});
             auto* init = new LateInit{in_game, overlay, sniffer,
                                                       in_game && !p8_guest && cfg.dev_clone_hotkeys,
                                                       cfg.dev_mirror_delay_ms, cfg.dev_mirror_offset_m,

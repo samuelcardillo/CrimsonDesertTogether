@@ -86,14 +86,20 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
   * The stern lantern and other fittings. Parts of the host's ship that the guest's game failed to create when
     joining (the lit lantern at the stern, most often) are now given to it again a few seconds later.
   * Other ships (pirates, merchants). The guest used to see an AI ship somewhere else than the host did, sometimes
-    hundreds of metres away, so a sea battle looked one-sided. They are now drawn where the host has them. Big ships
-    were checked in play. Also new, and NOT played yet: small boats are covered too, and every ship's position now
-    goes from the host's mod to the guest's ten times a second (the game itself sends one a second, which looked
-    jerky on AI ships).
+    hundreds of metres away, so a sea battle looked one-sided. They are now drawn where the host has them: big ships
+    and small boats, with every ship's position going from the host's mod to the guest's ten times a second (the
+    game itself sends one a second, which looked jerky on AI ships). Checked in play.
+  NEW after release b3 (checked on 15 November, at night, two copies on one PC):
+  * Smoother ships. Each ship position now travels with the moment it was true, and the guest draws it by that time
+    instead of by when the message arrived. Before, a ship seemed to speed up and slow down several times a second
+    when the network was uneven or the host's game ran slowly.
+  * The name tag over the other player stays over their head on a moving ship (it used to drift away, the faster
+    the ship the further: about 3 m at 5 m/s), and the panel's "m away" is right there too.
+  * The panel shows your stamina again (it said "Stamina 0/0" on this game version).
   BOTH PCs need the same kit, as always (the panel says so when they differ). A PC with an older kit still
   connects, but sails, crew, lanterns and other ships stay as they were for it.
-  Not covered yet: the guest's own ship as the host sees it (not tested). The name tag over the other player can sit
-  a few metres off while you stand on a ship.
+  Not covered yet: the guest's own ship as the host sees it (not tested). Carts and other AI vehicles on land can
+  show a few metres from where the host has them.
   To turn all of it off: [session2] vehicle_follow=0 in the GUEST's cdmp.ini (and in the HOST's for the "both on
   board", crew and smoother-position parts). The sails alone: gimmick_relay=0 (HOST) and gimmick_take=0 (GUEST).
   The lanterns alone: create_retry=0 (GUEST).

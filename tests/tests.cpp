@@ -740,6 +740,79 @@ void test_session_game_data() {
     CHECK(s.reliable_pending() == 0);
 }
 
+// A state or a pose event that arrives after a newer one of its kind is dropped (each replaces the one before: a late
+// one would put the other player or a ship back for a moment); each kind keeps its own order; a new partner starts over.
+void test_session_order() {
+    std::vector<std::vector<uint8_t>> out;
+    ClientSession s("Me", 1, [&](const std::vector<uint8_t>& b) { out.push_back(b); });
+    int riders = 0, vehicles = 0;
+    s.set_side_handler([&](const proto::GameEvent& e, uint32_t) {
+        (e.kind == proto::EventKind::Riders ? riders : vehicles) += 1;
+    });
+    s.tick(0);
+    s.on_datagram(proto::encode(make(proto::Welcome{"peer"})), 10);
+    CHECK(s.state() == ClientSession::State::Connected);
+    auto numbered = [](uint32_t seq, proto::Body body) {
+        proto::Packet p;
+        p.seq = seq;
+        p.body = std::move(body);
+        return proto::encode(p);
+    };
+    auto state = [&](uint32_t seq, float x) { return numbered(seq, proto::PlayerState{{x, 0, 0}, {}, 0}); };
+    auto x = [&] { return s.remote_state() ? s.remote_state()->pos.x : -1.0f; };
+
+    s.on_datagram(state(10, 1), 20);
+    CHECK(x() == 1.0f);
+    s.on_datagram(state(9, 2), 21);  // older: came late
+    s.on_datagram(state(10, 3), 22);  // the same one twice
+    CHECK(x() == 1.0f && s.stats().out_of_order == 2 && s.stats().remote_states == 1);
+    s.on_datagram(state(11, 4), 23);
+    CHECK(x() == 4.0f);
+
+    // The pose events: their own order each, apart from the states'.
+    s.on_datagram(numbered(30, proto::GameEvent{proto::EventKind::Vehicles, {0}}), 30);
+    s.on_datagram(numbered(29, proto::GameEvent{proto::EventKind::Vehicles, {0}}), 31);  // late
+    s.on_datagram(numbered(28, proto::GameEvent{proto::EventKind::Riders, {0}}), 32);    // the first of its kind
+    s.on_datagram(numbered(27, proto::GameEvent{proto::EventKind::Riders, {0}}), 33);    // late
+    s.on_datagram(numbered(31, proto::GameEvent{proto::EventKind::Vehicles, {0}}), 34);
+    CHECK(vehicles == 2 && riders == 1 && s.stats().out_of_order == 4);
+    s.on_datagram(state(12, 5), 35);  // the events' numbers did not move the states' order
+    CHECK(x() == 5.0f);
+
+    // The numbers wrap around (a number counts as newer up to 2^31 ahead: these steps are a long session's).
+    s.on_datagram(state(0x70000000u, 6), 40);
+    s.on_datagram(state(0xE0000000u, 6), 40);
+    s.on_datagram(state(0xFFFFFFF0u, 6), 40);
+    CHECK(x() == 6.0f && s.stats().out_of_order == 4);
+    s.on_datagram(state(5, 7), 41);
+    CHECK(x() == 7.0f);
+    s.on_datagram(state(0xFFFFFFF8u, 8), 42);  // from before the wrap: late
+    CHECK(x() == 7.0f);
+
+    // Another partner (a relay says so): its numbers start over.
+    s.on_datagram(proto::encode(make(proto::Welcome{"other"})), 50);
+    s.on_datagram(state(1, 9), 51);
+    CHECK(x() == 9.0f);
+    // The same partner starts again (a Hello while connected): its numbers start over too.
+    s.on_datagram(numbered(700, proto::PlayerState{{10, 0, 0}, {}, 0}), 52);
+    s.on_datagram(numbered(1, proto::Hello{"other", 0, 0xBEEF}), 53);
+    s.on_datagram(numbered(2, proto::PlayerState{{11, 0, 0}, {}, 0}), 54);
+    CHECK(x() == 11.0f);
+    // The timed vehicle poses share the untimed ones' order (a mod sends one kind or the other).
+    const int before = vehicles;
+    s.on_datagram(numbered(40, proto::GameEvent{proto::EventKind::VehiclesTimed, {0}}), 60);
+    s.on_datagram(numbered(39, proto::GameEvent{proto::EventKind::Vehicles, {0}}), 61);  // late
+    s.on_datagram(numbered(41, proto::GameEvent{proto::EventKind::VehiclesTimed, {0}}), 62);
+    CHECK(vehicles == before + 2);
+    // A sender that does not number its datagrams (0): every one is taken.
+    ClientSession t("Me", 1, [&](const std::vector<uint8_t>& b) { out.push_back(b); });
+    t.tick(0);
+    t.on_datagram(proto::encode(make(proto::Welcome{"peer"})), 10);
+    t.on_datagram(numbered(0, proto::PlayerState{{1, 0, 0}, {}, 0}), 20);
+    t.on_datagram(numbered(0, proto::PlayerState{{2, 0, 0}, {}, 0}), 21);
+    CHECK(t.remote_state() && t.remote_state()->pos.x == 2.0f && t.stats().out_of_order == 0);
+}
+
 // Remote clock 50 s ahead, transit 30-80 ms: the offset converges to
 // -50000 + ~30, moves at most 1 ms per sample afterwards, and jumps only for
 // big changes.
@@ -1041,6 +1114,7 @@ int main() {
     test_send_gate();
     test_versions();
     test_session_game_data();
+    test_session_order();
     test_clock_mapper();
     test_equip_state();
     test_session_host_guest();

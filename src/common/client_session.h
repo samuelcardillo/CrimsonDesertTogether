@@ -34,6 +34,9 @@ public:
         uint64_t events_received = 0;
         uint64_t reliable_received = 0;
         uint64_t unknown_kinds = 0;  // events / reliable messages of a newer version, dropped
+        // States and pose events (Riders, Vehicles) that arrived after a newer one of their kind, dropped: each of
+        // them replaces the one before, so an old one arriving late would put a ship or a player back for a moment.
+        uint64_t out_of_order = 0;
     };
 
     static constexpr uint32_t kHelloRetryMs = 1000;
@@ -62,7 +65,7 @@ public:
         game_event_fn_ = std::move(on_event);
         reliable_fn_ = std::move(on_reliable);
     }
-    // The events that are not co-op game data (EventKind::Riders, Vehicles): their own handler, which setting the game handlers
+    // The events that are not co-op game data (EventKind::Riders, Vehicles, VehiclesTimed): their own handler, which setting the game handlers
     // (a co-op session, a TrocLink) does not replace.
     void set_side_handler(GameEventFn on_event) { side_event_fn_ = std::move(on_event); }
     size_t reliable_pending() const { return reliable_.unacked_fragments(); }
@@ -108,6 +111,8 @@ private:
     void reset_to_connecting(uint32_t now_ms);
     bool other_version(const proto::Packet& packet, uint32_t now_ms);
     void check_build(const std::string& name, uint32_t build);
+    bool newest(uint32_t seq, uint32_t* last);
+    void forget_order();
 
     std::string player_name_;
     uint32_t mod_build_;
@@ -130,6 +135,9 @@ private:
     std::string peer_problem_;
     uint32_t last_problem_event_ms_ = 0;
     std::optional<proto::PlayerState> remote_state_;
+    // The sender's sequence number of the last state / Riders / Vehicles taken (0: none yet, or a sender that does
+    // not number its datagrams).
+    uint32_t last_state_seq_ = 0, last_riders_seq_ = 0, last_vehicles_seq_ = 0;
 
     uint32_t next_seq_ = 1;
     bool started_ = false;

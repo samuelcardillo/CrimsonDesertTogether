@@ -940,7 +940,8 @@ uint64_t event_timestamp(const proto::GameEvent& ev) {
         case proto::EventKind::PlayerHit:
         case proto::EventKind::GuestHit:
         case proto::EventKind::Riders:
-        case proto::EventKind::Vehicles: return 0;
+        case proto::EventKind::Vehicles:
+        case proto::EventKind::VehiclesTimed: return 0;
     }
     if (ev.payload.size() != size) return 0;
     uint64_t ts = 0;

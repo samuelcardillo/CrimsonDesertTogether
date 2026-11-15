@@ -37,6 +37,10 @@ struct HudData {
 
 struct HudOptions {
     bool self_marker = false;  // dev aid: draw a cross on our own character
+    // Where this client draws the other player's character when that is not where the other mod says it stands (on a
+    // ship: session2::vehicle_follow_peer_world). Called every frame on the present thread with the character's key;
+    // false: the position the other mod sent is used. nullptr: never asked.
+    bool (*remote_locator)(uint32_t self_key, float out[3]) noexcept = nullptr;
 };
 
 void hud_configure(const HudOptions& options);

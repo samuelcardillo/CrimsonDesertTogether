@@ -296,6 +296,152 @@ void test_vehicle_poses() {
     CHECK(sparse.at(3299, &at) && near(at.x, 15 + 15 * 0.999, 0.05));  // still extrapolating
     CHECK(sparse.at(3400, &at) && near(at.x, 15.0, 1e-9));              // 1.1 s past the newest: back on it
 }
+
+// How unevenly a Track draws a ship that really goes at a steady 10 m/s: the largest departure of the drawn speed,
+// taken over a quarter of a second, from the real one (0 = perfectly even). The sender's game moves the ship once
+// every frame_ms; its mod sends the newest pose every 100 ms when it changed, with how long ago it appeared; each
+// event takes 20 ms +-jitter_ms to arrive; the sender's clock is 700 s ahead of the receiver's. `timed`: the receiver
+// places each sample with SampleClock, as vehicle_follow_on_peer_vehicles does for VehiclesTimed; else at its arrival.
+double unevenness(double frame_ms, double jitter_ms, bool timed) {
+    Track track(300);
+    SampleClock clock;
+    struct Arrival {
+        double at;
+        uint64_t sender_ms;
+        uint16_t age_ms;
+        double x;
+    };
+    std::vector<Arrival> feed;
+    uint32_t seed = 4242;
+    double sent_frame = -1;
+    for (double tick = 1000; tick < 14000; tick += 100) {
+        const double frame = 1000 + std::floor((tick - 1000) / frame_ms) * frame_ms;
+        if (frame == sent_frame) continue;
+        sent_frame = frame;
+        seed = seed * 1664525u + 1013904223u;
+        const double transit = std::max(1.0, 20.0 + (((seed >> 8) & 0xFFFF) / 65535.0 * 2 - 1) * jitter_ms);
+        feed.push_back({tick + transit, static_cast<uint64_t>(tick) + 700000, static_cast<uint16_t>(tick - frame),
+                        10.0 * (frame - 1000) / 1000.0});
+    }
+    size_t next = 0;
+    std::vector<double> xs;
+    for (double t = 1000; t < 13000; t += 1000.0 / 60.0) {
+        while (next < feed.size() && feed[next].at <= t) {
+            const auto now = static_cast<uint64_t>(feed[next].at);
+            if (timed) clock.on_event(now, feed[next].sender_ms);
+            track.push(timed ? clock.at(now, feed[next].sender_ms, feed[next].age_ms) : now, pose(feed[next].x, 0, 5));
+            ++next;
+        }
+        Pose at;
+        if (t >= 5000 && track.at(static_cast<uint64_t>(t), &at)) xs.push_back(at.x);  // the first seconds: the clock settles
+    }
+    double worst = 0;
+    for (size_t i = 15; i < xs.size(); ++i) {
+        const double speed = (xs[i] - xs[i - 15]) / 0.25;
+        worst = std::max(worst, std::fabs(speed - 10.0) / 10.0);
+    }
+    return worst;
+}
+
+// The receiver's clock for the timed poses: where it puts samples, and what it does when the other clock changes.
+void test_sample_clock() {
+    // The sender's clock is 123 456 ms behind this one; its events take 20 ms +-30 (never less than 1).
+    SampleClock clock;
+    uint32_t seed = 99;
+    int64_t worst = 0;
+    uint64_t last_stamp = 0;
+    bool went_back = false;
+    for (uint64_t sent = 10000; sent < 40000; sent += 100) {  // the sender's clock
+        seed = seed * 1664525u + 1013904223u;
+        const auto transit = static_cast<uint64_t>(std::max(1.0, 20.0 + (((seed >> 8) & 0xFFFF) / 65535.0 * 2 - 1) * 30.0));
+        const uint64_t now = sent + 123456 + transit;
+        clock.on_event(now, sent);
+        // A pose the sender saw 40 ms before it sent the event: on this clock that was at sent - 40 + 123456.
+        const uint64_t stamp = clock.at(now, sent, 40);
+        CHECK(stamp <= now);
+        if (sent >= 15000) {  // settled: the fastest transits of the last seconds are 1 to a few ms
+            const int64_t off = static_cast<int64_t>(stamp) - static_cast<int64_t>(sent - 40 + 123456);
+            worst = std::max<int64_t>(worst, off < 0 ? -off : off);
+            went_back |= stamp < last_stamp;
+        }
+        last_stamp = stamp;
+    }
+    CHECK(worst <= 12);  // against +-30 ms for a sample stamped at its arrival
+    CHECK(!went_back);
+    CHECK(clock.resets() == 0);
+    // The other game is started again half a second later: its clock starts near zero. The first event already lands
+    // at its arrival (never a second back, never ahead), and the samples are placed by the new clock from then on.
+    uint64_t now = 39900 + 123456 + 500;
+    clock.on_event(now, 2000);
+    CHECK(clock.resets() == 1);
+    CHECK(clock.at(now, 2000, 0) == now);
+    CHECK(clock.at(now, 2000, 60) == now - 60);
+    now += 100;
+    clock.on_event(now + 7, 2100);  // 7 ms slower than the first: placed 7 ms before its arrival
+    CHECK(clock.resets() == 1 && clock.at(now + 7, 2100, 0) == now);
+    // The first events of a session arrive late (a hitch) and later ones do not: the offset was too large by 200 ms,
+    // an event's send time lands "after" its arrival, and the clock is taken anew instead of crawling there.
+    SampleClock late;
+    late.on_event(50200, 1000);  // 200 ms in transit
+    late.on_event(50300, 1100);
+    CHECK(late.resets() == 0);
+    late.on_event(50320, 1300);  // 20 ms in transit: its send time would be 179 ms after its arrival
+    CHECK(late.resets() == 1 && late.at(50320, 1300, 0) == 50320);
+    // No event yet: a sample is placed at its arrival.
+    SampleClock none;
+    CHECK(none.at(777, 5, 3) == 777);
+}
+
+void test_vehicle_poses_timed() {
+    VehiclePose a{0xB010000A, {-10372.5f, 350.1f, -6207.25f}, {0, 0.70710678f, 0, 0.70710678f}};
+    a.age_ms = 37;
+    VehiclePose b{0xB010157F, {-9991.17f, 353.17f, -6667.79f}, {0, 0, 0, 1}};
+    b.age_ms = 0xFFFF;  // a pose that has not changed for a minute: the age saturates
+    VehiclePose bad = a;
+    bad.pos[0] = bad.pos[2] = 0;
+    const VehiclePose in[] = {a, bad, b};
+    const uint64_t sender = 0x123456789ABCull;  // a clock past 32 bits (a PC that has been on for months)
+    const auto wire = encode_vehicles_timed(sender, in);
+    CHECK(wire.size() == kVehicleTimedHead + 2 * kVehicleTimedWire && wire[0] == 2);
+    VehiclePose out[kMaxVehiclePoses];
+    uint64_t got = 0;
+    CHECK(decode_vehicles_timed(wire, &got, out) == 2 && got == sender);
+    CHECK(out[0].key == a.key && out[0].age_ms == 37 && out[0].pos[0] == a.pos[0] && out[0].q[1] == a.q[1]);
+    CHECK(out[1].key == b.key && out[1].age_ms == 0xFFFF && out[1].pos[2] == b.pos[2]);
+    // Neither form is taken for the other, at any count (their sizes differ: 1 + 32 n against 9 + 34 n).
+    CHECK(decode_vehicles(wire, out) == 0);
+    CHECK(decode_vehicles_timed(encode_vehicles(in), &got, out) == 0);
+    auto cut = wire;
+    cut.pop_back();
+    CHECK(decode_vehicles_timed(cut, &got, out) == 0);
+    CHECK(decode_vehicles_timed({}, &got, out) == 0);
+    CHECK(encode_vehicles_timed(sender, {}).size() == kVehicleTimedHead);
+    CHECK(decode_vehicles_timed(encode_vehicles_timed(sender, {}), &got, out) == 0);
+    std::vector<VehiclePose> many(kMaxVehiclePoses + 3, a);
+    for (size_t i = 0; i < many.size(); ++i) many[i].key = 0xB0100900 + static_cast<uint32_t>(i);
+    CHECK(encode_vehicles_timed(sender, many)[0] == kMaxVehiclePoses);
+
+    // A sample's time on the receiver's clock: the sender's clock, less its age, plus the clocks' difference.
+    // The sender's clock reads 50 000 when the receiver's reads 80 020 (difference 30 000 plus 20 ms of transit).
+    CHECK(sample_time(80020, 50000, 0, 30000) == 80000);
+    CHECK(sample_time(80020, 50000, 120, 30000) == 79880);
+    CHECK(sample_time(80020, 50000, 0, 30100) == 80020);       // would be in the future: its arrival
+    CHECK(sample_time(80020, 50000, 0xFFFF, 30000) == 80020);  // over a second old: its arrival (the Track drops a
+                                                               // pose that did not change anyway)
+    CHECK(sample_time(80020, 50000, 0, -40000) == 80020);      // an offset of another clock: its arrival
+
+    // What the times are for, through the receiver's own code (SampleClock). A copy of the game running behind
+    // another window draws 7 frames a second: stamped on arrival, the ship is seen at up to a third more or less than
+    // its speed by turns; with the poses' own times it is steady.
+    CHECK(unevenness(143.0, 0.0, false) > 0.25);
+    CHECK(unevenness(143.0, 0.0, true) < 0.03);
+    // Two PCs: 60 frames a second and a network that takes 20 ms +-30. On arrival the ship surges by a fifth; with
+    // the times, a few per cent (what is left is the offset following the fastest transit of the last seconds).
+    CHECK(unevenness(16.7, 30.0, false) > 0.15);
+    CHECK(unevenness(16.7, 30.0, true) < 0.06);
+    // Both at once.
+    CHECK(unevenness(143.0, 30.0, true) < 0.06);
+}
 }  // namespace
 
 int main() {
@@ -311,6 +457,8 @@ int main() {
     test_attach();
     test_riders();
     test_vehicle_poses();
+    test_vehicle_poses_timed();
+    test_sample_clock();
     if (g_failures) {
         std::printf("%d failure(s)\n", g_failures);
         return 1;

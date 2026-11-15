@@ -2,6 +2,16 @@
 
 **13-nov-2026, ~19:28: Steam actualizó el juego a 1.0.0.3663 (PE `0x6AF5D198`). Portado esa misma noche (estático, por módulos) y probado en vivo en dos copias: la unión y la despedida con vuelta FUNCIONAN, 0 errores; el resto sin volver a probar. Kit `dist/cdmp-coop-20261113-3663-v22.zip`. Detalle: `docs/research/port-3663.md`. Lo de abajo es de 3527/3549/3576.**
 
+**15-nov-2026 (madrugada, 3663, dos copias en este PC, cinco sesiones sin nadie al teclado): lo que la `b2` llevaba
+sin jugar FUNCIONA** (las barcas de la IA seguidas y las poses de vehículos de mod a mod: `ERR` 0, ningún volcado), y
+hay código nuevo en `main`, **sin release** (la release se pide): cada pose de vehículo va con su hora
+(`EventKind::VehiclesTimed`; el invitado ve el barco del anfitrión de 0,72 a 1,20 veces su velocidad por cuartos de
+segundo, antes de 0,60 a 1,44), el cartel del otro jugador se queda sobre su cabeza en un barco en marcha (se iba
+3 m a 5 m/s), el panel vuelve a dar el aguante (id 25 en 3663) y la sesión descarta los estados y las poses que
+llegan después de otros más nuevos. `kVersion` sigue en 10; con una `b2`/`b3` al otro lado se conecta igual y los
+demás barcos se ven como antes de la `b2`. Abierto: un pasajero resbala por la cubierta en la copia de detrás cuando
+el barco corre (se cayó a 18 m/s). Detalle: `docs/research/port-3663.md`, «Barco, madrugada del 15-nov».
+
 **14-nov-2026 (noche, 3663, dos copias): BARCO.** El invitado sube al barco del anfitrión y navega en él (se queda en
 cubierta y puede andar por ella a 14 m/s); el barco se sigue a 1,5–2,5 m a velocidad de crucero; el timón ya no flota
 (el cliente del invitado lo creaba 2,9 m por encima de la cubierta: se corrige una vez con la posición del dueño); y

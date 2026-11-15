@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "common/clock_mapper.h"
 #include "common/movement_layout.h"
 #include "mod/game/build_profile.h"
 #include "mod/game/safe_memory.h"
@@ -120,10 +121,20 @@ constexpr uint64_t kVehicleChannelFreshMs = 1500, kPoseKeepaliveMs = 500;
 struct OwnVehicle {
     std::atomic<uint32_t> key{0};
     std::atomic<uintptr_t> ts{0};
-    // The network thread only: the last pose sent and when.
+    // The network thread only: the last pose sent and when; the pose at the last look and when it appeared (the game
+    // moves a vehicle once a frame; the thread looks every few milliseconds, vehicle_follow_observe).
     vfl::Pose sent;
     uint64_t sent_ms = 0;
+    vfl::Pose seen;
+    uint64_t seen_ms = 0;
+    uint32_t seen_key = 0;  // whose pose `seen` is (a slot can get another vehicle between two looks)
+    uint64_t read_ms = 0;   // the last look that could read it (a vehicle that cannot be read is not sent, moved or not)
 };
+constexpr uint64_t kPoseReadFreshMs = 250;
+// The other mod's clock against this one's, from its timed pose events (the network thread only).
+vfl::SampleClock g_vehicle_clock;
+std::atomic<uint64_t> g_vehicle_timed_events{0}, g_vehicle_clock_resets{0};
+std::atomic<int64_t> g_vehicle_stamp_behind_ms{0};  // the newest sample's time behind its arrival, last event
 std::array<OwnVehicle, vfl::kMaxVehiclePoses> g_own_vehicles;
 std::atomic<uint32_t> g_own_vehicle_count{0};
 std::atomic<uint64_t> g_vehicles_sent{0}, g_vehicle_events{0}, g_vehicle_poses_unlisted{0};
@@ -1599,9 +1610,12 @@ DWORD WINAPI worker(LPVOID) {
             }
             if (g_vehicles_sent.load() || g_vehicle_events.load()) {
                 total += g_vehicles_sent.load() + g_vehicle_events.load();
-                line += std::format(" | vehicle poses: own ones sent {} times ({} listed now); the other mod's: {} events, "
-                                    "{} poses of vehicles not listed here", g_vehicles_sent.load(),
-                                    g_own_vehicle_count.load(), g_vehicle_events.load(), g_vehicle_poses_unlisted.load());
+                line += std::format(" | vehicle poses: own ones sent {} times ({} listed now); the other mod's: {} events "
+                                    "({} with the poses' times: the newest sample of the last one placed {} ms before "
+                                    "its arrival, the other clock taken anew {} times), {} poses of vehicles not listed "
+                                    "here", g_vehicles_sent.load(), g_own_vehicle_count.load(), g_vehicle_events.load(),
+                                    g_vehicle_timed_events.load(), g_vehicle_stamp_behind_ms.load(),
+                                    g_vehicle_clock_resets.load(), g_vehicle_poses_unlisted.load());
             }
             if (riders.listed || g_rider_events.load() || g_riders_sent.load()) {
                 total += riders.requests + riders.idle + g_riders_sent.load();
@@ -1701,30 +1715,94 @@ void vehicle_follow_on_peer_state(uint32_t self_key, uint32_t anchor, const floa
     }
 }
 
+bool vehicle_follow_peer_world(uint32_t self_key, float out[3]) noexcept {
+    if (!self_key || !g_started.load(std::memory_order_relaxed) || !g_passenger_count.load(std::memory_order_relaxed))
+        return false;
+    for (size_t s = 0; s < kMaxPlayers; ++s) {
+        Passenger& p = g_passengers[s];
+        if (p.key.load(std::memory_order_relaxed) != self_key) continue;
+        const ULONGLONG channel = p.channel_ms.load(std::memory_order_relaxed), now = now_ms();
+        if (!channel || (now > channel && now - channel > kChannelFreshMs)) return false;
+        const uint64_t state = p.chain_state.load(std::memory_order_acquire);
+        float lp[3], lq[4];
+        const uint32_t chain_for = chain_parent(state);
+        AcquireSRWLockShared(&p.lock);
+        uint32_t parent = p.parent;
+        if (parent && chain_for && chain_for != parent && p.eased_for == chain_for) {
+            // It stepped onto another part and its chain here is not built yet: the hooks keep drawing it on the part
+            // before (passenger_pose), and so does the tag.
+            parent = chain_for;
+            std::memcpy(lp, p.eased_pos, sizeof lp);
+            std::memcpy(lq, p.eased_q, sizeof lq);
+        } else {
+            // The eased pose the hooks draw it at, once there is one for this parent; else the pose that was sent.
+            const bool eased = parent && p.eased_for == parent;
+            std::memcpy(lp, eased ? p.eased_pos : p.pos, sizeof lp);
+            std::memcpy(lq, eased ? p.eased_q : p.q, sizeof lq);
+        }
+        ReleaseSRWLockShared(&p.lock);
+        if (!parent || chain_for != parent) return false;
+        vfl::Pose base;
+        if (!chain_world(p, state, &base)) return false;
+        const vfl::Pose w = vfl::attach(base, lp, lq);
+        if (!vfl::finite_pose(w)) return false;
+        out[0] = static_cast<float>(w.x);
+        out[1] = static_cast<float>(w.y);
+        out[2] = static_cast<float>(w.z);
+        return true;
+    }
+    return false;
+}
+
+namespace {
+bool pose_differs(const vfl::Pose& a, const vfl::Pose& b) noexcept {
+    return std::fabs(a.x - b.x) > 2e-3 || std::fabs(a.y - b.y) > 2e-3 || std::fabs(a.z - b.z) > 2e-3 ||
+           std::fabs(a.q[0] - b.q[0]) > 1e-4f || std::fabs(a.q[1] - b.q[1]) > 1e-4f ||
+           std::fabs(a.q[2] - b.q[2]) > 1e-4f || std::fabs(a.q[3] - b.q[3]) > 1e-4f;
+}
+}  // namespace
+
+void vehicle_follow_observe() noexcept {
+    if (!g_started.load(std::memory_order_relaxed) || !g_addrs || !g_own_vehicle_count.load(std::memory_order_relaxed) ||
+        !in_world())
+        return;
+    const uint64_t now = now_ms();
+    for (auto& o : g_own_vehicles) {
+        const uint32_t key = o.key.load(std::memory_order_relaxed);
+        const uintptr_t ts = o.ts.load(std::memory_order_acquire);
+        if (!key || !ts) continue;
+        const uintptr_t actor = rd<uintptr_t>(ts + kTS_Actor);
+        if (!actor || rd<uint32_t>(actor + kActor_Key) != key) continue;
+        vfl::Pose p;
+        float unused[3];
+        if (!ts_pose(ts, true, &p, unused) || !vfl::usable(p)) continue;
+        o.read_ms = now;
+        if (o.seen_key == key && o.seen_ms && !pose_differs(p, o.seen)) continue;
+        o.seen = p;
+        o.seen_ms = now;
+        o.seen_key = key;
+    }
+}
+
 std::vector<uint8_t> vehicle_follow_own_vehicles() noexcept {
     std::vector<uint8_t> none;
     if (!g_started.load(std::memory_order_relaxed) || !g_addrs || !g_own_vehicle_count.load(std::memory_order_relaxed) ||
         !in_world())
         return none;
     try {
+        vehicle_follow_observe();
         std::array<vfl::VehiclePose, vfl::kMaxVehiclePoses> poses;
         size_t n = 0;
         const uint64_t now = now_ms();
         for (auto& o : g_own_vehicles) {
             const uint32_t key = o.key.load(std::memory_order_relaxed);
-            const uintptr_t ts = o.ts.load(std::memory_order_acquire);
-            if (!key || !ts) continue;
-            const uintptr_t actor = rd<uintptr_t>(ts + kTS_Actor);
-            if (!actor || rd<uint32_t>(actor + kActor_Key) != key) continue;
-            vfl::Pose p;
-            float unused[3];
-            if (!ts_pose(ts, true, &p, unused) || !vfl::usable(p)) continue;
+            if (!key || !o.ts.load(std::memory_order_acquire) || !o.seen_ms || o.seen_key != key) continue;
+            // Not read at this look nor at the last ones (its actor went away, its pose is unreadable): nothing, so
+            // the other side goes back to the game's own updates of it instead of holding a stale pose.
+            if (now - o.read_ms > kPoseReadFreshMs) continue;
+            const vfl::Pose& p = o.seen;
             // Only what moved since it was last sent, and a keepalive so the other side keeps taking these.
-            const bool moved = std::fabs(p.x - o.sent.x) > 2e-3 || std::fabs(p.y - o.sent.y) > 2e-3 ||
-                               std::fabs(p.z - o.sent.z) > 2e-3 || std::fabs(p.q[0] - o.sent.q[0]) > 1e-4f ||
-                               std::fabs(p.q[1] - o.sent.q[1]) > 1e-4f || std::fabs(p.q[2] - o.sent.q[2]) > 1e-4f ||
-                               std::fabs(p.q[3] - o.sent.q[3]) > 1e-4f;
-            if (!moved && now - o.sent_ms < kPoseKeepaliveMs) continue;
+            if (!pose_differs(p, o.sent) && now - o.sent_ms < kPoseKeepaliveMs) continue;
             o.sent = p;
             o.sent_ms = now;
             vfl::VehiclePose w;
@@ -1733,24 +1811,37 @@ std::vector<uint8_t> vehicle_follow_own_vehicles() noexcept {
             w.pos[1] = static_cast<float>(p.y);
             w.pos[2] = static_cast<float>(p.z);
             std::memcpy(w.q, p.q, sizeof w.q);
+            w.age_ms = static_cast<uint16_t>(std::min<uint64_t>(now > o.seen_ms ? now - o.seen_ms : 0, 0xFFFF));
             poses[n++] = w;
         }
         if (!n) return none;
+        auto out = vfl::encode_vehicles_timed(now, {poses.data(), n});
+        if (!out[0]) return none;  // every pose refused by the encoder: no event with nothing in it
         g_vehicles_sent.fetch_add(1, std::memory_order_relaxed);
-        return vfl::encode_vehicles({poses.data(), n});
+        return out;
     } catch (...) {
         return none;
     }
 }
 
-void vehicle_follow_on_peer_vehicles(std::span<const uint8_t> payload) noexcept {
+void vehicle_follow_on_peer_vehicles(std::span<const uint8_t> payload, bool timed) noexcept {
     if (!g_started.load(std::memory_order_relaxed) || !g_addrs) return;
     vfl::VehiclePose poses[vfl::kMaxVehiclePoses];
-    const size_t n = vfl::decode_vehicles(payload, poses);
+    uint64_t sender_ms = 0;
+    const size_t n = timed ? vfl::decode_vehicles_timed(payload, &sender_ms, poses) : vfl::decode_vehicles(payload, poses);
     g_vehicle_events.fetch_add(1, std::memory_order_relaxed);
     const uint64_t now = now_ms();
+    // Each sample at the moment the sender saw it, on this clock (vfl::SampleClock); an untimed event's at its arrival.
+    const bool stamped = timed && n;
+    if (stamped) {
+        g_vehicle_timed_events.fetch_add(1, std::memory_order_relaxed);
+        g_vehicle_clock.on_event(now, sender_ms);
+        g_vehicle_clock_resets.store(g_vehicle_clock.resets(), std::memory_order_relaxed);
+    }
     for (size_t i = 0; i < n; ++i) {
         bool listed = false;
+        const uint64_t at = stamped ? g_vehicle_clock.at(now, sender_ms, poses[i].age_ms) : now;
+        if (stamped && !i) g_vehicle_stamp_behind_ms.store(static_cast<int64_t>(now - at), std::memory_order_relaxed);
         for (auto& v : g_vehicles) {
             if (!v.ts.load(std::memory_order_acquire) || v.key.load(std::memory_order_relaxed) != poses[i].key) continue;
             vfl::Pose p;
@@ -1759,7 +1850,7 @@ void vehicle_follow_on_peer_vehicles(std::span<const uint8_t> payload) noexcept 
             p.z = poses[i].pos[2];
             std::memcpy(p.q, poses[i].q, sizeof p.q);
             AcquireSRWLockExclusive(&v.lock);
-            if (v.track.push(now, p)) v.samples.fetch_add(1, std::memory_order_relaxed);
+            if (v.track.push(at, p)) v.samples.fetch_add(1, std::memory_order_relaxed);
             ReleaseSRWLockExclusive(&v.lock);
             v.channel_ms.store(now, std::memory_order_relaxed);
             v.channel_samples.fetch_add(1, std::memory_order_relaxed);

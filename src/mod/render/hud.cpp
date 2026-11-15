@@ -195,11 +195,24 @@ void hud_draw(float width, float height) {
     }
     float remote_distance = 0;
     const bool apart = d.same_world && !*d.same_world;
+    // Where the other player's character is drawn here. On a ship that is this client's copy of the ship with the
+    // other player's place on it, not the position the other mod sent (where ITS client has the ship: this client
+    // draws the ship a moment behind, and the tag ran metres ahead of the character or behind it).
+    std::optional<proto::Vec3> remote_at;
+    bool remote_drawn_here = false;
+    if (d.remote) {
+        remote_at = d.remote->pos;
+        float drawn[3];
+        if (opt.remote_locator && d.remote->self_key && opt.remote_locator(d.remote->self_key, drawn)) {
+            remote_at = proto::Vec3{drawn[0], drawn[1], drawn[2]};
+            remote_drawn_here = true;
+        }
+    }
     if (d.remote && d.local && apart) {
         ImGui::TextDisabled(d.s2_guest ? "Other player: not in your world (you are not in the host's world)"
                                        : "Other player: not in your world right now (joining, loading or away)");
     } else if (d.remote && d.local && tracked) {
-        remote_distance = math::length(math::sub(d.remote->pos, d.local->position));
+        remote_distance = math::length(math::sub(*remote_at, d.local->position));
         ImGui::Text("Other player: HP %.0f/%.0f  %.0f m away", d.remote->health, d.remote->health_max,
                     remote_distance);
     } else if (d.remote && d.local) {
@@ -230,7 +243,7 @@ void hud_draw(float width, float height) {
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
     if (d.remote && !apart && tracked) {
-        const proto::Vec3 head{d.remote->pos.x, d.remote->pos.y + kHeadHeight, d.remote->pos.z};
+        const proto::Vec3 head{remote_at->x, remote_at->y + kHeadHeight, remote_at->z};
         if (auto p = game::project(*cam, *cam_world, head, width, height)) {
             draw_remote_marker(dl, *p, d, remote_distance);
         }
@@ -262,14 +275,22 @@ void hud_draw(float width, float height) {
         const char* axes = cam->axes_from_view ? "from view matrix" : "fallback (cross)";
         const float dist = math::length(math::sub(*cam_world, d.local->position));
         const float fov = 2.0f * std::atan(1.0f / cam->p11) * 57.2958f;
+        // The other player's tag: at the position its mod sent, or (on a ship) where its character is drawn here, and
+        // how far that is from the position sent (what the tag was off by before 2026-11-15).
+        const char* tag = !remote_at ? "none" : remote_drawn_here ? "where its character is drawn here" : "the position sent";
+        const float tag_moved = remote_drawn_here ? math::length(math::sub(*remote_at, d.remote->pos)) : 0.0f;
+        const proto::Vec3 tag_at = remote_at ? *remote_at : proto::Vec3{};
         if (self) {
             log::info("Overlay diag: frames {} | cam {} space, axes {} | cam->player {:.2f} m | self on screen ({:.0f}, "
-                      "{:.0f}) of {:.0f}x{:.0f}, depth {:.2f} | fov {:.1f} deg",
-                      frames, space, axes, dist, self->x, self->y, width, height, self->depth, fov);
+                      "{:.0f}) of {:.0f}x{:.0f}, depth {:.2f} | fov {:.1f} deg | other player's tag: {} ({:.1f}, {:.1f}, "
+                      "{:.1f}), {:.2f} m from the position sent",
+                      frames, space, axes, dist, self->x, self->y, width, height, self->depth, fov, tag, tag_at.x,
+                      tag_at.y, tag_at.z, tag_moved);
         } else {
             log::info("Overlay diag: frames {} | cam {} space, axes {} | cam->player {:.2f} m | self on screen behind "
-                      "camera | fov {:.1f} deg",
-                      frames, space, axes, dist, fov);
+                      "camera | fov {:.1f} deg | other player's tag: {} ({:.1f}, {:.1f}, {:.1f}), {:.2f} m from the "
+                      "position sent",
+                      frames, space, axes, dist, fov, tag, tag_at.x, tag_at.y, tag_at.z, tag_moved);
         }
     }
 }

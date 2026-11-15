@@ -66,7 +66,7 @@ on an older version were ported to 3663 but not all were tried again.
 | The guest plays their own save and takes the progress back | Played | 3527 |
 | Ships: the guest boards the host's ship and rides along; each sees the other on deck; the wheel | Played | 3663 |
 | Ships: sails, the ship's crew at their posts, the stern lantern | Played | 3663 |
-| Other ships (pirates, merchants) drawn where the host has them | Big ships played; small boats and the smoother ten-a-second positions are new and not played yet | 3663 |
+| Other ships and boats (pirates, merchants, small boats) drawn where the host has them | Played | 3663 |
 | Two real PCs over Steam: connecting, the guest on their own save, moving, fast travel | One short session | 3549 |
 
 ## Known problems
@@ -80,9 +80,12 @@ on an older version were ported to 3663 but not all were tried again.
   world is thin.
 - Switching character works, with a crash guard that has not been seen acting; riding as the new character is
   not synced. Rope does not work on the other player's copy.
-- On ships: the other player's name tag can sit a few metres off; boarding a ship that is already under way is
-  not checked; the guest's own ship as the host sees it is not tested.
-- The panel shows "Stamina 0/0" on 3663.
+- On ships: boarding a ship that is already under way is not checked; the guest's own ship as the host sees it
+  is not tested. Carts and other AI vehicles on land are not followed: the guest can see them a few metres from
+  where the host has them.
+- Two copies of the game on one PC (how the mod is developed): the copy whose window is behind draws a handful
+  of frames a second and its world runs slowly. Ships look less smooth from it, and a passenger in it dropped
+  off the ship once at full sail.
 - Loot from enemies killed by the guest is not tested.
 
 Each feature can be switched off in `cdmp.ini`; the kit's README says which setting does what.
@@ -107,7 +110,9 @@ translate through a common numbering before any traffic flows.
 UDP is used for two copies on one PC and for tests. On top of it the mod runs its own small protocol
 (`src/common/protocol.h`): a reliable, ordered, compressed channel that carries the game's messages in
 batches, and unreliable messages for things that go stale quickly (each player's state twenty times a second,
-positions of ships and their crews ten times a second).
+positions of ships and their crews ten times a second). A ship's position travels with the moment it was
+true: the receiver draws it by that time, not by when the message happened to arrive, so an uneven network or
+a slow sender does not make ships surge and stall.
 
 **Filling in what the game does not do.** The game was written for one player per world, and much of the mod
 is about the places where that shows:
