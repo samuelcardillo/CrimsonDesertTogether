@@ -120,6 +120,12 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
     up to 230 degrees apart); now every wave train has the same direction and place on both, the guest's about a
     twentieth of a second behind. Not looked at yet from the guest's deck in a rough sea, nor between two PCs. If
     the sea ever looks wrong, turn it off on either PC: [session2] sea_sync=0 in cdmp.ini.
+  * Other ships' sails. Pirate and merchant ships used to sail with their sails furled on the guest's screen. Three
+    things were in the way and are fixed: a sail set before the ship came into view was never told to the guest (the
+    host's mod now repeats each sail's last state when the ship appears and every 30 seconds); ships seen from far
+    have fewer parts than the mod took for a ship; and a sail goes through in-between states the mod did not pass
+    on. Checked with two copies on one PC: two AI ships 400 to 900 m away showed the same sail on both screens in
+    200 looks but one (taken in the middle of a change). Not checked yet with a pirate ship right alongside.
   * The other player on a mount. Since the game moved past version 2976 the other player was never really seated on
     their mount on your screen. You saw them vanish for most of a second when they mounted, sit a metre or two off
     the saddle at a gallop, and leave the mount behind when they rode far away. They are seated again. Measured with

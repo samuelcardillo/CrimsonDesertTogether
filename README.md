@@ -68,6 +68,7 @@ on an older version were ported to 3663 but not all were tried again.
 | Ships: sails, the ship's crew at their posts, the stern lantern | Played | 3663 |
 | The sea: the guest draws the host's swell, so the ship sits in the same waves for both | Measured, not yet seen from the deck | 3663 |
 | Other ships and boats (pirates, merchants, small boats) drawn where the host has them | Played | 3663 |
+| Other ships' sails shown as the host has them | Measured on ships 400-900 m away | 3663 |
 | Two real PCs over Steam: connecting, the guest on their own save, moving, fast travel | One short session | 3549 |
 
 ## Known problems

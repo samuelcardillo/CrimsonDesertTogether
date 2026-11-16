@@ -118,6 +118,13 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   «furled»). `seadeck.sh H G`: salir del puerto con el invitado delante, el mar, las velas de los otros barcos y la
   tripulación, de una vez. `shipsails.py H G`: la vela de cada barco en las dos copias (los de la IA incluidos).
   Ojo: parado en mar abierto, al barco lo hunden los piratas en pocos minutos.
+- `piraterun.sh H G [min]` (16-nov): sale del puerto hacia donde navegan los barcos de la IA con el invitado delante
+  y deja `shipsails.py` apuntando cada 5 s la vela de cada barco en las dos copias (`shots/pirate_sails.txt`); al
+  final, cuántas miradas tuvieron una vela distinta y lo que trazó cada mod (`GimmickRelay trace`, `GimmickTake
+  trace`). `gearcycle.py H G [n]`: la vela del jugador arriba y abajo, con las dos copias miradas varias veces por
+  segundo mientras dura la pulsación. `helmprompts.py H G [n]`: cuántos avisos ofrece el timón al anfitrión y quién
+  controla la vela en el invitado. **El timón deja de ofrecer Acelerar/Frenar tras perder el foco la ventana hasta
+  que se pulsa A o D**: toque de gobierno antes de cada marcha.
 - `seatest.sh H G [s]` (16-nov, `sea_sync`): el mar del invitado contra el del anfitrión con cada copia delante:
   los doce trenes de olas de las dos copias (`seawaves.py H G [s]`: fase, fuerza, dirección y origen de cada uno, y
   cuánto se separan), lo que dijo cada mod y capturas cada cinco segundos (`shots/sea_h_N.png`, `shots/sea_g_N.png`).

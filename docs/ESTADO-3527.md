@@ -13,6 +13,17 @@ cada copia delante). Sin ver desde la cubierta del invitado con mar gruesa (en u
 cuanto su copia pasa detrás). La primera versión dejó colgado 22 s el hilo de red del invitado por un `SRWLOCK` y
 tiró el túnel; ya no espera ningún hilo. En `main`, sin release. `docs/research/mar-3663.md`.
 
+**16-nov-2026 (tarde): LAS VELAS DE LOS BARCOS DE LA IA.** «The NPC boats still don't show their sail status»:
+el invitado los veía con la vela recogida. Tres causas, las tres arregladas en `gimmick_relay` y **vistas en vivo**
+(14:41–14:55, `shipsails.py`: dos barcos de la IA a 400–900 m con la misma marcha en las dos copias en 200 miradas
+menos una, a mitad de un cambio; antes, distinta en todas): (1) el cliente del anfitrión ponía la vela antes de que
+el barco estuviera en la lista del relevo, y un estado solo se reenvía cuando cambia: ahora se guarda el último y se
+repite al entrar el barco en la lista y cada 30 s; (2) un barco de la IA visto de lejos tiene 4 piezas colgando (13
+de cerca; el del jugador, 14) y la regla «6 piezas = barco» lo dejaba fuera en los dos lados: para los estados de
+una vela bastan 2; (3) una vela pasa por estados que no estaban en la lista y la copia del invitado no salta de
+marcha: de una vela conocida se reenvía todo. La vela del jugador, igual que antes (seis cambios seguidos, las dos
+copias iguales al acabar cada uno). En `main`, sin release. `port-3663.md`, «Barco, 16-nov por la tarde».
+
 **16-nov-2026 (madrugada, 3663, dos copias): MONTURAS.** Primera vez que se monta en 3663 (un Wyvern). El jinete
 del otro jugador no se sentaba en su montura desde el port a 3527 (el «sin enganche» del juego pasó de 9 a 12 y
 `mount_seat` rechazaba todos los asientos): parpadeaba al montar (0,8 s dibujado hacia el origen del mundo), iba a

@@ -17,6 +17,17 @@
 // leaves out the hull (whose update repeats twice a second), the wheel's mount, and everything of a mount or a cart.
 // With gimmick_relay_states = * only: a periodic update (the same gimmick, event and parameter less than a second
 // after the one before) goes twice and is then left out until it has been silent for a second.
+// Since 2026-11-16 (the AI's ships, whose sails stayed furled on the guest; docs/research/port-3663.md, "Barco, 16-nov
+// por la tarde"), for the sail's states (not with *):
+//  - a ship is a vehicle with TWO or more gimmicks hanging directly from it, one of them carrying parts (an AI ship
+//    seen from far has four; the six-part rule left it out on both PCs);
+//  - a gimmick that has taken one of the listed states is a sail from then on, and EVERYTHING its controller says
+//    about it is relayed (a sail goes through states that are not on the list, and the guest's copy does not skip a
+//    gear);
+//  - the last state each sail entered is kept and said again: 2, 8 and 20 s after its gimmick comes onto the list (a
+//    ship that appeared, or user 2 that arrived), and every 30 s while it stays there with no news (the guest makes
+//    its copy of a ship when the ship comes into ITS range, and a copy starts furled).
+// "GimmickRelay trace" lines (400 a session): each update of a sail, its branch on this client, and whether it went.
 // [session2] gimmick_relay_states = hex state hashes | * (default: empty = the sail's four states of 2026-11-14:
 // 0x29A56175 furled, 0xC3738DA8 first gear, 0x0FE0996E second, 0x8DC1B584 third). Every gimmick's updates use the
 // same events (0x003ECC59 enter the state in the parameter, 0x92786A19 leave it, 0x128B06E9 / 0 settled); what tells
@@ -37,7 +48,9 @@
 // can run the update is what the experiment is for; so is what the client does afterwards with a gimmick it now
 // believes it controls. Its own requests for such a gimmick (the list of docked_gimmicks_logic.h: 3082 2758 2609
 // 2774 3089 2779 2826 2618; and its movement: 2556 2828 3067) are WITHHELD in guest_send, as docked_gimmicks does
-// for the state requests of the gimmicks it rewrites:
+// for the state requests of the gimmicks it rewrites (since 16-nov the same smaller-ship rule for a sail's states, and
+// "GimmickTake trace" lines: each Ack that arrives with the branch this copy is in, and the branch when the gimmick
+// is given back):
 // the 2976 server ignored the first three from a non-controller but took the others from anyone (2779 fires a
 // projectile). probe: logged, not written, nothing withheld.
 //

@@ -1,13 +1,14 @@
-"""shipsails.py host_pid guest_pid : every ship's sail on both copies (3663). On the host: each vehicle that looks like
-a ship (six or more gimmicks hang directly from it and one of them carries others: the rule of gimmick_relay.cpp)
-and, of the leaf gimmicks that hang directly from it, the ones whose branch state (+0x270 of the gimmick component)
-is one of the sail's (furled, first, second, third gear or a change between them). For each: the ship's key,
-controller and distance from each player, the sail's state on the host, and on the guest: its state there, or why
-there is none (the guest has no such actor; its copy of the ship has fewer parts). "the NPC boats don't show their
-sail status" (16-nov) is a line that says DIFFERENT. Read-only."""
-import math
+"""shipsails.py host_pid guest_pid [seconds [period]] : every ship's sail on both copies (3663). On the host: each
+vehicle with two or more gimmicks hanging directly from it, one of them carrying others (an AI ship seen from far has
+four such parts, from near thirteen; the player's has fourteen), and of the LEAF gimmicks that hang directly from it
+the ones whose branch state (+0x270 of the gimmick component) is one of a sail's on either copy and not the resting
+one on both (89746c86: a sail never set, but also every lantern and cannon at rest). For each: the state on the host, and on the guest its state
+there, its controller there, or "no such actor". A line ends in DIFFERENT when the two copies do not agree: that is
+"the NPC boats don't show their sail status" (16-nov). With seconds: a look every `period` (4) with the time, one
+line per ship. Read-only."""
 import os as _os
 import sys
+import time
 
 _HERE = _os.path.dirname(_os.path.abspath(__file__)).replace('\\', '/')
 sys.path.insert(0, _HERE)
@@ -16,21 +17,21 @@ from cdbuild import WORLD_SLOT  # noqa: E402
 from live_reader_check import Reader  # noqa: E402
 
 B = 0x140000000
-NAMES = {'89746c86': 'furled', '4dd95dbe': 'first gear', 'e480ff9b': 'second gear', '3f7594b0': 'third gear',
+REST = '89746c86'
+NAMES = {REST: 'furled', '4dd95dbe': 'first gear', 'e480ff9b': 'second gear', '3f7594b0': 'third gear',
          '7d8452b9': 'going to first gear', 'a0f2a008': 'going to second gear', 'ea7cd220': 'going to third gear',
-         '0795c60c': 'changing', 'f5af9c8c': 'changing', 'b6bcab80': 'changing'}
+         '0795c60c': 'changing', 'f5af9c8c': 'changing', 'b6bcab80': 'changing', '528b3c3a': 'going down to first gear',
+         '853c63b7': 'furled (taken in)', 'a0ba7f37': 'changing'}
 
 
 class Copy:
-    def __init__(self, pid):
-        self.r = r = Reader(pid)
+    def __init__(self, r):
+        self.r = r
         world = r.ptr(B + WORLD_SLOT)
         mgr = r.ptr(world + 0x30)
         t = r.ptr(mgr + 8)
         self.n = r.unpack(t + 0x88, '<I')[0]
         self.buckets, self.nodes = r.ptr(t + 0x98), r.ptr(t + 0xA0)
-        own = r.ptr(mgr + 0x50)
-        self.own_pos = self.world_pos(own) if own else None
         self.acts = {}
         for bi in range(self.n):
             base = self.buckets + bi * 0x100
@@ -53,64 +54,77 @@ class Copy:
             if par:
                 self.children.setdefault(par, []).append(k)
 
-    def world_pos(self, a):
+    def pos(self, key):
         r = self.r
-        comps = r.ptr(a + 0x68)
+        comps = r.ptr(self.acts[key][0] + 0x68)
         ts = r.ptr(comps + 0x1A0) if comps else 0
         if not ts:
-            return None
+            return (0.0, 0.0, 0.0)
         p = r.unpack(ts + 0xB4, '<3f')
         s = r.unpack(ts + 0xC0, '<hh')
         return (p[0] + s[0] * 1000, p[1], p[2] + s[1] * 1000)
 
-    def ship_like(self, v):
+    def parts(self, v):
+        """gimmicks hanging directly from v; 0 when none of them carries anything."""
         direct = [k for k in self.children.get(v, []) if self.acts[k][1] == 7]
-        return len(direct) >= 6 and any(k in self.children for k in direct), len(direct)
+        return len(direct) if any(k in self.children for k in direct) else 0
+
+    def leaves(self, v):
+        return [k for k in self.children.get(v, []) if self.acts[k][1] == 7 and k not in self.children]
 
     def state(self, key):
         if key not in self.acts:
             return None
         r = self.r
-        comps = r.ptr(self.acts[key][0] + 0x68)
-        g = r.ptr(comps + 0x30) if comps else 0
-        if not g:
-            return None
         try:
-            return r.read(g + 0x270, 4).hex()
+            comps = r.ptr(self.acts[key][0] + 0x68)
+            g = r.ptr(comps + 0x30) if comps else 0
+            return r.read(g + 0x270, 4).hex() if g else None
         except Exception:
             return None
 
 
-H, G = Copy(int(sys.argv[1])), Copy(int(sys.argv[2]))
+def name(s):
+    return 'no such actor' if s is None else NAMES.get(s, s)
 
 
-def far(p, q):
-    return math.hypot(p[0] - q[0], p[2] - q[2]) if p and q else float('nan')
-
-
-ships = 0
-different = 0
-for v, (a, typ, ctl, par) in sorted(H.acts.items()):
-    if typ != 5:
-        continue
-    like, parts = H.ship_like(v)
-    if not like:
-        continue
-    pos = H.world_pos(a)
-    sails = [(k, H.state(k)) for k in H.children.get(v, []) if H.acts[k][1] == 7 and k not in H.children]
-    sails = [(k, s) for k, s in sails if s in NAMES]
-    if not sails:
-        continue
-    ships += 1
-    g_like, g_parts = G.ship_like(v) if v in G.acts else (False, 0)
-    print(f'ship {v:08X} (controller {ctl:08X}, {parts} parts) at ({pos[0]:.0f}, {pos[2]:.0f}): {far(pos, H.own_pos):.0f} m '
-          f'from the host, {far(pos, G.own_pos):.0f} m from the guest; on the guest: '
-          + ('no such actor' if v not in G.acts else f'{g_parts} parts' + ('' if g_like else ' (not a whole ship there)')))
-    for k, s in sails:
-        gs = G.state(k)
-        same = gs == s
-        different += 0 if same or gs is None else 1
-        print(f'    sail {k:08X}: host {NAMES[s]} | guest '
-              + ('no such actor' if k not in G.acts else NAMES.get(gs, f'state {gs}'))
-              + ('' if same else '   <-- DIFFERENT' if gs is not None else ''))
-print(f'{ships} ship(s) with a sail on the host; sails that differ on the guest: {different}')
+hr, gr = Reader(int(sys.argv[1])), Reader(int(sys.argv[2]))
+secs = float(sys.argv[3]) if len(sys.argv) > 3 else 0
+period = float(sys.argv[4]) if len(sys.argv) > 4 else 4.0
+t0 = time.time()
+looks = different_looks = 0
+while True:
+    H, G = Copy(hr), Copy(gr)
+    stamp = time.strftime('%H:%M:%S')
+    ships = different = 0
+    for v, (a, typ, ctl, par) in sorted(H.acts.items()):
+        if typ != 5 or H.parts(v) < 2:
+            continue
+        rows = []
+        for k in H.leaves(v):
+            hs, gs = H.state(k), G.state(k)
+            if hs in (None, REST) and gs in (None, REST):
+                continue
+            # Only a sail's states count (a lit lantern or a loaded cannon has a state of its own, never relayed).
+            if not any(x in NAMES and x != REST for x in (hs, gs)):
+                continue
+            ok = hs == gs
+            different += 0 if ok else 1
+            rows.append(f'{k:08X} host {name(hs)} | guest {name(gs)}'
+                        + (f' (its controller there {G.acts[k][2]:08X})' if k in G.acts and G.acts[k][2] != ctl else '')
+                        + ('' if ok else '  <-- DIFFERENT'))
+        if not rows:
+            continue
+        ships += 1
+        p = H.pos(v)
+        print(f'{stamp} ship {v:08X} (controller {ctl:08X}) at ({p[0]:.0f}, {p[2]:.0f}), parts host {H.parts(v)} guest '
+              + (str(G.parts(v)) if v in G.acts else 'no such actor') + ': ' + '; '.join(rows), flush=True)
+    looks += 1
+    different_looks += 1 if different else 0
+    if not ships:
+        print(f'{stamp} no ship with a sail set on either copy', flush=True)
+    if time.time() - t0 >= secs:
+        break
+    time.sleep(period)
+if secs:
+    print(f'{looks} looks, {different_looks} with a sail that differs')
