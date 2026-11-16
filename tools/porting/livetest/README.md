@@ -134,6 +134,18 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   cuánto se separan), lo que dijo cada mod y capturas cada cinco segundos (`shots/sea_h_N.png`, `shots/sea_g_N.png`).
   `seacmp.py H G [s]`: los tres búferes del mar palabra por palabra (qué difiere y qué se mueve); `windcmp.py H G`:
   viento y acumuladores del clima. Explicación en `docs/research/mar-3663.md`.
+- **Las dos copias a 30 fotogramas por segundo en un PC** (16-nov; sin esto la copia de detrás dibuja de 2 a 7 y va a
+  cámara lenta, y nada que ocurra a velocidad se puede comprobar): `FPS_CAP=30 GFX_LOW=1 bash shipsession.sh`. El
+  límite lo pone el mod (`[general] fps_cap`); los ajustes de vídeo baratos (escalado «Ultra Performance», generación
+  de fotogramas y Ray Reconstruction apagados: la GPU pasa de 36 ms a 7 ms por fotograma) van por dos caminos. El
+  **invitado**, por archivo y con los juegos cerrados: `gfxfile.sh low` antes y **`gfxfile.sh normal` después**
+  (`save_cdmp_guest\user_engine_option_save.xml`; las copias que escribió el propio juego están en
+  `backups/video-settings/`, que no se sube). El **anfitrión**, por su menú con `gfxset.sh <pid> low` cuando ya está
+  en el mundo: sus ajustes viven en la caja de partidas, que el mod rehace desde `save\` en cada arranque, así que no
+  hay nada que devolver. `GFX_LOW=1` hace las dos cosas; lo de después (`gfxfile.sh normal`) queda a mano.
+  `fullrun.sh H G` es la prueba pensada para ese montaje (mar desde la cubierta del invitado, tripulación marcha a
+  marcha, velas de los otros barcos): **lánzala en cuanto el anfitrión tenga el timón**. `passive_watch.py H G`: lo
+  mismo en solo lectura, para cuando navega el dueño.
 - `sailout.sh H [rumbo]`: del amarre a mar abierto virando a babor hasta el rumbo (105). `jumpwatch.py pid s`: cuánto
   sube el personaje propio y cuánto está sin padre en ese rato (para saber si una pulsación fue un salto).
   **Espacio no salta con `ui.ps1`** (16-nov, las dos copias): `jumptest.sh` no consigue saltos; `NOSAIL=1` y

@@ -1,7 +1,9 @@
 #!/bin/bash
 # fullrun.sh H G : the owner's three observations of 16-nov in one sail, with BOTH copies drawing at full rate (start
-# the session with FPS_CAP=30 bash shipsession.sh: without the cap the copy behind draws 2 to 7 frames a second and
-# none of this can be seen on one PC). Host at the wheel, guest on the stern deck of the moored ship.
+# the session with FPS_CAP=30 GFX_LOW=1 bash shipsession.sh: without the cap AND the cheap video settings the copy
+# behind draws 2 to 7 frames a second and none of this can be seen on one PC; when the games are closed afterwards,
+# gfxfile.sh normal puts the guest's settings back). Host at the wheel, guest on the stern deck of the moored ship:
+# start this as soon as the host has the wheel.
 #   1. out of the harbour along the track that is all water (first gear), a screenshot of the guest's deck after
 #      every steering input (shots/full_out_N.png);
 #   2. on to open sea, east-south-east, gear by gear up to full sail. At each gear: the ship's speed, how far the

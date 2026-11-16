@@ -75,6 +75,10 @@ if from launch; then
     for r in host guest; do sed "s/^\[general\]\r\?$/&\nfps_cap=$FPS_CAP/" "$C/cdmp.3527-2inst-$r.ini" > "profiles/$r-cap.ini"; done
     INI=(-HostIni "$SP\\profiles\\host-cap.ini" -GuestIni "$SP\\profiles\\guest-cap.ini")
   fi
+  # GFX_LOW=1 in the environment (with FPS_CAP=30: the two together are what gives BOTH copies 30 frames a second on
+  # one PC): the guest starts with the cheap video settings (gfxfile.sh low, by file) and the host gets them through
+  # its menu once it is in the world (gfxset.sh). When the test is over and the games are closed: gfxfile.sh normal.
+  [ -n "$GFX_LOW" ] && { bash gfxfile.sh low || exit 1; }
   # ASI=<a cdmp.asi> in the environment: that file instead of the built one (a released kit's, to compare).
   [ -n "$ASI" ] && INI+=(-Asi "$(cygpath -w "$ASI")")
   pwsh -NoProfile -ExecutionPolicy Bypass -File "$SP\launch_house.ps1" "${INI[@]}" > launchX.txt 2>&1 < /dev/null &
@@ -82,6 +86,7 @@ if from launch; then
   H=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\1/p' pids.txt); G=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\2/p' pids.txt)
   echo "STAGE launch: pids $H $G; host in world at $(date +%T); asi $(certutil -hashfile "$B/cdmp.asi" SHA256 | sed -n 2p | cut -c1-8)"
   [ -z "$H" ] && exit 1
+  [ -n "$GFX_LOW" ] && { sleep 8; bash gfxset.sh $H low; }
 fi
 U="pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $H"
 UG="pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $G"
