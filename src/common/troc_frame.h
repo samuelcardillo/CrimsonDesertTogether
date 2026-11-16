@@ -102,6 +102,8 @@ inline constexpr uint8_t kControlEpoch = 14;
 // P8 session 29, the tree bend (session2/tree_bend_logic.h): state 15 travels BOTH ways, u8 15 | u8 version | 50 bytes
 // (57-byte frame), the thrower's own SetBend values. Exactly that form is taken out; an older peer ignores it (guest)
 // or drops it as no server Req (host).
+// The host's swell (session2/sea_sync_logic.h): state 17, ToGuestClient only, u8 17 | u8 version | 258 bytes (the
+// host's twelve wave trains, 265-byte frame), 10 Hz at most. An older guest ignores it.
 // The tunnel's own capability packet (TrocLink, p8-tunel-rendimiento.md):
 // opcode 2, payload u8 flags. Only in ToHostServer batches: the guest's end
 // says what it can decode. TrocLink takes it out before anything else sees

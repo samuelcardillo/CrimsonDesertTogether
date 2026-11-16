@@ -50,6 +50,8 @@
 #include "mod/session2/load_trip.h"
 #include "mod/session2/focus_follow.h"
 #include "mod/session2/focus_follow_logic.h"
+#include "mod/session2/sea_sync.h"
+#include "mod/session2/sea_sync_logic.h"
 #include "mod/session2/mount_sync.h"
 #include "mod/session2/mount_sync_logic.h"
 #include "mod/config.h"
@@ -1962,7 +1964,7 @@ void ms_release() {
 }
 }  // namespace
 
-void guest_deliver(std::vector<uint8_t>&& packet) {
+static void guest_deliver_one(std::vector<uint8_t>&& packet) {
     auto v = troc::parse_wire(packet, troc::Dir::ToGuestClient);  // also the 7-byte logout Acks
     if (v && v->opcode == troc::kControlOpcode) {
         // P8 re-entry (rejoin_logic.h): the host's C4 state / the epoch it began for this guest (state 14).
@@ -1988,6 +1990,11 @@ void guest_deliver(std::vector<uint8_t>&& packet) {
         // Which character the host plays (focus_follow.h, state 16), never the game's. Only while playing on the host.
         if (ffl::is_frame(packet)) {
             if (remote_live_for_keys()) (void)focus_follow_on_frame(packet, g_epoch.load());
+            return;
+        }
+        // The host's swell (sea_sync.h, state 17), never the game's. Only while playing on the host.
+        if (ssl::is_frame(packet)) {
+            if (remote_live_for_keys()) (void)sea_sync_on_frame(packet, g_epoch.load());
             return;
         }
         // P8 S25 weather (weather_sync.h): the host's weather sample, state 12 (its exact 277-byte form), never the game's.
@@ -2058,6 +2065,24 @@ void guest_deliver(std::vector<uint8_t>&& packet) {
         }
     }
     deliver_body(std::move(packet));
+}
+
+// One packet of the host's must never hold the mod's network thread. On 2026-11-16 a lock in a new module (sea_sync)
+// held it for 22 s on one control packet: the host saw the guest gone and ended the tunnel, and all the loop's own
+// line could say was "mostly guest tunnel". So a packet that takes long here is named (the first twenty).
+void guest_deliver(std::vector<uint8_t>&& packet) {
+    static std::atomic<uint64_t> slow{0};
+    const uint64_t t0 = now_us();
+    const unsigned opcode = packet.size() >= 2 ? static_cast<unsigned>(packet[0] | (packet[1] << 8)) : 0u;
+    const unsigned first = packet.size() > 5 ? packet[5] : 0u;
+    const size_t size = packet.size();
+    guest_deliver_one(std::move(packet));
+    const uint64_t us = now_us() - t0;
+    if (us >= 100000 && slow.fetch_add(1, std::memory_order_relaxed) < 20) {
+        log::warn("Session2 guest: one packet of the host's held the network thread for {} ms: opcode {} on the wire, {} "
+                  "bytes, first payload byte {} (a tunnel control packet's state when the opcode is 1)",
+                  us / 1000, opcode, size, first);
+    }
 }
 
 namespace {

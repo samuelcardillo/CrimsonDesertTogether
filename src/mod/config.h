@@ -304,6 +304,9 @@ struct Config {
     // Host and guest, builds 3527 and 3549 (session2/focus_follow.h): each PC shows the character the other player
     // controls and hides the one left behind.
     bool s2_focus_follow = true;
+    // Host and guest, build 3663 (session2/sea_sync.h): the guest draws the host's swell, so that a ship sits in the
+    // same waves on both PCs.
+    bool s2_sea_sync = true;
     // Host and guest, builds 3527 and 3549 (session2/field_leave_guard.h): the other player leaving a field does not
     // unload the manager of its owner, so the host keeps its town NPCs when the guest leaves.
     bool s2_field_leave_guard = true;

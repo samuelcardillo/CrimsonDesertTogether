@@ -113,6 +113,13 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
     let it stand on the deck again). Not tried between two PCs. If anything looks wrong when you jump on a moving
     ship, turn it off: [session2] passenger_air_follow=0 in cdmp.ini.
   NEW on 16 November (in the code, not in a release yet when this was written):
+  * The sea. On the guest's screen the waves used to wash over the host's ship, or the ship hung above them: each
+    game keeps its own swell (twelve trains of waves, each with its own timing, direction and starting point), and
+    the ship moves with the HOST's. The host's mod now tells the guest's its swell ten times a second and the guest
+    draws that one. Measured with two copies on one PC: before, the two seas had nothing in common (wave directions
+    up to 230 degrees apart); now every wave train has the same direction and place on both, the guest's about a
+    twentieth of a second behind. Not looked at yet from the guest's deck in a rough sea, nor between two PCs. If
+    the sea ever looks wrong, turn it off on either PC: [session2] sea_sync=0 in cdmp.ini.
   * The other player on a mount. Since the game moved past version 2976 the other player was never really seated on
     their mount on your screen. You saw them vanish for most of a second when they mounted, sit a metre or two off
     the saddle at a gallop, and leave the mount behind when they rode far away. They are seated again. Measured with

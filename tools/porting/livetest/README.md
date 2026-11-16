@@ -104,6 +104,25 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
 - **Encallar al zarpar:** el barco amarrado apunta unas veces al este y otras al suroeste (-146° y -162° el 16-nov), y
   al suroeste están los bajíos. Con la proa así, la primera marcha lo llevó a encallar en medio minuto antes de que
   `steer.py` pudiera girarlo (dijo «the ship does not turn»). Mirar `shiphead.py` antes de meter marcha.
+- `sailaway.py H [rumbo [segundos]]` (16-nov): lo mismo que `sailout.sh` pero mirando lo que hace el barco tras cada
+  pulsación: aprende qué tecla sube el rumbo, cambia de tecla si la proa se aleja, vuelve a meter marcha una vez si
+  el barco no anda y, ya en rumbo, lo mantiene los segundos pedidos (40). Úsese este: `sailout.sh` daba por hecho
+  que A baja el rumbo y perdió un barco cuando no fue así.
+- `sailto.py H [-r m] [-g n] [-keep] x z [x z ...]` (16-nov): navega por los puntos dados y recoge la vela en el
+  último. El timón de este barco SE QUEDA donde se dejó (tras A, la proa sigue girando hasta que se le da D otro
+  tanto) y qué tecla sube el rumbo cambia de una vez a otra: cada mirada mide el rumbo dos veces con un segundo de
+  separación y la pulsación siguiente responde al rumbo que el barco tendrá dentro de cuatro segundos; la tecla solo
+  se cambia tras dos pulsaciones largas que giraron al revés. `FRONT=<pid>`: tras cada pulsación vuelve a poner
+  delante esa copia (para que la del pasajero no se quede detrás y se caiga). Recoger la vela es ALT 4 s: con 2,5 s
+  no siempre baja (y a veces tampoco con más: lanzar la pulsación en segundo plano y mirar `sailstate.py` hasta ver
+  «furled»). `seadeck.sh H G`: salir del puerto con el invitado delante, el mar, las velas de los otros barcos y la
+  tripulación, de una vez. `shipsails.py H G`: la vela de cada barco en las dos copias (los de la IA incluidos).
+  Ojo: parado en mar abierto, al barco lo hunden los piratas en pocos minutos.
+- `seatest.sh H G [s]` (16-nov, `sea_sync`): el mar del invitado contra el del anfitrión con cada copia delante:
+  los doce trenes de olas de las dos copias (`seawaves.py H G [s]`: fase, fuerza, dirección y origen de cada uno, y
+  cuánto se separan), lo que dijo cada mod y capturas cada cinco segundos (`shots/sea_h_N.png`, `shots/sea_g_N.png`).
+  `seacmp.py H G [s]`: los tres búferes del mar palabra por palabra (qué difiere y qué se mueve); `windcmp.py H G`:
+  viento y acumuladores del clima. Explicación en `docs/research/mar-3663.md`.
 - `sailout.sh H [rumbo]`: del amarre a mar abierto virando a babor hasta el rumbo (105). `jumpwatch.py pid s`: cuánto
   sube el personaje propio y cuánto está sin padre en ese rato (para saber si una pulsación fue un salto).
   **Espacio no salta con `ui.ps1`** (16-nov, las dos copias): `jumptest.sh` no consigue saltos; `NOSAIL=1` y

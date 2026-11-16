@@ -1,5 +1,5 @@
 """npcmon.py host guest seconds [period] [root_key] : the actors that ride the host's ship without being part of it
-(everything hanging at any depth from the vehicle, default 0xB010000A, that is neither a gimmick nor a vehicle: the
+(everything hanging at any depth from the vehicle, default CDMP_SHIP or 0xB010000A, that is neither a gimmick nor a vehicle: the
 crew, a mount, a player), as each copy has them: on the host its parent and local position; on the guest whether it
 is there, what it hangs from there, its pending request type (TS+0x5BC) and how far it is drawn from its place (the
 guest's own copy of the host's parent composed with the host's local pose). Read-only (3663)."""
@@ -17,7 +17,7 @@ from live_reader_check import Reader  # noqa: E402
 B = 0x140000000
 hp, gp, secs = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3])
 period = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
-ROOT = int(sys.argv[5], 16) if len(sys.argv) > 5 else 0xB010000A
+ROOT = int(sys.argv[5], 16) if len(sys.argv) > 5 else int(_os.environ.get('CDMP_SHIP', '0xB010000A'), 16)
 
 
 def rot(q, v):

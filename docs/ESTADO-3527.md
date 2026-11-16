@@ -2,6 +2,17 @@
 
 **13-nov-2026, ~19:28: Steam actualizó el juego a 1.0.0.3663 (PE `0x6AF5D198`). Portado esa misma noche (estático, por módulos) y probado en vivo en dos copias: la unión y la despedida con vuelta FUNCIONAN, 0 errores; el resto sin volver a probar. Kit `dist/cdmp-coop-20261113-3663-v22.zip`. Detalle: `docs/research/port-3663.md`. Lo de abajo es de 3527/3549/3576.**
 
+**16-nov-2026 (mediodía, 3663, dos copias): EL MAR.** El dueño veía en el invitado las olas pasar por encima del
+barco. Causa: el oleaje son doce trenes de olas (21 a 280 m) y cada cliente lleva los suyos (fase, dirección, origen y
+fuerza de cada uno, que reinicia por turnos con SU viento y SU cámara); nada de eso viaja por la red, y el casco del
+invitado sube y baja con las olas del anfitrión. Módulo nuevo `sea_sync` (por defecto, estado 17 del túnel): el
+anfitrión manda sus doce trenes diez veces por segundo y el invitado los escribe encima de los suyos en cada
+fotograma. **Medido en vivo:** antes, hasta 3,12 rad de fase, 230° de dirección y 12 km de origen de diferencia;
+después, dirección y origen idénticos en los doce y la fase 0,04–0,06 s por detrás (31 miradas de 31 navegando, con
+cada copia delante). Sin ver desde la cubierta del invitado con mar gruesa (en un PC el invitado se cae del barco en
+cuanto su copia pasa detrás). La primera versión dejó colgado 22 s el hilo de red del invitado por un `SRWLOCK` y
+tiró el túnel; ya no espera ningún hilo. En `main`, sin release. `docs/research/mar-3663.md`.
+
 **16-nov-2026 (madrugada, 3663, dos copias): MONTURAS.** Primera vez que se monta en 3663 (un Wyvern). El jinete
 del otro jugador no se sentaba en su montura desde el port a 3527 (el «sin enganche» del juego pasó de 9 a 12 y
 `mount_seat` rechazaba todos los asientos): parpadeaba al montar (0,8 s dibujado hacia el origen del mundo), iba a

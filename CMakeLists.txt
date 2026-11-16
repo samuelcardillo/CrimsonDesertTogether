@@ -205,6 +205,7 @@ add_library(cdmp_mod SHARED
     src/mod/session2/achievement_guard.cpp
     src/mod/session2/field_leave_guard.cpp
     src/mod/session2/focus_follow.cpp
+    src/mod/session2/sea_sync.cpp
     src/mod/session2/manager_probe.cpp
     src/mod/session2/pivot_guard.cpp
     src/mod/session2/ride_null_guard.cpp
@@ -467,6 +468,12 @@ add_executable(cdmp_tests_optd_focus_follow tests/optd_focus_follow_tests.cpp)
 cdmp_strict(cdmp_tests_optd_focus_follow)
 target_include_directories(cdmp_tests_optd_focus_follow PRIVATE src)
 add_test(NAME optd_focus_follow COMMAND cdmp_tests_optd_focus_follow)
+
+# The host's sea on the guest (sea_sync_logic.h): the state-17 frame and the guest's copy carried forward in time.
+add_executable(cdmp_tests_optd_sea_sync tests/optd_sea_sync_tests.cpp)
+cdmp_strict(cdmp_tests_optd_sea_sync)
+target_include_directories(cdmp_tests_optd_sea_sync PRIVATE src)
+add_test(NAME optd_sea_sync COMMAND cdmp_tests_optd_sea_sync)
 
 add_executable(cdmp_tests_optd_pivot_guard tests/optd_pivot_guard_tests.cpp)
 cdmp_strict(cdmp_tests_optd_pivot_guard)

@@ -77,6 +77,7 @@
 #include "mod/session2/achievement_guard.h"
 #include "mod/session2/field_leave_guard.h"
 #include "mod/session2/focus_follow.h"
+#include "mod/session2/sea_sync.h"
 #include "mod/session2/manager_probe.h"
 #include "mod/session2/pivot_guard.h"
 #include "mod/session2/ride_null_guard.h"
@@ -497,6 +498,8 @@ void run_network(const Config& cfg, LocalSource& local) {
         // P8 S25 weather (weather_sync.h): the host's newest weather sample as control state 12 (weather_sync=1 and a
         // guest that announced caps 0x04; nothing otherwise). Flushed by the next tunnel_tick.
         if (s2_link) session2::weather_sync_host_tick(*s2_link, now);
+        // The host's swell (sea_sync.h) as control state 17, 10 Hz, to a guest that is in the world.
+        if (s2_link) session2::sea_sync_host_tick(*s2_link);
         health.mark(Phase::HostTunnel, now_us());
         if (!s2_guest_link && !coop && session2::guest_active()) {
             s2_guest_link = std::make_unique<troc::TrocLink>(
@@ -1222,6 +1225,8 @@ DWORD WINAPI worker(LPVOID) {
                 session2::create_retry_configure(cfg.s2_create_retry, cfg.s2_create_retry_lost);
                 session2::gimmick_take_configure(cfg.s2_gimmick_take, cfg.s2_gimmick_take_hold_ms);
                 session2::focus_follow_start(cfg.s2_focus_follow, /*guest=*/true);
+                // 16-nov (sea_sync.h): the host's swell drawn here; its own thread hooks once the world is up.
+                session2::sea_sync_start(cfg.s2_sea_sync, /*guest=*/true);
                 session2::field_leave_guard_start(cfg.s2_field_leave_guard, /*guest=*/true);
                 session2::achievement_guard_start(cfg.s2_achievement_guard);
                 session2::guest_set_docking_dedupe(cfg.s2_docking_dedupe);
@@ -1326,6 +1331,8 @@ DWORD WINAPI worker(LPVOID) {
         if (session2) session2::send_trace_start(cfg.s2_send_trace);
         if (session2) session2::gimmick_relay_start(cfg.s2_gimmick_relay, cfg.s2_gimmick_relay_states);
         if (session2) session2::focus_follow_start(cfg.s2_focus_follow, /*guest=*/false);
+        // 16-nov (sea_sync.h): this client's swell told to user 2 (read only here).
+        if (session2) session2::sea_sync_start(cfg.s2_sea_sync, /*guest=*/false);
         if (session2) session2::field_leave_guard_start(cfg.s2_field_leave_guard, /*guest=*/false);
         if (session2) session2::manager_probe_start(cfg.s2_manager_probe);
         // User 2's character climbs / climbs up / dismounts as a native remote actor on the host's client

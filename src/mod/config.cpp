@@ -223,6 +223,7 @@ Config load_config(const std::wstring& ini_path) {
     c.s2_gimmick_take = narrow(read_string(ini_path, L"session2", L"gimmick_take", "0"));
     c.s2_gimmick_take_hold_ms = read_uint(ini_path, L"session2", L"gimmick_take_hold_ms", 0);
     c.s2_focus_follow = read_uint(ini_path, L"session2", L"focus_follow", 1) != 0;
+    c.s2_sea_sync = read_uint(ini_path, L"session2", L"sea_sync", 1) != 0;
     c.s2_field_leave_guard = read_uint(ini_path, L"session2", L"field_leave_guard", 1) != 0;
     c.s2_docking_dedupe = read_uint(ini_path, L"session2", L"docking_dedupe", 1) != 0;
     c.s2_achievement_guard = read_uint(ini_path, L"session2", L"achievement_guard", 1) != 0;

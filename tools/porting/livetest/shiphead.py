@@ -35,4 +35,6 @@ vx, vy, vz = 0.0, 0.0, -1.0
 cx, cy, cz = y * vz - z * vy, z * vx - x * vz, x * vy - y * vx
 ccx, ccy, ccz = y * cz - z * cy, z * cx - x * cz, x * cy - y * cx
 fx, fz = vx + 2 * w * cx + 2 * ccx, vz + 2 * w * cz + 2 * ccz
-print(f'{math.degrees(math.atan2(fx, fz)):+.0f} {p[0] + s[0] * 1000:.1f} {p[2] + s[1] * 1000:.1f}')
+# (a fourth word since 16-nov: the heading with two decimals, for scripts that measure how fast the bow turns)
+print(f'{math.degrees(math.atan2(fx, fz)):+.0f} {p[0] + s[0] * 1000:.1f} {p[2] + s[1] * 1000:.1f} '
+      f'{math.degrees(math.atan2(fx, fz)):.2f}')

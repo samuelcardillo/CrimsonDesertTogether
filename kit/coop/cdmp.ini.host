@@ -144,6 +144,7 @@ ui_pause_block=1
 seq_marker_guard=1
 change_pivot_guard=1
 focus_follow=1
+sea_sync=1
 field_leave_guard=1
 manager_probe=1
 s1_scene_diag=0
