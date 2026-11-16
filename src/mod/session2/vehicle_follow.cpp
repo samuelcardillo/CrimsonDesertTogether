@@ -649,6 +649,7 @@ struct OwnTrace {  // the hook's own, under g_own_trace_busy
     std::array<OwnFrame, kOwnRing> ring{};
     size_t pushed = 0;
     uint64_t last_ms = 0;  // the last own request seen
+    uint64_t prev_ms = 0;  // the one before this frame's (last_ms is this frame's once the hook has started)
     uint32_t last_parent = 0, root_key = 0;
     uintptr_t root_ts = 0;
     bool root_followed = false;
@@ -695,6 +696,7 @@ void own_frame(safetyhook::Context& ctx) noexcept {
         t.root_key = 0;
         t.root_followed = false;
     }
+    t.prev_ms = t.last_ms;
     t.last_ms = now;
     const bool on_part = (parent >> 28) == 0xB, was_on_part = (t.last_parent >> 28) == 0xB;
     if (!on_part && !was_on_part && t.after < 0 && !t.ride.in_air()) {
@@ -794,18 +796,60 @@ void own_frame(safetyhook::Context& ctx) noexcept {
     std::memcpy(a.body, f.capsule, sizeof a.body);
     // (With passenger_air_follow=0 it is still worked out, for the line of each time in the air; nothing is written.)
     const auto mode = static_cast<gil::Mode>(g_air_mode.load(std::memory_order_relaxed));
-    if (t.ride.frame(a, mode == gil::Mode::On, add)) {
-        f.fix[0] = add[0];
-        f.fix[1] = add[1];
+    const bool fix = t.ride.frame(a, mode == gil::Mode::On, add);
+    // The ship's way in THIS frame. The hull's pose read above is the one the follower placed in the frame before:
+    // the own character's request comes before the ship's in a frame. AirRide therefore puts the character where its
+    // place was one ship's step ago, and the ship then moves on without it. Seen on 2026-11-16 06:49 (18 m/s, the
+    // guest's copy at two to three frames a second): a hop of one frame, the fix 3.2 m, the ship 9.7 m on by the next
+    // frame, the character 6.7 m down the deck; the next hop put it in the water. The follower knows where it is about
+    // to place the ship in this frame (the same track, the same clock): the character's place is taken there too.
+    // AirRide keeps counting from the place without this lead; at the next request the hull read is the pose led to,
+    // so nothing lacks then and nothing is added twice.
+    double lead[2] = {0, 0};
+    if (mode == gil::Mode::On && t.ride.in_air() && t.ride.ship_speed() >= vfl::kAirMinSpeed && a.hull_ok &&
+        a.request_ok) {
+        if (Vehicle* v = find(t.root_ts)) {
+            // ... and it places it LATER in the frame than this request: at two to three frames a second that was
+            // 0.1 to 0.2 s (07:25: with the pose for "now" each hop still cost 1.4 to 3.4 m at 18 m/s). How much later
+            // is taken from the frame before: the ship's last placement against this character's last request (never
+            // more than six tenths of the frame, in case the order is ever the other way round).
+            vfl::Pose next;
+            AcquireSRWLockExclusive(&v->lock);
+            const uint64_t drawn = v->drawn_ms;
+            uint64_t ahead = 0;
+            if (t.prev_ms && drawn > t.prev_ms && drawn <= now) {
+                ahead = std::min<uint64_t>(drawn - t.prev_ms, (now - t.prev_ms) * 6 / 10);
+            }
+            const bool have = v->track.at(now + ahead, &next);
+            ReleaseSRWLockExclusive(&v->lock);
+            if (have && vfl::finite_pose(next) && vfl::unit_quat(next.q)) {
+                const double at[3] = {a.request[0] + add[0], a.request[1], a.request[2] + add[1]};
+                double l[3];
+                vfl::to_local(a.hull, at, l);
+                const float lf[3] = {static_cast<float>(l[0]), static_cast<float>(l[1]), static_cast<float>(l[2])};
+                const float unit[4] = {0, 0, 0, 1};
+                const vfl::Pose there = vfl::attach(next, lf, unit);
+                const double lx = there.x - at[0], lz = there.z - at[2];
+                const double m = std::hypot(lx, lz);
+                if (std::isfinite(m) && m <= vfl::kAirMaxStepM) {
+                    lead[0] = lx;
+                    lead[1] = lz;
+                }
+            }
+        }
+    }
+    if (fix || lead[0] != 0 || lead[1] != 0) {
+        f.fix[0] = add[0] + lead[0];
+        f.fix[1] = add[1] + lead[1];
         if (mode == gil::Mode::On) {
             PositionArg w = arg;
-            vfl::to_sector(f.request[0] + add[0], arg.sx, &w.x, &w.sx);
-            vfl::to_sector(f.request[2] + add[1], arg.sz, &w.z, &w.sz);
+            vfl::to_sector(f.request[0] + f.fix[0], arg.sx, &w.x, &w.sx);
+            vfl::to_sector(f.request[2] + f.fix[1], arg.sz, &w.z, &w.sz);
             f.wrote = write_bytes(ctx.rdx, &w, sizeof w);
-            if (!f.wrote) t.ride.unwritten();
+            if (!f.wrote && fix) t.ride.unwritten();
         }
-        g_air_fixed_frames.fetch_add(1, std::memory_order_relaxed);
-        const auto cm = static_cast<uint64_t>(std::hypot(add[0], add[1]) * 100.0);
+        if (fix) g_air_fixed_frames.fetch_add(1, std::memory_order_relaxed);
+        const auto cm = static_cast<uint64_t>(std::hypot(f.fix[0], f.fix[1]) * 100.0);
         if (cm > g_air_max_fix_cm.load(std::memory_order_relaxed)) g_air_max_fix_cm.store(cm, std::memory_order_relaxed);
     }
     if (vfl::AirDone d; t.ride.done(&d)) {

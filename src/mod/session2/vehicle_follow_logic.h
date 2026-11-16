@@ -445,7 +445,9 @@ inline constexpr double kAirWaterlineY = 0.2;
 inline constexpr double kAirMinFixM = 0.03;
 // The ship's way in one frame beyond which it did not sail there (put away and taken out again, a jump of its
 // samples): the time in the air is over. 18 m/s at two and a half frames a second is 7.2 m.
-inline constexpr double kAirMaxStepM = 8.0;
+// (15 since 2026-11-16: at 18 m/s a copy drawing two frames a second sees 9 m steps, and those are the frames the
+// character needs it most. A ship put away and taken out again is hundreds of metres off.)
+inline constexpr double kAirMaxStepM = 15.0;
 // The carry cannot have lacked more than the ship's way in the frame (a little more: the game sometimes pushes the
 // character back). Anything beyond is something else's doing and is not made up.
 inline constexpr double kAirSlack = 1.25, kAirSlackM = 0.1;
@@ -455,6 +457,14 @@ inline constexpr double kAirSlack = 1.25, kAirSlackM = 0.1;
 // of a jump.)
 inline constexpr double kAirRestM = 0.03;
 inline constexpr uint64_t kAirRestMs = 300;
+// But a steady height is also the DECK, when the game has taken the character off its part and it stands there
+// without a parent. Seen live on 2026-11-16 06:01 (the guest's copy behind at six frames a second, ship at 7.5 m/s):
+// the character was held for one second (5 of 6 frames, 6.8 m of the ship's 7.7 m), two frames in a row had the same
+// height, "standing on something firm" ended it and the ship left. Nobody steps onto a quay from a ship doing
+// kAirFastSpeed or more: there a steady height does not end anything, and the limit is kAirMaxFastS (at six frames
+// a second the game needs more than a second to give the character its part back).
+inline constexpr double kAirFastSpeed = 1.5;  // m/s (5.0 at first: at 08:06 the guest was let go at 2.2 m/s, standing on the deck)
+inline constexpr double kAirMaxFastS = 4.0;
 
 // The time in the air is over for this module: too long, or down at the water (`asked_y`: the request's height in
 // the ship's frame).
@@ -588,13 +598,14 @@ public:
         if (!f.hull_ok || !f.request_ok || !f.body_ok || f.root != air_root_) return end(AirEnd::Unreadable, f);
         double l[3];
         to_local(f.hull, f.request, l);
-        if (f.ms - air_ms_ > static_cast<uint64_t>(kAirMaxS * 1000.0)) return end(AirEnd::Time, f);
+        const bool fast = speed_ >= kAirFastSpeed;
+        if (f.ms - air_ms_ > static_cast<uint64_t>((fast ? kAirMaxFastS : kAirMaxS) * 1000.0)) return end(AirEnd::Time, f);
         if (!(l[1] >= kAirWaterlineY)) return end(AirEnd::Water, f);
         if (!rest_have_ || std::fabs(f.body[1] - rest_y_) > kAirRestM) {
             rest_have_ = true;
             rest_y_ = f.body[1];
             rest_ms_ = f.ms;
-        } else if (f.ms - rest_ms_ >= kAirRestMs) {
+        } else if (!fast && f.ms - rest_ms_ >= kAirRestMs) {
             return end(AirEnd::Rest, f);
         }
         double lack[2];

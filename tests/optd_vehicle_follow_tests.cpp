@@ -693,15 +693,15 @@ void test_air_ride() {
         CHECK(fl.ride.ship_speed() == 0);
         CHECK(fl.air(1, 0.1, Carry::None, 0, 6.9, 0, 0, true) == 0);
     }
-    // It stepped onto a quay from a ship doing 3 m/s and walks away from it: without a parent, but its height does
-    // not change. Left to the game after kAirRestMs: dragged 1.1 m at most instead of 4.5 m.
+    // It stepped onto a quay from a ship coming alongside at 1.2 m/s and walks away from it: without a parent, but its
+    // height does not change. Left to the game after kAirRestMs. (From kAirFastSpeed on a steady height is the deck.)
     {
         Flight fl;
-        fl.ship.speed = 3.0;
+        fl.ship.speed = 1.2;  // slower than kAirFastSpeed: a ship coming alongside
         fl.stand(60, 1.0 / 60);
         fl.air(60, 1.0 / 60, Carry::None, 0, std::numeric_limits<double>::quiet_NaN(), 1.5, 0, true);
         CHECK(fl.have_done && fl.last.why == AirEnd::Rest && !fl.ride.in_air());
-        CHECK(fl.last.air_ms <= kAirRestMs + 40 && fl.total < 1.1 && fl.total > 0.7);
+        CHECK(fl.last.air_ms <= kAirRestMs + 40 && fl.total < 0.5 && fl.total > 0.2);
         const double before = fl.total;
         CHECK(fl.air(30, 1.0 / 60, Carry::None, 0, std::numeric_limits<double>::quiet_NaN(), 1.5, 0, true) == 0);
         CHECK(fl.total == before);
@@ -715,9 +715,24 @@ void test_air_ride() {
         fl.land(1.0 / 144);
         CHECK(fl.last.why == AirEnd::Landed && fl.last.off < 0.05);
     }
-    // Too long in the air: over at kAirMaxS, and nothing after.
+    // On a fast ship (7.5 m/s, six frames a second: 2026-11-16 06:01) a character without a parent that keeps its
+    // height stands on the deck: held on, not "standing on something firm", until kAirMaxFastS.
     {
         Flight fl;
+        fl.ship.speed = 7.5;
+        fl.stand(12, 1.0 / 6);
+        const int got = fl.air(18, 1.0 / 6, Carry::None, 0, std::numeric_limits<double>::quiet_NaN(), 0, 0, true);
+        CHECK(got >= 17 && fl.ride.in_air() && !fl.have_done);
+        double l[3];
+        fl.where(l);
+        CHECK(std::hypot(l[0] - fl.spot[0], l[2] - fl.spot[2]) < 0.1);
+        fl.air(8, 1.0 / 6, Carry::None, 0, std::numeric_limits<double>::quiet_NaN(), 0, 0, true);
+        CHECK(fl.have_done && fl.last.why == AirEnd::Time && fl.last.air_ms > 4000 && fl.last.air_ms < 4400);
+    }
+    // Too long in the air on a slow ship: over at kAirMaxS, and nothing after.
+    {
+        Flight fl;
+        fl.ship.speed = 1.2;
         fl.stand(60, 1.0 / 60);
         fl.air(100, 1.0 / 60, Carry::None, 0, 9.0, 0, 0, true);
         CHECK(fl.have_done && fl.last.why == AirEnd::Time && !fl.ride.in_air());

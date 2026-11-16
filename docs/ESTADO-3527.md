@@ -18,6 +18,12 @@ primera. Sin ver: un salto de verdad, el aterrizaje y el caso del dueño (copia 
 de navegar se perdieron (dos encallamientos y un barco cuya vela no se quedaba puesta) y Espacio no salta con la
 entrada sintética. Abierto además: el invitado no puede montar su Wyvern («E Ride» en gris). `port-3663.md`, «Barco,
 16-nov de madrugada».
+**16-nov por la mañana (05:57–08:42): velas y tripulación comprobadas otra vez** (vela igual en las dos copias en
+cinco cambios; 11 tripulantes a 0,05–0,19 m de su puesto en el invitado). **El pasajero a toda vela con la copia
+detrás sigue cayendo al agua**, pero más tarde (12 s en vez de 6) y por otra causa: tres cambios en `main` (la regla
+de «suelo firme» solo con el barco casi parado, un adelanto con la pose que el seguidor va a poner, tope de 4 s): un
+bote a 18 m/s deja ahora al personaje a 0,24 m de su sitio (antes 6,7 m); falta que el juego le devuelva la pieza
+antes de que acabe el tope. `port-3663.md`, «Barco, 16-nov por la mañana».
 
 **15-nov-2026 (madrugada, 3663, dos copias en este PC, cinco sesiones sin nadie al teclado): lo que la `b2` llevaba
 sin jugar FUNCIONA** (las barcas de la IA seguidas y las poses de vehículos de mod a mod: `ERR` 0, ningún volcado), y

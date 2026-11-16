@@ -86,7 +86,8 @@ on an older version were ported to 3663 but not all were tried again.
 - A passenger who leaves the deck of the other player's moving ship for a moment (a jump, a step down) was left
   behind by the game and could end in the water. The mod now keeps it moving with the ship until it lands
   (`passenger_air_follow`). The last release has a first version that was never played; the code after it was seen
-  working once (16 November, 3.4 m/s), not yet with a real jump or at full sail. If it misbehaves, set
+  working at 2 to 3.4 m/s (16 November). At full sail with two copies on one PC (the copy behind at two or three
+  frames a second) the guest still ends in the water, later than before; not tried between two PCs. If it misbehaves, set
   `passenger_air_follow=0` under `[session2]` in `cdmp.ini`.
 - On game version 3663 the guest cannot ride their own mount in the host's world: the "Ride" prompt is greyed out
   (seen on 16 November with a Wyvern; not solved). The host can ride, and the guest sees it properly.

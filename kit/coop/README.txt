@@ -107,9 +107,12 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
     jump and a fast ship still have to be played). When your character left the deck
     of the other player's moving ship for a moment (a jump, a step down from a platform, or a bounce when your game
     runs at very few frames a second), the game stopped carrying it with the ship and it could end in the water
-    behind. The mod now keeps it moving with the ship until it lands. Seen on 16 November: for a second and a half
-    without the deck under it, at 3.4 m/s, the character stayed with the ship. If anything looks wrong when you jump
-    on a moving ship, turn it off: [session2] passenger_air_follow=0 in cdmp.ini.
+    behind. The mod now keeps it moving with the ship until it lands. Seen on 16 November: at 2 to 3.4 m/s the
+    character stayed with the ship. At full sail (18 m/s) with two copies of the game on ONE PC, where the copy behind
+    draws two or three frames a second, the guest still ends in the water, later than before (the code after the
+    15 November release puts it back within 0.3 m after a hop, but the game can take longer than the mod waits to
+    let it stand on the deck again). Not tried between two PCs. If anything looks wrong when you jump on a moving
+    ship, turn it off: [session2] passenger_air_follow=0 in cdmp.ini.
   NEW on 16 November (in the code, not in a release yet when this was written):
   * The other player on a mount. Since the game moved past version 2976 the other player was never really seated on
     their mount on your screen. You saw them vanish for most of a second when they mounted, sit a metre or two off
