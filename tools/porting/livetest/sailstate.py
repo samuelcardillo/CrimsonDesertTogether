@@ -18,7 +18,7 @@ from cdbuild import WORLD_SLOT  # noqa: E402
 from live_reader_check import Reader  # noqa: E402
 
 B = 0x140000000
-VEHICLE = 0xB010000A
+VEHICLE = int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16)
 NAMES = {'89746c86': 'furled', '4dd95dbe': 'first gear', 'e480ff9b': 'second gear', '3f7594b0': 'third gear',
          '7d8452b9': 'going to first gear', 'a0f2a008': 'going to second gear', 'ea7cd220': 'going to third gear',
          '0795c60c': 'known sail hash', 'f5af9c8c': 'known sail hash', 'b6bcab80': 'known sail hash'}

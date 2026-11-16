@@ -1,6 +1,8 @@
 #!/bin/bash
 # shipsession.sh [stage] [H G] : a fresh two-copy session up to "host at the ship's wheel, guest on the stern deck".
 #   stages: launch (default: everything), hopkins, join, guestboard, hostboard. A later stage needs the pids.
+#   walk H G: two copies already running with the guest joined (after mountsession.sh, say): everything but the launch,
+#   starting with the host's fast travel to the Vellua nexus and its walk to Hopkins.
 #   deploy + launch, host to Vellua, Hopkins (R held 2 s at the tested spot), ship retrieved, guest joins and boards by
 #   the port ladder, host boards and takes the wheel. Each stage prints one line; stops at the first that fails.
 #   SAIL_EXP=1 in the environment: the two copies start with profiles/host-sail-exp.ini and profiles/guest-sail-exp.ini
@@ -10,7 +12,7 @@ cd "$(dirname "$0")"
 B="D:/SteamLibrary/steamapps/common/Crimson Desert/bin64"
 SP="$(cygpath -w "$(pwd)")"
 STAGE=${1:-launch}; H=$2; G=$3
-order="launch hopkins join guestboard hostboard"
+order="launch walk hopkins join guestboard hostboard"
 from() { case " ${order#*$STAGE} " in *" $1 "*) return 0;; esac; [ "$1" = "$STAGE" ]; }
 
 tp() {  # pid role : fast travel to the Vellua nexus, three attempts
@@ -77,7 +79,7 @@ U="pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $H"
 UG="pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $G"
 
 if from hopkins; then
-  if [ "$STAGE" = "launch" ]; then
+  if [ "$STAGE" = "launch" ] || [ "$STAGE" = "walk" ]; then
     sleep 6; tp $H host || { echo "STAGE host tp FAILED: $(python -I posnow.py $H)"; exit 1; }
     sleep 6
     past_wagon $H

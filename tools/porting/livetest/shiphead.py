@@ -17,7 +17,7 @@ world = r.ptr(B + WORLD_SLOT)
 mgr = r.ptr(world + 0x30)
 t = r.ptr(mgr + 8)
 n = r.unpack(t + 0x88, '<I')[0]
-key = 0xB010000A
+key = int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16)
 b = r.ptr(t + 0x98) + (key % n) * 0x100
 a = 0
 for i in range(min(r.unpack(b, '<I')[0], 31)):

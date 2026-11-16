@@ -14,7 +14,7 @@ from live_reader_check import Reader
 SP = (_HERE).replace('/', '\\')
 B = 0x140000000
 pid = int(sys.argv[1]); args = sys.argv[2:]
-stop, steps, vkey, pts = 0.5, 10, 0xB010000A, []
+stop, steps, vkey, pts = 0.5, 10, int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16), []
 i = 0
 while i < len(args):
     if args[i] == '-s': stop = float(args[i + 1]); i += 2

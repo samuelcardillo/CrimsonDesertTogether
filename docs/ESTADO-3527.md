@@ -11,6 +11,13 @@ anfitrión montando: sentado, sin parpadeo, a 0,15–0,37 m de la silla (como en
 anfitrión murió de una caída al desmontar en una ladera y no salió la pantalla de muerte. Además, la nota de qué
 haría falta para más de un invitado: `docs/research/varios-invitados.md`. Detalle: `docs/research/port-3663.md`,
 «Monturas en 3663».
+**Esa misma madrugada, el pasajero en el aire visto actuar por primera vez (02:43):** en el único rato registrado
+(1,5 s, barco a 3,4 m/s) el juego puso al personaje donde decía la petición cambiada, el mod añadió 4,95 m de los
+5,3 m que anduvo el barco y el personaje siguió a bordo. Es la tercera versión, la de `main`; la `b4` lleva la
+primera. Sin ver: un salto de verdad, el aterrizaje y el caso del dueño (copia detrás, 16–18 m/s): los tres intentos
+de navegar se perdieron (dos encallamientos y un barco cuya vela no se quedaba puesta) y Espacio no salta con la
+entrada sintética. Abierto además: el invitado no puede montar su Wyvern («E Ride» en gris). `port-3663.md`, «Barco,
+16-nov de madrugada».
 
 **15-nov-2026 (madrugada, 3663, dos copias en este PC, cinco sesiones sin nadie al teclado): lo que la `b2` llevaba
 sin jugar FUNCIONA** (las barcas de la IA seguidas y las poses de vehículos de mod a mod: `ERR` 0, ningún volcado), y

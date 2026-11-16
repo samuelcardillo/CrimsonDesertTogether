@@ -39,7 +39,7 @@ def actor(key):
 own = r.ptr(mgr + 0x50)
 comps = r.ptr(own + 0x68)
 ts, hier = r.ptr(comps + 0x1A0), r.ptr(comps + 0x1B8)
-ship_ts = r.ptr(r.ptr(actor(0xB010000A) + 0x68) + 0x1A0)
+ship_ts = r.ptr(r.ptr(actor(int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16)) + 0x68) + 0x1A0)
 
 
 def ship():

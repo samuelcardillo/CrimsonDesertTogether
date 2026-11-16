@@ -91,6 +91,26 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   otro, cuánto se sale de su camino, si la reproducción va a tirones, y a cuánto de la silla está el jinete
   (`--csv fichero` repite el informe). `interpmon.py pid clave segundos [fichero]`: el búfer de interpolación de un
   actor remoto (muestras, sellos de tiempo) y su posición dibujada, con las veces que se queda quieto y salta.
+- `jumptest.sh H G [saltos]` (16-nov; anfitrión al timón, invitado en cubierta): `passenger_air_follow` visto en el
+  juego. El anfitrión mete marcha y pone la proa a mar abierto; con la copia del INVITADO delante, el invitado salta
+  en cubierta y se apunta tras cada salto la velocidad del barco, dónde está y cuánto se ha movido por la cubierta; al
+  final, lo que escribió el mod del invitado de cada rato en el aire. `shipsession.sh walk H G`: todo menos el
+  arranque, con dos copias ya en marcha y el invitado unido (tras `mountsession.sh`, o para sacar otro barco).
+- **El barco puede cambiar de clave:** tras encallar, «Repair and Retrieve» de Hopkins deja en el amarre un barco con
+  otra clave (`0xB010000B` el 16-nov; el encallado sigue donde estaba). `shiplocal.py`, `shipwalk.py`,
+  `shipparts.py`, `shiphead.py`, `sailstate.py`, `boat/deckdrift.py` y `boat/slidetrace.py` leen la clave de la
+  variable de entorno `CDMP_SHIP` (por defecto `0xB010000A`): `CDMP_SHIP=0xB010000B bash shipsession.sh join H G`.
+  La clave sale de `nearactors.py pid 200 5` (el vehículo de 5100 de vida junto al amarre).
+- **Encallar al zarpar:** el barco amarrado apunta unas veces al este y otras al suroeste (-146° y -162° el 16-nov), y
+  al suroeste están los bajíos. Con la proa así, la primera marcha lo llevó a encallar en medio minuto antes de que
+  `steer.py` pudiera girarlo (dijo «the ship does not turn»). Mirar `shiphead.py` antes de meter marcha.
+- `sailout.sh H [rumbo]`: del amarre a mar abierto virando a babor hasta el rumbo (105). `jumpwatch.py pid s`: cuánto
+  sube el personaje propio y cuánto está sin padre en ese rato (para saber si una pulsación fue un salto).
+  **Espacio no salta con `ui.ps1`** (16-nov, las dos copias): `jumptest.sh` no consigue saltos; `NOSAIL=1` y
+  `JUMPKEY=<tecla>` están para cuando se sepa cómo.
+- `ownerinfo.py pid clave ...`: de quién cree una copia que es un actor (controlador, dueño, «controlado aquí»), y
+  de un vehículo su asiento 0 y el enlace de un jinete. `interdump.py pid clave`: las entradas de interacción de un
+  actor. Los dos, para «el invitado no puede montar su Wyvern» (el aviso «E Ride» sale en gris).
 - `shopsession.sh`: de cero a «el invitado compra una Water a Delkin y un saco en el puesto de al lado» (Hernand,
   ~25 min): lanzar, anfitrión al nexo de Hernand y a la calle de las tiendas, unir al invitado, llevarlo al
   mostrador, R, comprar, salir, y E mantenida en el puesto. No vende nada (vender exige mirar antes la pantalla).

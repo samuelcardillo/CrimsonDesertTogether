@@ -7,7 +7,7 @@ from cdbuild import WORLD_SLOT, CAMERA_SLOT  # noqa
 import sys
 sys.path.insert(0, r'D:/SteamLibrary/steamapps/common/Crimson Desert/multi/tools/porting')
 from live_reader_check import Reader
-B = 0x140000000; r = Reader(int(sys.argv[1])); key = 0xB010000A
+B = 0x140000000; r = Reader(int(sys.argv[1])); key = int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16)
 world = r.ptr(B + WORLD_SLOT); mgr = r.ptr(world + 0x30); t = r.ptr(mgr + 8); n = r.unpack(t + 0x88, '<I')[0]
 b = r.ptr(t + 0x98) + (key % n) * 0x100; c = r.unpack(b, '<I')[0]
 for i in range(min(c, 31)):

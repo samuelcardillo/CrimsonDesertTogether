@@ -48,7 +48,7 @@ class Copy:
 
     def ship(self):
         r = self.r
-        ts = r.ptr(r.ptr(self.actor(0xB010000A) + 0x68) + 0x1A0)
+        ts = r.ptr(r.ptr(self.actor(int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16)) + 0x68) + 0x1A0)
         p = r.unpack(ts + 0xB4, '<3f')
         s = r.unpack(ts + 0xC0, '<hh')
         return (p[0] + s[0] * 1000, p[2] + s[1] * 1000)

@@ -28,7 +28,7 @@ for k, a in actors.items():
     if h: par[k] = ru(h + 0x1C, '<I')[0]
 kids = collections.defaultdict(list)
 for k, p in par.items(): kids[p].append(k)
-root = 0xB010000A; todo = [(root, 0)]; seen = []
+root = int(__import__("os").environ.get("CDMP_SHIP", "0xB010000A"), 16); todo = [(root, 0)]; seen = []
 while todo:
     k, d = todo.pop(); seen.append((k, d))
     for c in sorted(kids.get(k, []), reverse=True): todo.append((c, d + 1))

@@ -320,6 +320,7 @@ def main():
     print(f"owner's character 0x{key:08X}")
     s_own_c, s_own_m, s_obs_c, s_obs_m, seat = [], [], [], [], []
     parents = {}
+    seated = 0
     t0 = time.perf_counter()
     while time.perf_counter() - t0 < secs:
         try:
@@ -339,8 +340,14 @@ def main():
             time.sleep(0.05)
             continue
         parents[(par, b[0])] = parents.get((par, b[0]), 0) + 1
-        s_own_c.append((t, a[1]))
-        s_obs_c.append((t_obs, b[1]))
+        # A copy that is seated on its mount (the observer's own hierarchy parent) is carried by it: its place is
+        # the mount's plus a seat offset the game writes later in the frame than the mount's position, so "its path"
+        # is the mount's and what matters is the seat. Counted as a character only while it has no parent there.
+        if b[0] == 0:
+            s_own_c.append((t, a[1]))
+            s_obs_c.append((t_obs, b[1]))
+        else:
+            seated += 1
         if m and n:
             s_own_m.append((t, m[1]))
             s_obs_m.append((t_obs, n[1]))
@@ -358,6 +365,9 @@ def main():
         time.sleep(0.002)
     print(f'{len(s_own_c)} samples in {secs:.0f} s; (owner parent, observer parent) seen: ' +
           ', '.join(f'(0x{p:X}, 0x{q:X}) x{c}' for (p, q), c in sorted(parents.items(), key=lambda kv: -kv[1])))
+    if seated:
+        print(f'character: seated on its mount on the observer in {seated} looks (carried by it: see "mount" and '
+              f'"seat"); what follows is the rest (on foot, or not seated there)')
     report('character', s_own_c, s_obs_c)
     if s_own_m:
         report('mount', s_own_m, s_obs_m)
