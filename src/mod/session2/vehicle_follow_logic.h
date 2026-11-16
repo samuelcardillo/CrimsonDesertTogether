@@ -110,9 +110,32 @@ public:
     void set_delay(uint64_t delay_ms) { delay_ms_ = delay_ms; }
     uint64_t delay() const { return delay_ms_; }
 
+    // Further than kTeleportM from each other, in the plane or in height.
+    static bool apart(const Pose& a, const Pose& b) { return dist_xz(a, b) > kTeleportM || std::fabs(a.y - b.y) > kTeleportM; }
+
     // A sample read now; kept only when it differs from the newest one. True when added.
+    // ONE sample far from the newest does not move the vehicle: it waits, and goes in (at its own time) only when the
+    // next sample is in that new place too; if the next one is back by the track, the far one is forgotten. Live,
+    // 2026-11-16, twice in one day on the guest (13:40:57 and 15:22:36): one sample of the host's ship 769 m away and
+    // 1592 m below its place, and one 318 m away and 43890 m below, each followed by a right one. The ship was drawn
+    // there for a frame, the deck was gone from under everyone standing on it, and the guest's character fell into
+    // the water under the hull (the second time it drowned there). A real jump (a ship fetched back to its mooring) is
+    // drawn one sample later than before.
     bool push(uint64_t t_ms, const Pose& p) {
         if (!usable(p)) return false;
+        if (n_ && apart(s_[(head_ + n_ - 1) % kCap].p, p)) {
+            if (!pending_ || apart(pending_p_.p, p)) {
+                pending_ = true;
+                pending_p_ = {t_ms, p};
+                ++lone_;
+                return false;
+            }
+            --lone_;  // the second one there: the first was the vehicle after all
+            pending_ = false;
+            append(pending_p_.t, pending_p_.p);
+        } else {
+            pending_ = false;  // back by the track (or the first sample of all)
+        }
         if (n_) {
             const Pose& last = s_[(head_ + n_ - 1) % kCap].p;
             const bool same = std::fabs(last.x - p.x) < 1e-3 && std::fabs(last.y - p.y) < 1e-3 &&
@@ -120,18 +143,17 @@ public:
                               std::fabs(last.q[1] - p.q[1]) < 1e-5f && std::fabs(last.q[2] - p.q[2]) < 1e-5f &&
                               std::fabs(last.q[3] - p.q[3]) < 1e-5f;
             if (same) return false;
-            if (t_ms <= s_[(head_ + n_ - 1) % kCap].t) t_ms = s_[(head_ + n_ - 1) % kCap].t + 1;
         }
-        if (n_ == kCap) {
-            head_ = (head_ + 1) % kCap;
-            --n_;
-        }
-        s_[(head_ + n_) % kCap] = {t_ms, p};
-        ++n_;
+        append(t_ms, p);
         return true;
     }
     size_t size() const { return n_; }
-    void clear() { n_ = head_ = 0; }
+    void clear() {
+        n_ = head_ = 0;
+        pending_ = false;
+    }
+    // Far samples that no second one confirmed (the one waiting now included).
+    uint64_t lone_jumps() const { return lone_; }
 
     // The pose to draw at local time now_ms (false: no sample yet).
     bool at(uint64_t now_ms, Pose* out) const {
@@ -191,9 +213,21 @@ private:
         Pose p;
     };
     const Sample& get(size_t i) const { return s_[(head_ + i) % kCap]; }
+    void append(uint64_t t_ms, const Pose& p) {
+        if (n_ && t_ms <= s_[(head_ + n_ - 1) % kCap].t) t_ms = s_[(head_ + n_ - 1) % kCap].t + 1;
+        if (n_ == kCap) {
+            head_ = (head_ + 1) % kCap;
+            --n_;
+        }
+        s_[(head_ + n_) % kCap] = {t_ms, p};
+        ++n_;
+    }
     std::array<Sample, kCap> s_{};
     size_t n_ = 0, head_ = 0;
     uint64_t delay_ms_ = kDefaultDelayMs;
+    bool pending_ = false;
+    Sample pending_p_{};
+    uint64_t lone_ = 0;
 };
 
 // A world coordinate as the game's TransformSync position argument: a float local to a 1000 m sector plus the sector.

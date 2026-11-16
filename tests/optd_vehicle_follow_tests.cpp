@@ -89,9 +89,43 @@ void test_track_default_delay_extrapolates() {
 void test_track_teleport_not_interpolated() {
     Track t;
     t.push(1000, pose(-10124.4, 349.7, -7167.7));
-    t.push(2000, pose(-10384.7, 350.6, -6363.0));  // 846 m in one step
+    CHECK(!t.push(2000, pose(-10384.7, 350.6, -6363.0)));  // 846 m in one step: it waits for a second sample there
     Pose out;
-    CHECK(t.at(2700, &out) && near(out.z, -6363.0));
+    CHECK(t.at(2700, &out) && near(out.z, -7167.7));
+    CHECK(t.push(2100, pose(-10384.7, 350.6, -6363.2)));   // and there it is: the ship was fetched to its mooring
+    CHECK(t.size() == 3);
+    CHECK(t.at(2700, &out) && near(out.z, -6363.2, 0.2));  // never drawn half-way between the two places
+    CHECK(t.at(2350, &out) && near(out.z, -6363.0, 0.21));
+    CHECK(t.lone_jumps() == 0);
+}
+
+// 16-nov, 15:22:36, the guest's log: the host's ship moored at (-10372, 350, -6206), one sample of it 318 m away and
+// 43890 m below, the next one back in its place. The ship was drawn down there for a frame and the guest's character,
+// standing on its deck, fell through and drowned under the hull. One far sample alone never moves the ship.
+void test_track_lone_far_sample() {
+    Track t;
+    Pose out;
+    for (int i = 0; i < 6; ++i) t.push(1000 + i * 100, pose(-10372.0, 350.0 + 0.01 * i, -6206.0));
+    const size_t before = t.size();
+    CHECK(!t.push(1600, pose(-10150.0, -43540.0, -6430.0)));
+    CHECK(t.size() == before);
+    for (uint64_t now = 1600; now < 2400; now += 16) {
+        CHECK(t.at(now, &out));
+        CHECK(out.y > 349.0 && out.y < 351.0 && near(out.x, -10372.0, 0.5) && near(out.z, -6206.0, 0.5));
+    }
+    CHECK(t.push(1700, pose(-10372.0, 350.07, -6206.0)));  // back in its place: the far one is forgotten
+    CHECK(t.lone_jumps() == 1);
+    CHECK(t.at(2100, &out) && out.y > 349.0 && out.y < 351.0);
+    // Only height: straight down by 1592 m (13:40:57 that day) is as far as any distance.
+    CHECK(!t.push(1800, pose(-10372.0, -1242.0, -6206.0)));
+    // Two far samples in two DIFFERENT places are two lone ones, not a jump.
+    CHECK(!t.push(1900, pose(-9000.0, 350.0, -6206.0)));
+    CHECK(t.at(2300, &out) && near(out.x, -10372.0, 0.5) && out.y > 349.0);
+    CHECK(t.push(2000, pose(-10372.0, 350.1, -6206.0)));
+    CHECK(t.lone_jumps() == 3);
+    // After a clear nothing waits.
+    t.clear();
+    CHECK(t.push(3000, pose(-9000.0, 350.0, -6206.0)) && t.size() == 1);
 }
 
 void test_track_ring_and_clock() {
@@ -99,9 +133,9 @@ void test_track_ring_and_clock() {
     for (int i = 0; i < 20; ++i) t.push(1000 + i * 1000, pose(-10000.0 - i, 350.0, -6000.0));
     CHECK(t.size() == Track::kCap);
     // A sample that arrives with the same local time is moved 1 ms later, never before the newest.
-    t.push(20000, pose(-10500.0, 350.0, -6000.0));
+    t.push(20000, pose(-10020.0, 350.0, -6000.0));
     Pose out;
-    CHECK(t.at(1000000, &out) && near(out.x, -10500.0));
+    CHECK(t.at(1000000, &out) && near(out.x, -10020.0));
 }
 
 // Samples are stamped at arrival: two ~1 Hz poses that land a frame apart (a resent packet, a hitch) must not be read
@@ -1051,6 +1085,7 @@ int main() {
     test_track_interpolates_behind();
     test_track_default_delay_extrapolates();
     test_track_teleport_not_interpolated();
+    test_track_lone_far_sample();
     test_track_ring_and_clock();
     test_track_bursty_samples();
     test_rotation();

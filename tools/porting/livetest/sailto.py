@@ -52,10 +52,21 @@ def ui(target, *more):
                    + list(more), capture_output=True, text=True)
 
 
+SHOTS = _os.environ.get('SHOTS')  # with FRONT: each of its screenshots is kept as shots/<SHOTS>_N.png
+shot_n = 0
+
+
 def hold(key, ms):
+    global shot_n
+    if key in ('LSHIFT', 'ALT'):
+        # The wheel offers Accelerate / Decelerate again only after a steering key, once the window has lost the focus
+        # (16-nov: ten gear holds in a row did nothing until one hold of D). A tap each way first.
+        ui(pid, '-Do', 'hold', '-Keys', 'A', '-HoldMs', '200')
+        ui(pid, '-Do', 'hold', '-Keys', 'D', '-HoldMs', '200')
     ui(pid, '-Do', 'hold', '-Keys', key, '-HoldMs', str(int(ms)))
     if FRONT:
-        ui(FRONT, '-Do', 'shot', '-Out', SP + r'\shots\front_tmp.png')
+        shot_n += 1
+        ui(FRONT, '-Do', 'shot', '-Out', SP + '\\shots\\' + (f'{SHOTS}_{shot_n}.png' if SHOTS else 'front_tmp.png'))
 
 
 def diff(a, b):  # from b to a, in (-180, 180]

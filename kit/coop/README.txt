@@ -120,6 +120,11 @@ Checked on 1.0.0.3549, with two copies of the game on one PC:
     up to 230 degrees apart); now every wave train has the same direction and place on both, the guest's about a
     twentieth of a second behind. Not looked at yet from the guest's deck in a rough sea, nor between two PCs. If
     the sea ever looks wrong, turn it off on either PC: [session2] sea_sync=0 in cdmp.ini.
+  * A passenger thrown into the water for no reason. Twice in a day of tests the guest, standing still on the deck
+    of the host's ship, was suddenly under the hull. For a single frame the guest's game had drawn the ship
+    kilometres away (one bad position got through when the guest's connection hiccuped), and with no deck under
+    them everybody on board fell. One far-off position on its own no longer moves a ship; it has to be confirmed
+    by the next one. Rare, so not seen again yet with the fix.
   * Other ships' sails. Pirate and merchant ships used to sail with their sails furled on the guest's screen. Three
     things were in the way and are fixed: a sail set before the ship came into view was never told to the guest (the
     host's mod now repeats each sail's last state when the ship appears and every 30 seconds); ships seen from far

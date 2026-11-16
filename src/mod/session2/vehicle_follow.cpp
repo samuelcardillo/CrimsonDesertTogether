@@ -118,6 +118,12 @@ constexpr size_t kMaxVehicles = 24, kMaxFound = 96;
 // listed vehicle takes those samples instead.
 constexpr double kPoseRangeM = 800.0;
 constexpr uint64_t kVehicleChannelFreshMs = 1500, kPoseKeepaliveMs = 500;
+// For this long after the other mod's last sample of a vehicle the game's own network pose of it is NOT taken: the
+// track holds its last pose. The other mod sends one at least every kPoseKeepaliveMs, so a gap is this client's own
+// network thread standing still (2.8 s seen with its copy behind), and the game's pose is no fresher then: its
+// packets come through the same thread. With 1.5 s (until 16-nov) one such gap put the game's pose of the host's
+// re-fetched ship into the track: 318 m off and 43890 m down (vfl::Track::push says what that did).
+constexpr uint64_t kVehicleChannelGoneMs = 6000;
 struct OwnVehicle {
     std::atomic<uint32_t> key{0};
     std::atomic<uintptr_t> ts{0};
@@ -128,9 +134,14 @@ struct OwnVehicle {
     vfl::Pose seen;
     uint64_t seen_ms = 0;
     uint32_t seen_key = 0;  // whose pose `seen` is (a slot can get another vehicle between two looks)
+    // A look that found it far from `seen` (vfl::Track::far): taken only when the next look finds it there too. One
+    // such look alone is not the vehicle (16-nov: the guest twice got one pose of the host's ship kilometres off).
+    bool jump = false;
+    vfl::Pose jump_pose;
     uint64_t read_ms = 0;   // the last look that could read it (a vehicle that cannot be read is not sent, moved or not)
 };
 constexpr uint64_t kPoseReadFreshMs = 250;
+std::atomic<uint64_t> g_own_lone_jumps{0};  // looks at an own vehicle that found it far away and were not taken at once
 // The other mod's clock against this one's, from its timed pose events (the network thread only).
 vfl::SampleClock g_vehicle_clock;
 std::atomic<uint64_t> g_vehicle_timed_events{0}, g_vehicle_clock_resets{0};
@@ -1017,7 +1028,7 @@ void position_mid(safetyhook::Context& ctx) {
     // The other mod's samples of it, while they come (vehicle_follow_on_peer_vehicles puts them in the track); else
     // the game's own network pose, about one a second.
     const uint64_t channel = v->channel_ms.load(std::memory_order_relaxed);
-    const bool from_channel = channel && now - channel < kVehicleChannelFreshMs;
+    const bool from_channel = channel && now - channel < kVehicleChannelGoneMs;
     vfl::Pose net;
     if (!from_channel && !network_pose(ctx.rcx, &net)) {
         g_unreadable.fetch_add(1, std::memory_order_relaxed);
@@ -1968,11 +1979,13 @@ DWORD WINAPI worker(LPVOID) {
                 AcquireSRWLockShared(&v.lock);
                 d = v.drawn;
                 const size_t n = v.track.size();
+                const uint64_t lone = v.track.lone_jumps();
                 ReleaseSRWLockShared(&v.lock);
                 line += std::format(" | 0x{:08X} (gimmick 0x{:08X}): requests {} followed {}/{} samples {} (kept {}; {} "
-                                    "of them from the other mod) drawn ({:.1f}, {:.1f}) error now {:.1f} m max {:.1f} m",
+                                    "of them from the other mod; lone far samples not drawn {}) drawn ({:.1f}, {:.1f}) "
+                                    "error now {:.1f} m max {:.1f} m",
                                     v.key.load(), v.gimmick, v.requests.load(), v.positions.load(), v.rotations.load(),
-                                    v.samples.load(), n, v.channel_samples.load(), d.x, d.z,
+                                    v.samples.load(), n, v.channel_samples.load(), lone, d.x, d.z,
                                     v.last_err_cm.load() / 100.0, v.max_err_cm.load() / 100.0);
             }
             struct {
@@ -1995,6 +2008,9 @@ DWORD WINAPI worker(LPVOID) {
             }
             if (g_vehicles_sent.load() || g_vehicle_events.load()) {
                 total += g_vehicles_sent.load() + g_vehicle_events.load();
+                line += std::format(" | own vehicles found far from where they were at one look and not sent until the "
+                                    "next look confirmed it: {}",
+                                    g_own_lone_jumps.load());
                 line += std::format(" | vehicle poses: own ones sent {} times ({} listed now); the other mod's: {} events "
                                     "({} with the poses' times: the newest sample of the last one placed {} ms before "
                                     "its arrival, the other clock taken anew {} times), {} poses of vehicles not listed "
@@ -2171,7 +2187,19 @@ void vehicle_follow_observe() noexcept {
         float unused[3];
         if (!ts_pose(ts, true, &p, unused) || !vfl::usable(p)) continue;
         o.read_ms = now;
-        if (o.seen_key == key && o.seen_ms && !pose_differs(p, o.seen)) continue;
+        if (o.seen_key == key && o.seen_ms && !pose_differs(p, o.seen)) {
+            o.jump = false;
+            continue;
+        }
+        if (o.seen_key == key && o.seen_ms && vfl::Track::apart(o.seen, p)) {
+            if (!o.jump || vfl::Track::apart(o.jump_pose, p)) {
+                o.jump = true;
+                o.jump_pose = p;
+                g_own_lone_jumps.fetch_add(1, std::memory_order_relaxed);
+                continue;  // the next look says whether it is really there
+            }
+        }
+        o.jump = false;
         o.seen = p;
         o.seen_ms = now;
         o.seen_key = key;

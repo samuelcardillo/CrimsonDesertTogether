@@ -13,6 +13,17 @@ cada copia delante). Sin ver desde la cubierta del invitado con mar gruesa (en u
 cuanto su copia pasa detrás). La primera versión dejó colgado 22 s el hilo de red del invitado por un `SRWLOCK` y
 tiró el túnel; ya no espera ningún hilo. En `main`, sin release. `docs/research/mar-3663.md`.
 
+**16-nov-2026 (tarde): EL BARCO DESAPARECÍA UN FOTOGRAMA BAJO LOS PIES DEL INVITADO.** Dos veces en el día
+(13:40:57 y 15:22:36) el registro del invitado enseña lo mismo: una sola muestra de la pose del barco del anfitrión a
+cientos de metros y kilómetros por debajo de su sitio (769 m y −1592 m; 318 m y −43890 m), la siguiente bien. El
+invitado dibujó el barco allí un fotograma, la cubierta dejó de estar bajo quien hubiera encima y su personaje cayó al
+agua bajo el casco (la segunda vez se ahogó). Causa: cuando el hilo de red del invitado se para más de 1,5 s (copia
+detrás), el seguidor tomaba la pose de red del propio juego, que para un barco vuelto a sacar es basura. Arreglo en
+`vehicle_follow` (con tests; **sin ver en el juego**, el fallo sale una vez cada varias horas): una muestra sola
+lejos de la pista no mueve el barco (espera a que la siguiente esté en el mismo sitio), el anfitrión tampoco manda una
+lectura suelta así, y la pose del juego no se usa hasta 6 s sin muestras del otro mod. Es, muy probablemente, una
+de las razones de «el invitado acaba en el agua». `port-3663.md`, «Barco, 16-nov por la tarde».
+
 **16-nov-2026 (tarde): LAS VELAS DE LOS BARCOS DE LA IA.** «The NPC boats still don't show their sail status»:
 el invitado los veía con la vela recogida. Tres causas, las tres arregladas en `gimmick_relay` y **vistas en vivo**
 (14:41–14:55, `shipsails.py`: dos barcos de la IA a 400–900 m con la misma marcha en las dos copias en 200 miradas
