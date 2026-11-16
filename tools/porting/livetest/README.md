@@ -110,7 +110,8 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   `JUMPKEY=<tecla>` están para cuando se sepa cómo.
 - `ownerinfo.py pid clave ...`: de quién cree una copia que es un actor (controlador, dueño, «controlado aquí»), y
   de un vehículo su asiento 0 y el enlace de un jinete. `interdump.py pid clave`: las entradas de interacción de un
-  actor. Los dos, para «el invitado no puede montar su Wyvern» (el aviso «E Ride» sale en gris).
+  actor. Hechos para «el invitado no puede montar su Wyvern» (el aviso «E Ride» salía en gris), que resultó no ser
+  un fallo: el guion colocaba mal al personaje; a mano, monta.
 - `shopsession.sh`: de cero a «el invitado compra una Water a Delkin y un saco en el puesto de al lado» (Hernand,
   ~25 min): lanzar, anfitrión al nexo de Hernand y a la calle de las tiendas, unir al invitado, llevarlo al
   mostrador, R, comprar, salir, y E mantenida en el puesto. No vende nada (vender exige mirar antes la pantalla).

@@ -14,8 +14,7 @@ and a Rosemary from two stalls, holding E), with no error. FIGHTING was checked 
 hits take the same health off an enemy on both screens, enemies hurt and kill both players, the death screen comes
 up, and both revive at the checkpoint (HOLD U: a tap does nothing). Not seen again on 3663: the guest finishing an
 enemy off, and loot. MOUNTS were tried on 3663 on 16 November (the host calling, riding and dismounting a Wyvern
-while the guest watched; see "NEW on 16 November" below); the guest riding while the host watches was not seen on
-3663 yet. Please tell us if something that worked before no longer does. Looks only: next to the host's house the guest's ground looked
+while the guest watched, and the guest riding its own; see "NEW on 16 November" below). Please tell us if something that worked before no longer does. Looks only: next to the host's house the guest's ground looked
 wet (puddles) while the host's was dry. And the guest always shows the HOST's weather and daylight as the host's own
 camera has them: while the host is outdoors, a room the guest walks into is lit like the outdoors (a blue tint), and
 while the host is inside a building the guest's sky may look dimmer. It matches again when you are in the same place.

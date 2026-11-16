@@ -7,7 +7,8 @@ del otro jugador no se sentaba en su montura desde el port a 3527 (el «sin enga
 `mount_seat` rechazaba todos los asientos): parpadeaba al montar (0,8 s dibujado hacia el origen del mundo), iba a
 1–2 m de la silla al galope y dejaba atrás a la montura cuando estaba lejos. Arreglado y **visto en vivo** con el
 anfitrión montando: sentado, sin parpadeo, a 0,15–0,37 m de la silla (como en su propia copia), desmontar bien, `ERR`
-0. En `main`, sin release. Sin ver: el invitado montando con el anfitrión mirando. Y un fallo por explicar: el
+0. En `main`, sin release. El invitado también monta la suya (lo probó el dueño esa mañana; sin medir desde el
+anfitrión). Y un fallo por explicar: el
 anfitrión murió de una caída al desmontar en una ladera y no salió la pantalla de muerte. Además, la nota de qué
 haría falta para más de un invitado: `docs/research/varios-invitados.md`. Detalle: `docs/research/port-3663.md`,
 «Monturas en 3663».
@@ -16,8 +17,8 @@ haría falta para más de un invitado: `docs/research/varios-invitados.md`. Deta
 5,3 m que anduvo el barco y el personaje siguió a bordo. Es la tercera versión, la de `main`; la `b4` lleva la
 primera. Sin ver: un salto de verdad, el aterrizaje y el caso del dueño (copia detrás, 16–18 m/s): los tres intentos
 de navegar se perdieron (dos encallamientos y un barco cuya vela no se quedaba puesta) y Espacio no salta con la
-entrada sintética. Abierto además: el invitado no puede montar su Wyvern («E Ride» en gris). `port-3663.md`, «Barco,
-16-nov de madrugada».
+entrada sintética. (Lo que apunté aquí de que el invitado no podía montar su Wyvern no era un fallo: la
+automatización lo había colocado mal; el dueño lo montó a mano.) `port-3663.md`, «Barco, 16-nov de madrugada».
 **16-nov por la mañana (05:57–08:42): velas y tripulación comprobadas otra vez** (vela igual en las dos copias en
 cinco cambios; 11 tripulantes a 0,05–0,19 m de su puesto en el invitado). **El pasajero a toda vela con la copia
 detrás sigue cayendo al agua**, pero más tarde (12 s en vez de 6) y por otra causa: tres cambios en `main` (la regla
