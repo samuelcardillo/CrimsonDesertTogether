@@ -69,7 +69,9 @@ objeto obsoleto de `build\` (`docs/research/objetos-obsoletos-msbuild.md`) y la 
 `cdmp-coop-20261114-3663-b2` (commit `a4868ef`), la primera hecha con `publish_release.ps1 -Publish` de principio a
 fin (compilación limpia, 105 pruebas, kit, `gh release create`: 7 min). A las 18:32 salió
 `cdmp-coop-20261114-3663-b3` (commit `b93986e`), igual: el mod es el mismo que en la `b2` (nada de `src/` cambia) y
-el launcher es el primero con las partidas.
+el launcher es el primero con las partidas. Después: `cdmp-coop-20261115-3663-b4` (15-nov, commit `27db86a`) y
+`cdmp-coop-20261117-3663-b5` (17-nov, 00:26, commit `9c21408`: el mar, las velas de los otros barcos y el barco que
+desaparecía un fotograma; 106 pruebas), las dos publicadas a petición del dueño antes de jugarlas.
 
 La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, igual en
 cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.

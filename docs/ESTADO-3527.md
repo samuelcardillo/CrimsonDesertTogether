@@ -2,6 +2,14 @@
 
 **13-nov-2026, ~19:28: Steam actualizó el juego a 1.0.0.3663 (PE `0x6AF5D198`). Portado esa misma noche (estático, por módulos) y probado en vivo en dos copias: la unión y la despedida con vuelta FUNCIONAN, 0 errores; el resto sin volver a probar. Kit `dist/cdmp-coop-20261113-3663-v22.zip`. Detalle: `docs/research/port-3663.md`. Lo de abajo es de 3527/3549/3576.**
 
+**17-nov-2026, 00:26: release `cdmp-coop-20261117-3663-b5`** (commit `9c21408`; la pidió el dueño sin esperar a
+verlo jugando). Lleva todo lo que más abajo dice «en `main`, sin release»: el mar del anfitrión en el invitado
+(`sea_sync`), las velas de los otros barcos, el barco que ya no desaparece un fotograma de debajo de sus pasajeros,
+el jinete sentado otra vez y la tercera versión de `passenger_air_follow`. La colocación de la tripulación es la de
+la `b4` (lo que el dueño vio temblar era un adelanto sin commit, retirado). Compilación limpia, 106 pruebas, y el
+`cdmp.asi` que sirve GitHub es byte a byte el compilado. **Sigue sin verse jugando:** el mar desde la cubierta del
+invitado con oleaje, la tripulación a toda vela con el invitado dibujando a 30, y las velas con un pirata al costado.
+
 **16-nov-2026 (mediodía, 3663, dos copias): EL MAR.** El dueño veía en el invitado las olas pasar por encima del
 barco. Causa: el oleaje son doce trenes de olas (21 a 280 m) y cada cliente lleva los suyos (fase, dirección, origen y
 fuerza de cada uno, que reinicia por turnos con SU viento y SU cámara); nada de eso viaja por la red, y el casco del
