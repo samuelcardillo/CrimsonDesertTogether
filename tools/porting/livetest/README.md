@@ -125,6 +125,10 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   segundo mientras dura la pulsación. `helmprompts.py H G [n]`: cuántos avisos ofrece el timón al anfitrión y quién
   controla la vela en el invitado. **El timón deja de ofrecer Acelerar/Frenar tras perder el foco la ventana hasta
   que se pulsa A o D**: toque de gobierno antes de cada marcha.
+- `deckview.sh H G` y `seapair.sh H G` (16-nov): los dos intentos de VER el mar del invitado. El primero sale del
+  puerto con el invitado delante guardando una captura de su cubierta tras cada pulsación (`shots/deckview_N.png`);
+  el segundo lleva a los dos a la punta del muelle y junta capturas emparejadas (`shots/seapair_N.jpg`). Ninguno ha
+  dado aún una imagen con oleaje: el barco no llegó a mar abierto y la bahía está en calma.
 - `seatest.sh H G [s]` (16-nov, `sea_sync`): el mar del invitado contra el del anfitrión con cada copia delante:
   los doce trenes de olas de las dos copias (`seawaves.py H G [s]`: fase, fuerza, dirección y origen de cada uno, y
   cuánto se separan), lo que dijo cada mod y capturas cada cinco segundos (`shots/sea_h_N.png`, `shots/sea_g_N.png`).
