@@ -1370,6 +1370,11 @@ DWORD WINAPI worker(LPVOID) {
         }
         if (overlay || sniffer || session2) {
             if (overlay) render::hud_configure({cfg.overlay_self_marker, &session2::vehicle_follow_peer_world});
+            if (cfg.fps_cap) {
+                render::set_fps_cap(cfg.fps_cap);
+                log::info("Overlay: fps_cap={}: this copy presents at most {} frames a second (a test setting for two "
+                          "copies on one PC){}", cfg.fps_cap, cfg.fps_cap, overlay ? "" : "; the overlay is off: NO effect");
+            }
             auto* init = new LateInit{in_game, overlay, sniffer,
                                                       in_game && !p8_guest && cfg.dev_clone_hotkeys,
                                                       cfg.dev_mirror_delay_ms, cfg.dev_mirror_offset_m,

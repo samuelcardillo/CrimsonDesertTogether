@@ -16,6 +16,12 @@ struct Config {
     // (CDMP_ROLE set) only: while another window has the foreground, this process's GPU scheduling class goes up
     // so the copy in the background keeps its share of the GPU (bg_speed_logic.h). Without a role: a WRN, ignored.
     bool background_full_speed = false;
+    // [general] fps_cap = N (default 0: none). For TESTS with two copies on one PC, never in a kit: this copy
+    // presents at most N frames a second (a wait in the overlay's Present hook). The copy in front otherwise takes
+    // the whole GPU and the one behind draws 2 to 7 frames a second, in slow motion (a passenger falls off a ship, a
+    // ship crawls); with both capped the one behind keeps its share (docs/research/dos-instancias.md, 2.6: the same
+    // as the NVIDIA driver's frame limit of 15-oct, without touching the driver). Needs the overlay.
+    uint32_t fps_cap = 0;
 
     std::string peer_host = "127.0.0.1";
     uint16_t peer_port = 37015;

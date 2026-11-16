@@ -386,6 +386,30 @@ void before_resize(IDXGISwapChain* sc) {
 
 // ------------------------------------------------------------------- hooks
 
+// [general] fps_cap (tests with two copies on one PC): the present thread waits here so that two presents are never
+// closer than 1/cap s. Most of the wait is a Sleep, the last millisecond is spun.
+std::atomic<uint32_t> g_fps_cap{0};
+LONGLONG g_cap_due = 0;  // the present thread only: the earliest counter value of the next present
+void cap_wait(UINT flags) noexcept {
+    const uint32_t cap = g_fps_cap.load(std::memory_order_relaxed);
+    if (!cap || (flags & DXGI_PRESENT_TEST) || t_in_present) return;
+    LARGE_INTEGER freq, now;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&now);
+    const LONGLONG period = freq.QuadPart / cap;
+    if (g_cap_due && now.QuadPart < g_cap_due && g_cap_due - now.QuadPart <= period) {
+        const LONGLONG left_ms = (g_cap_due - now.QuadPart) * 1000 / freq.QuadPart;
+        if (left_ms > 1) Sleep(static_cast<DWORD>(left_ms - 1));
+        do {
+            YieldProcessor();
+            QueryPerformanceCounter(&now);
+        } while (now.QuadPart < g_cap_due);
+        g_cap_due += period;  // an even pace: from when this one was due, not from when it went
+    } else {
+        g_cap_due = now.QuadPart + period;  // late, or the first one: the pace starts again here
+    }
+}
+
 void present_common(IDXGISwapChain* sc, UINT flags) {
     g_presents.fetch_add(1, std::memory_order_relaxed);
     g_present_tid.store(GetCurrentThreadId(), std::memory_order_relaxed);  // freeze_watchdog's fallback source
@@ -395,6 +419,7 @@ void present_common(IDXGISwapChain* sc, UINT flags) {
 }
 
 HRESULT STDMETHODCALLTYPE hk_present(IDXGISwapChain* sc, UINT sync, UINT flags) {
+    cap_wait(flags);
     present_common(sc, flags);
     HRESULT hr = o_present(sc, sync, flags);
     t_in_present = false;
@@ -403,6 +428,7 @@ HRESULT STDMETHODCALLTYPE hk_present(IDXGISwapChain* sc, UINT sync, UINT flags) 
 
 HRESULT STDMETHODCALLTYPE hk_present1(IDXGISwapChain1* sc, UINT sync, UINT flags,
                                       const DXGI_PRESENT_PARAMETERS* params) {
+    cap_wait(flags);
     present_common(sc, flags);
     HRESULT hr = o_present1(sc, sync, flags, params);
     t_in_present = false;
@@ -517,6 +543,8 @@ Status status() {
     s.frames_drawn = g_frames.load(std::memory_order_relaxed);
     return s;
 }
+
+void set_fps_cap(uint32_t fps) noexcept { g_fps_cap.store(fps, std::memory_order_relaxed); }
 
 uint64_t status_frames_drawn() noexcept { return g_frames.load(std::memory_order_relaxed); }
 uint64_t status_presents() noexcept { return g_presents.load(std::memory_order_relaxed); }

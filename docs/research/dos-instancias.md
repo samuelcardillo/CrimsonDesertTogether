@@ -216,6 +216,21 @@ BgSpeed: background N s, foreground N s | switches to background N, to foregroun
 
 `background_full_speed=1` se queda en los inis (no estorba), pero el ajuste que importa es el límite de NVIDIA.
 
+**16-nov-2026: sin tocar el controlador.** El límite de NVIDIA ya no estaba puesto y las dos copias dibujaban a
+3840×2160 con DLAA, reconstrucción de rayos y generación de fotogramas ×4 (unos 35 ms de GPU por fotograma cada una):
+la de delante se llevaba toda la GPU y la de atrás iba a 2–7 fps y a cámara lenta (el pasajero se caía del barco, el
+barco del anfitrión se arrastraba a 1–2 m/s cuando su copia estaba detrás). Dos cosas juntas lo arreglan:
+
+- `[general] fps_cap=N` (nuevo, por defecto 0; **solo para pruebas, nunca en un kit**): el mod espera en su gancho de
+  `Present` para que la copia no presente más de N fotogramas por segundo. `FPS_CAP=30 bash shipsession.sh` arranca
+  las dos copias con los perfiles del kit más esa línea (`livetest/profiles/*-cap.ini`).
+- En cada copia, Esc → Others → Settings → Video: **Upscale Resolution** a Ultra Performance, **Frame Generation**
+  Off y **NVIDIA DLSS Ray Reconstruction** Off, Apply. La GPU baja de 36 ms a 7 ms por fotograma.
+
+Con las dos cosas, **las dos copias van a 30 fps fijos, esté delante la que esté** (150 presentaciones cada 5 s en
+los dos logs). Con solo el límite y los ajustes de 4K, en el mundo la de delante daba 24 y la de atrás 6. Los
+ajustes del invitado se guardan en `save_cdmp_guest`: volver a dejarlos como estaban al acabar.
+
 Los ajustes del anfitrión con `save_guard=redirect` se pierden al reiniciar (§2.5): se fijan una vez con el juego
 **sin el mod** (renombrar `cdmp.asi`), en la pantalla de título. Los del invitado se cambian en su ventana y se quedan
 en `save_cdmp_guest`.

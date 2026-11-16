@@ -18,6 +18,9 @@ using DrawFn = void (*)(float width, float height);
 
 bool install(DrawFn draw);
 
+// [general] fps_cap: at most this many presents a second from now on (0: no limit). Any thread.
+void set_fps_cap(uint32_t fps) noexcept;
+
 struct Status {
     bool installed = false;
     bool disabled = false;          // turned off after an error

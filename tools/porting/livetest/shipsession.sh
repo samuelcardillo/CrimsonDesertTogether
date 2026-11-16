@@ -67,6 +67,14 @@ if from launch; then
   rm -f pids.txt launchX.txt
   INI=()
   [ -n "$SAIL_EXP" ] && INI=(-HostIni "$SP\\profiles\\host-sail-exp.ini" -GuestIni "$SP\\profiles\\guest-sail-exp.ini")
+  # FPS_CAP=<n> in the environment: both copies start with the kit's profiles plus [general] fps_cap=<n> (the mod's
+  # own frame limit, a test setting): the copy in front no longer takes the whole GPU, so the one behind keeps
+  # drawing (without it: 2 to 7 frames a second and slow motion; 16-nov).
+  if [ -n "$FPS_CAP" ]; then
+    C="D:/SteamLibrary/steamapps/common/Crimson Desert/multi/tools/porting/configs"
+    for r in host guest; do sed "s/^\[general\]\r\?$/&\nfps_cap=$FPS_CAP/" "$C/cdmp.3527-2inst-$r.ini" > "profiles/$r-cap.ini"; done
+    INI=(-HostIni "$SP\\profiles\\host-cap.ini" -GuestIni "$SP\\profiles\\guest-cap.ini")
+  fi
   # ASI=<a cdmp.asi> in the environment: that file instead of the built one (a released kit's, to compare).
   [ -n "$ASI" ] && INI+=(-Asi "$(cygpath -w "$ASI")")
   pwsh -NoProfile -ExecutionPolicy Bypass -File "$SP\launch_house.ps1" "${INI[@]}" > launchX.txt 2>&1 < /dev/null &

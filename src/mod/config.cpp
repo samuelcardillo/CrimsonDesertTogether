@@ -110,6 +110,7 @@ Config load_config(const std::wstring& ini_path) {
     c.background_full_speed =
         read_uint(ini_path, L"general", L"background_full_speed",
                   read_uint(ini_path, L"session2", L"background_full_speed", 0)) != 0;
+    c.fps_cap = std::min<uint32_t>(read_uint(ini_path, L"general", L"fps_cap", 0), 240);
     c.net_enabled = read_uint(ini_path, L"net", L"enabled", 1) != 0;
     c.peer_host = narrow(read_string(ini_path, L"net", L"peer_host", c.peer_host));
     c.peer_port = static_cast<uint16_t>(read_uint(ini_path, L"net", L"peer_port", c.peer_port));
