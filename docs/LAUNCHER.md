@@ -74,6 +74,10 @@ el launcher es el primero con las partidas. Después: `cdmp-coop-20261115-3663-b
 desaparecía un fotograma; 106 pruebas), las dos publicadas a petición del dueño antes de jugarlas. El 21-nov,
 `cdmp-coop-20261121-3732-b6` (commit `873c292`): el port a 1.0.0.3732 (`docs/research/port-3732.md`); su
 `package.txt` dice `game=1.0.0.3732 0x6AFDC0CF`, así que el launcher solo la instala en un juego ya actualizado.
+Esa noche, `cdmp-coop-20261121-3732-b7` (commit `c75ab47`): el retardo del personaje del otro jugador ya no se
+queda en su máximo durante minutos (visto en la primera sesión entre dos PC en 3732) y una medida nueva de solo
+lectura en el log. Para publicar hay que tener el juego cerrado en este PC: dos pruebas de `ctest` son guiones que se
+niegan a trabajar con el juego abierto, y `publish_release.ps1` no publica si falla una.
 
 La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, igual en
 cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.
