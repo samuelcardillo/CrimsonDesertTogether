@@ -71,7 +71,9 @@ fin (compilación limpia, 105 pruebas, kit, `gh release create`: 7 min). A las 1
 `cdmp-coop-20261114-3663-b3` (commit `b93986e`), igual: el mod es el mismo que en la `b2` (nada de `src/` cambia) y
 el launcher es el primero con las partidas. Después: `cdmp-coop-20261115-3663-b4` (15-nov, commit `27db86a`) y
 `cdmp-coop-20261117-3663-b5` (17-nov, 00:26, commit `9c21408`: el mar, las velas de los otros barcos y el barco que
-desaparecía un fotograma; 106 pruebas), las dos publicadas a petición del dueño antes de jugarlas.
+desaparecía un fotograma; 106 pruebas), las dos publicadas a petición del dueño antes de jugarlas. El 21-nov,
+`cdmp-coop-20261121-3732-b6` (commit `873c292`): el port a 1.0.0.3732 (`docs/research/port-3732.md`); su
+`package.txt` dice `game=1.0.0.3732 0x6AFDC0CF`, así que el launcher solo la instala en un juego ya actualizado.
 
 La build del juego para la que es el kit (`game=` en `package.txt`) sale de `kit/coop/game-builds.txt`, igual en
 cualquier PC. `package_coop.ps1` avisa si el juego instalado en el PC no está en esa lista.

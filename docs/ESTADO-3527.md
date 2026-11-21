@@ -15,6 +15,8 @@ NOMBRE (`.xtls`, el de 2976) y en 3732 ese nombre lo lleva la sección de datos;
 en 3732:** todo lo demás (barcos y mar, tiendas, casas, pelea, monturas, la despedida y la vuelta). Novedad del
 juego: al entrar al mundo sale una ventana «Extra Rewards List» (Espacio la confirma) que se queda con el teclado;
 en la copia del anfitrión de las pruebas sale en cada arranque, porque su partida es la copia de la real.
+**Publicado ese día como release `cdmp-coop-20261121-3732-b6`** (commit `873c292`, compilación limpia, 106 pruebas;
+el `cdmp.asi` que sirve GitHub es el compilado): la pidió el dueño junto con el port.
 
 **17-nov-2026, 00:26: release `cdmp-coop-20261117-3663-b5`** (commit `9c21408`; la pidió el dueño sin esperar a
 verlo jugando). Lleva todo lo que más abajo dice «en `main`, sin release»: el mar del anfitrión en el invitado
