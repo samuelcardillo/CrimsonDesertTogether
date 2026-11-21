@@ -4,9 +4,14 @@ CRIMSON DESERT MULTIPLAYER - CO-OP (TEST VERSION)
 Two players in one world: the world is the HOST's, and the GUEST joins it with their own character.
 This is an unofficial mod. Use it at your own risk.
 
-THIS ZIP IS FOR 1.0.0.3663 (Steam's update of 13 November 2026, evening). Both PCs need that version. 3663 changed a
-lot inside the game, so the mod was ported to it again. On 3663, with two copies of the game on one PC, these were
-checked: JOINING (the guest loads into the host's world), the guest going back to the title and JOINING AGAIN, the
+THIS ZIP IS FOR 1.0.0.3732 (Steam's update of 19 November 2026). Both PCs need that version. The update moved
+everything inside the game again, so the mod was ported to it on 21 November: each of the game's addresses the mod
+uses was found again in the new game and checked against it; how the game talks over the network did not change.
+On 3732, with two copies of the game on one PC, this much was seen: both games start with the mod, the host loads
+into its world and the GUEST JOINS it, each player's panel shows both players, and no error. NOTHING ELSE below has
+been tried again on 3732 yet (ships and the sea, shops and market stalls, houses, fighting, mounts): it was last
+checked on 1.0.0.3663 and should work the same. Please tell us what does not. On 3663, with two copies of the game
+on one PC, these were checked: JOINING (the guest loads into the host's world), the guest going back to the title and JOINING AGAIN, the
 weather, SHIPS (the host sailing with the guest on board, see below), the HOST'S HOUSE as the guest sees it (the
 whole house and the pets; the building mode was not tried), SHOPKEEPERS (Delkin in Hernand: the guest opened the
 shop, bought a Water with its own money, sold it back and left) and MARKET STALLS (the guest bought a Harvest Sack
@@ -199,7 +204,7 @@ KNOWN PROBLEMS
 
 1. REQUIREMENTS (BOTH PLAYERS)
 ------------------------------
-- Crimson Desert 1.0.0.3663 (right-click bin64\CrimsonDesert.exe > Properties > Details: File version).
+- Crimson Desert 1.0.0.3732 (right-click bin64\CrimsonDesert.exe > Properties > Details: File version).
   With another version the mod turns itself off, and if Steam updates the game you will need a new version of the
   mod (the launcher's Update button gets it once there is one).
 - Each player has their own Steam account and copy of the game. You must be Steam friends, and BOTH USE THE SAME

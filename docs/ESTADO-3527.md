@@ -2,6 +2,20 @@
 
 **13-nov-2026, ~19:28: Steam actualizó el juego a 1.0.0.3663 (PE `0x6AF5D198`). Portado esa misma noche (estático, por módulos) y probado en vivo en dos copias: la unión y la despedida con vuelta FUNCIONAN, 0 errores; el resto sin volver a probar. Kit `dist/cdmp-coop-20261113-3663-v22.zip`. Detalle: `docs/research/port-3663.md`. Lo de abajo es de 3527/3549/3576.**
 
+**21-nov-2026: PORTADO A 1.0.0.3732** (Steam actualizó el juego el 19-nov, PE `0x6AFDC0CF`; `docs/research/port-3732.md`).
+El catálogo de red es el de 3663 mensaje a mensaje y los lectores de las cargas útiles no cambian; se movió todo lo
+demás (código +0x370…+0x50xx, vtables por nombre, globales +0x5FD0…+0x6240). Las tablas de 3663 se **reapuntaron en
+el sitio** (1181 valores vueltos a encontrar en el `.exe` nuevo por ocho grupos de módulos, cada uno con su prueba y
+un script que la repite: 0 diferencias; cruce entre grupos: 0 conflictos) y sus identificadores se renombraron a
+3732: **3663 ya no se admite.** **Visto en vivo (dos copias en este PC, 14:26–14:34):** los dos juegos arrancan con
+el mod, el lector del juego y todos los ganchos se instalan, el anfitrión entra en su mundo y el invitado se une
+(túnel conectado, 36 000 paquetes, 0 rechazados); el panel de cada uno enseña a los dos (vida 1650, aguante 440),
+`ERR` 0 salvo uno, arreglado: `wallup_send` se negaba porque una comprobación reconocía la sección protegida por su
+NOMBRE (`.xtls`, el de 2976) y en 3732 ese nombre lo lleva la sección de datos; ahora va por sus flags. **Sin probar
+en 3732:** todo lo demás (barcos y mar, tiendas, casas, pelea, monturas, la despedida y la vuelta). Novedad del
+juego: al entrar al mundo sale una ventana «Extra Rewards List» (Espacio la confirma) que se queda con el teclado;
+en la copia del anfitrión de las pruebas sale en cada arranque, porque su partida es la copia de la real.
+
 **17-nov-2026, 00:26: release `cdmp-coop-20261117-3663-b5`** (commit `9c21408`; la pidió el dueño sin esperar a
 verlo jugando). Lleva todo lo que más abajo dice «en `main`, sin release»: el mar del anfitrión en el invitado
 (`sea_sync`), las velas de los otros barcos, el barco que ya no desaparece un fotograma de debajo de sus pasajeros,

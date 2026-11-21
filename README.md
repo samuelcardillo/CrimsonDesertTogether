@@ -8,8 +8,10 @@ It does not copy characters between two separate games. Crimson Desert is built 
 inside: the client talks to a server that runs in the same process. The mod lets the **host's internal server
 accept a second player**, and connects the guest's game client to it through Steam.
 
-> **Status (14 November 2026).** Works on game version **1.0.0.3663** only (the mod turns itself off on any
-> other version; a game update needs a new port). Two players: one host, one guest. Almost everything has been
+> **Status (21 November 2026).** Works on game version **1.0.0.3732** only, Steam's update of 19 November (the
+> mod turns itself off on any other version; a game update needs a new port). The port to 3732 was made on
+> 21 November and so far only starting both games and the guest joining the host's world have been seen on it;
+> the table below says on which version each thing was last played. Two players: one host, one guest. Almost everything has been
 > checked with two copies of the game on one PC; only one short session has been played between two real PCs,
 > on an older game version. Expect rough edges, keep backups of your saves, and read
 > [Known problems](#known-problems).
@@ -50,11 +52,11 @@ every release zip.
 ## What works
 
 "Played" means someone played it and looked; the game version is the last one it was checked on. Things checked
-on an older version were ported to 3663 but not all were tried again.
+on an older version were ported to 3732 (through 3663) but have not been tried again on it.
 
 | Area | State | Last checked |
 |---|---|---|
-| Joining the host's world; leaving to the title and joining again | Played | 3663 |
+| Joining the host's world; leaving to the title and joining again | Played | 3732 (joining), 3663 (leaving and joining again) |
 | Seeing each other and moving, smoothed against network hiccups | Played | 3663 |
 | Climbing: each player sees the other climb | Played | 3527 |
 | Mounts: calling, riding and dismounting, both players | Played | 3663 |

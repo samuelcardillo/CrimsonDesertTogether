@@ -86,6 +86,13 @@ if from launch; then
   H=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\1/p' pids.txt); G=$(sed -n 's/.*pids host \([0-9]*\) guest \([0-9]*\).*/\2/p' pids.txt)
   echo "STAGE launch: pids $H $G; host in world at $(date +%T); asi $(certutil -hashfile "$B/cdmp.asi" SHA256 | sed -n 2p | cut -c1-8)"
   [ -z "$H" ] && exit 1
+  # 1.0.0.3732 (21-nov): the host's world opens with an "Extra Rewards List" window (Space: Confirm) at every start,
+  # because its save is the sandbox copy of the real one, where nobody has confirmed it; it takes every key until it
+  # is closed. A Space with no window open does nothing (a synthetic Space does not jump). Written after seeing the
+  # window in a screenshot; this step itself has NOT run yet: look at shots/ss_start_host.png.
+  sleep 5
+  pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $H -Do key -Keys SPACE -HoldMs 120 >/dev/null 2>&1; sleep 3
+  pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $H -Do shot -Out "$SP\\shots\\ss_start_host.png" >/dev/null 2>&1
   [ -n "$GFX_LOW" ] && { sleep 8; bash gfxset.sh $H low; }
 fi
 U="pwsh -NoProfile -ExecutionPolicy Bypass -File ui.ps1 -GamePid $H"
