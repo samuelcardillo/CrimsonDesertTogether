@@ -750,6 +750,68 @@ inline uint32_t player_hitch(uint64_t now, uint32_t d_ms, uint64_t prev_ts, uint
     return static_cast<uint32_t>(std::min<uint64_t>(now - d_ms - prev_ts, kMaxLateness));
 }
 
+// ---------------------------------------------------------------- the game's clock against this PC's (2026-11-21)
+//
+// A remote character is drawn at T = now - D with now = the game's frame clock + its server bias (rewritten by each
+// ServerTimeInfoAck 2188, about every 5 s). In the first two-PC session on 1.0.0.3732 the host's samples came 400 ms
+// and more late for several seconds at a time over a 3 ms connection with nothing queued: either they really waited
+// somewhere, or `now` itself moved (a bias taken while this client's frame clock stood still would do exactly that,
+// for 5 s). Read only, to tell the two apart in the next log: how `now` sits against this PC's own monotonic clock,
+// one look per frame of the other player's character. A level that holds for kClockHold frames and is kClockStep away
+// from the one before is a shift of the game's clock; a single long frame is not (its frame clock is merely old).
+inline constexpr int64_t kClockStep = 100;       // ms; a frame is 7..40 ms
+inline constexpr uint32_t kClockHold = 5;        // frames in a row at the new level
+inline constexpr size_t kClockShiftsKept = 6;    // the last shifts, for the summary
+
+struct ClockWatch {
+    std::atomic<int64_t> level{0}, cand{0};
+    std::atomic<uint32_t> has_level{0}, cand_n{0};
+    std::atomic<uint64_t> frames{0}, off_level{0}, ahead{0}, back{0};
+    std::atomic<int64_t> max_ahead{0}, max_back{0};
+    std::array<std::atomic<uint64_t>, kClockShiftsKept> shift_wall{};
+    std::array<std::atomic<int64_t>, kClockShiftsKept> shift_ms{};
+
+    // One frame: the game's now and this PC's clock (both ms). Returns the shift it confirmed (0 = none).
+    int64_t note(uint64_t now, uint64_t wall) noexcept {
+        const auto rx = std::memory_order_relaxed;
+        const int64_t off = static_cast<int64_t>(now) - static_cast<int64_t>(wall);
+        frames.fetch_add(1, rx);
+        if (!has_level.load(rx)) {
+            level.store(off, rx);
+            has_level.store(1, rx);
+            return 0;
+        }
+        const int64_t lv = level.load(rx);
+        const int64_t d = off - lv;
+        if (d > -kClockStep && d < kClockStep) {
+            level.store(lv + d / 8, rx);  // follows the slow drift between two PCs' clocks
+            cand_n.store(0, rx);
+            return 0;
+        }
+        off_level.fetch_add(1, rx);
+        const int64_t c = cand.load(rx);
+        uint32_t n = cand_n.load(rx);
+        if (n && off - c > -kClockStep / 2 && off - c < kClockStep / 2) {
+            ++n;
+        } else {
+            cand.store(off, rx);
+            n = 1;
+        }
+        cand_n.store(n, rx);
+        if (n < kClockHold) return 0;
+        const int64_t shift = cand.load(rx) - lv;
+        level.store(cand.load(rx), rx);
+        cand_n.store(0, rx);
+        (shift > 0 ? ahead : back).fetch_add(1, rx);
+        if (shift > max_ahead.load(rx)) max_ahead.store(shift, rx);
+        if (shift < max_back.load(rx)) max_back.store(shift, rx);
+        const size_t slot = static_cast<size_t>((ahead.load(rx) + back.load(rx) - 1) % kClockShiftsKept);
+        shift_ms[slot].store(shift, rx);
+        shift_wall[slot].store(wall, rx);
+        return shift;
+    }
+};
+
 // Lateness and the players' delays per frame (ms).
 inline constexpr std::array<uint32_t, 8> kPlayerBounds = {50, 100, 150, 200, 250, 300, 400, 600};
 // Hitch lengths (ms).

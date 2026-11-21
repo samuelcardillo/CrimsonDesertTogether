@@ -757,6 +757,39 @@ void test_players_class() {
         // And it still follows the connection: a sample 200 ms late after that is the peak again.
         CHECK(rip::note_lateness(late, 1000 + 70000, 200) == 200);
     }
+    // 2026-11-21, read only: the game's clock against this PC's, one look per frame.
+    {
+        rip::ClockWatch w;
+        uint64_t wall = 500000, bias = 414442180;
+        // Steady frames with frame jitter (the frame clock is up to a frame old), and the two PCs drifting apart slowly.
+        for (uint64_t i = 0; i < 600; ++i, wall += 34) CHECK(w.note(wall + bias - (i % 3) * 12 + i / 40, wall) == 0);
+        CHECK(w.ahead.load() == 0 && w.back.load() == 0 && w.off_level.load() == 0);
+        // One long frame (its frame clock 500 ms old), then back: not a shift.
+        CHECK(w.note(wall + bias + 15 - 500, wall) == 0);
+        wall += 34;
+        for (int i = 0; i < 10; ++i, wall += 34) CHECK(w.note(wall + bias + 15, wall) == 0);
+        CHECK(w.ahead.load() == 0 && w.back.load() == 0 && w.off_level.load() == 1);
+        // The bias steps 450 ms ahead and stays: one shift, confirmed at its fifth frame.
+        int64_t got = 0;
+        for (uint32_t i = 0; i < 20; ++i, wall += 34) {
+            const int64_t step = w.note(wall + bias + 15 + 450, wall);
+            if (step) {
+                CHECK(i == rip::kClockHold - 1);
+                got = step;
+            }
+        }
+        CHECK(got > 400 && got < 500);
+        CHECK(w.ahead.load() == 1 && w.back.load() == 0 && w.max_ahead.load() == got);
+        // Five seconds later the next bias puts it back: one shift the other way.
+        got = 0;
+        for (int i = 0; i < 20; ++i, wall += 34) {
+            const int64_t step = w.note(wall + bias + 15, wall);
+            if (step) got = step;
+        }
+        CHECK(got < -400 && got > -500);
+        CHECK(w.ahead.load() == 1 && w.back.load() == 1 && w.max_back.load() == got);
+        CHECK(w.shift_ms[0].load() > 0 && w.shift_ms[1].load() < 0 && w.shift_wall[1].load() > w.shift_wall[0].load());
+    }
     // The delay rises towards the target without a jump (0.5 ms per ms, steps of at most 100 ms).
     uint32_t d = rip::update_player(s, 2000, 200);
     CHECK(d == 200);  // first step: from the game's value, dt 0

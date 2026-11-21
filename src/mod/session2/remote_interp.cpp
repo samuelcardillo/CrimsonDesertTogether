@@ -184,6 +184,25 @@ rip::Histogram<6> g_pl_hitch_today{rip::kHitchBounds};  // hitches with the dela
 rip::Histogram<6> g_pl_hitch_would{rip::kHitchBounds};  // the same samples with the players' delay
 rip::Histogram<8> g_pl_late{rip::kPlayerBounds};   // how late each sample arrived (ms)
 rip::Histogram<8> g_pl_delay{rip::kPlayerBounds};  // the delay it would use / uses, per frame (ms)
+rip::ClockWatch g_clock_watch;                     // the game's clock against this PC's, one look per such frame
+
+// "ahead 2 (largest +431 ms), back 2 (largest -428 ms) | last: +431 ms 38 s ago, -428 ms 33 s ago".
+std::string clock_watch_text() {
+    const uint64_t wall = GetTickCount64();
+    const uint64_t n = g_clock_watch.ahead.load() + g_clock_watch.back.load();
+    std::string last;
+    for (uint64_t i = n > rip::kClockShiftsKept ? n - rip::kClockShiftsKept : 0; i < n; ++i) {
+        const size_t k = static_cast<size_t>(i % rip::kClockShiftsKept);
+        const uint64_t at = g_clock_watch.shift_wall[k].load();
+        last += std::format("{}{:+} ms {} s ago", last.empty() ? "" : ", ", g_clock_watch.shift_ms[k].load(),
+                            wall > at ? (wall - at) / 1000 : 0);
+    }
+    return std::format("frames {} (off the level {}) | shifts that held: ahead {} (largest {:+} ms), back {} (largest "
+                       "{:+} ms){}{}",
+                       g_clock_watch.frames.load(), g_clock_watch.off_level.load(), g_clock_watch.ahead.load(),
+                       g_clock_watch.max_ahead.load(), g_clock_watch.back.load(), g_clock_watch.max_back.load(),
+                       last.empty() ? "" : " | last: ", last);
+}
 std::atomic<uint32_t> g_own_char{0};  // this client's character (its MainPlayerDataStartAck 2756)
 rip::EngageTable g_engage;
 std::atomic<uint64_t> g_cb_packets{0}, g_cb_no_own{0};
@@ -376,6 +395,7 @@ void on_delay_read(safetyhook::Context& c) noexcept {
         const auto pmode = static_cast<Mode>(g_players.load(std::memory_order_relaxed));
         if (cls == KeyClass::Character && pmode != Mode::Off) {
             const uint32_t would = rip::update_player(*slot, now, gd);
+            g_clock_watch.note(now, GetTickCount64());  // read only: does the game's clock move against this PC's?
             g_pl_frames.fetch_add(1, std::memory_order_relaxed);
             g_pl_delay.add(would);
             g_player_delay.store(would, std::memory_order_relaxed);
@@ -758,6 +778,9 @@ void summary() {
                   rip::mode_name(static_cast<Mode>(g_players.load())), g_pl_frames.load(), g_pl_hitch_today.total(),
                   hist_text(g_pl_hitch_today), g_pl_hitch_would.total(), hist_text(g_pl_hitch_would), g_pl_samples.load(),
                   hist_text(g_pl_late), hist_text(g_pl_delay), g_player_delay.load());
+        log::info("RemoteInterp summary clock: the game's clock (frame clock + server bias) against this PC's own, at "
+                  "the other player's character: {}",
+                  clock_watch_text());
     }
 }
 
