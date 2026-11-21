@@ -17,6 +17,14 @@ juego: al entrar al mundo sale una ventana «Extra Rewards List» (Espacio la co
 en la copia del anfitrión de las pruebas sale en cada arranque, porque su partida es la copia de la real.
 **Publicado ese día como release `cdmp-coop-20261121-3732-b6`** (commit `873c292`, compilación limpia, 106 pruebas;
 el `cdmp.asi` que sirve GitHub es el compilado): la pidió el dueño junto con el port.
+**Esa noche (22:01–), primera sesión entre dos PC por Steam en 3732** (la b6; el dueño de invitado, un amigo de
+anfitrión; solo hay log del invitado): la unión funciona y los dos juegan juntos (0 `ERR`, 0 paquetes rechazados,
+RTT 3 ms). Dos cosas: el invitado *Invisible* en Steam se queda en «Looking for the host» hasta que el anfitrión lo
+elige por su nombre («Who may join»), y **el personaje del anfitrión se veía moverse medio segundo tarde**: el
+retardo de `remote_interp_players` se quedaba en su máximo (450 ms) durante minutos tras una sola muestra muy tardía
+(las de mientras el invitado carga). Arreglado en `main` (`kPeakCap`, `remote_interp_logic.h`), **sin release
+todavía**. Sin explicar: un minuto con muestras >600 ms tarde mientras el anfitrión peleaba, con la red limpia.
+Detalle en `docs/research/port-3732.md`, «Entre dos PC por Steam».
 
 **17-nov-2026, 00:26: release `cdmp-coop-20261117-3663-b5`** (commit `9c21408`; la pidió el dueño sin esperar a
 verlo jugando). Lleva todo lo que más abajo dice «en `main`, sin release»: el mar del anfitrión en el invitado

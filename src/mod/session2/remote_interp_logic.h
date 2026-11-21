@@ -697,6 +697,15 @@ inline constexpr uint32_t kPlayerMax = 450;
 inline constexpr uint32_t kLateDecayDiv = 16;         // the peak falls 1/16 ms per 16 ms: 100 ms in 25.6 s
 inline constexpr uint32_t kMaxLateness = 5000;        // a sample older than this is a pause, not the network
 inline constexpr uint32_t kStreamGap = 300;           // two samples closer than this (ts): the character kept moving
+// The most one sample adds to the peak: what the largest delay can still cover. A sample later than that (this client
+// was loading, either game stalled for a moment) gets the largest delay like any other, but must not hold it for longer
+// than the largest delay's own decay. Before this cap the peak took the whole lateness, up to kMaxLateness: one sample
+// 3 s late kept the delay at kPlayerMax for 11 minutes (1 ms per 256 ms), 5 s late for 20. First two-PC session on
+// 1.0.0.3732 (2026-11-21, RTT 3 ms): the host walked about while the guest loaded, those samples arrived seconds late,
+// and the host's character was drawn 450 ms behind for the whole session (15348 of 15356 frames), although 9 samples
+// in 10 were less than 50 ms late. With the cap the delay is back at the floor about a minute after the last such
+// sample ((390 - 140) x 0.256 s).
+inline constexpr uint32_t kPeakCap = kPlayerMax - kPlayerMargin;
 
 inline uint32_t decay_peak(uint32_t peak_fix, uint64_t dt_ms) {
     const uint64_t d = dt_ms / kLateDecayDiv;
@@ -707,7 +716,7 @@ inline uint32_t decay_peak(uint32_t peak_fix, uint64_t dt_ms) {
 inline uint32_t note_lateness(Slot& s, uint64_t now, uint32_t late_ms) noexcept {
     const uint64_t at = s.late_at.load(std::memory_order_relaxed);
     uint32_t peak = decay_peak(s.late_fix.load(std::memory_order_relaxed), at && now > at ? now - at : 0);
-    if (late_ms && late_ms <= kMaxLateness) peak = std::max(peak, to_fix(late_ms));
+    if (late_ms && late_ms <= kMaxLateness) peak = std::max(peak, to_fix(std::min(late_ms, kPeakCap)));
     s.late_fix.store(peak, std::memory_order_relaxed);
     s.late_at.store(now, std::memory_order_relaxed);
     return from_fix(peak);

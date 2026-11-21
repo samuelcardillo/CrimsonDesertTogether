@@ -741,8 +741,22 @@ void test_players_class() {
     s.reinit(0xA0100001, 1000);
     CHECK(rip::note_lateness(s, 1000, 120) == 120);
     CHECK(rip::note_lateness(s, 1100, 60) == rip::from_fix(rip::to_fix(120) - 100 / rip::kLateDecayDiv));  // the peak decays
-    CHECK(rip::note_lateness(s, 1200, 400) == 400);
-    CHECK(rip::note_lateness(s, 1300, 9000) == rip::from_fix(rip::to_fix(400) - 100 / rip::kLateDecayDiv));  // a pause is not lateness
+    CHECK(rip::note_lateness(s, 1200, 300) == 300);
+    CHECK(rip::note_lateness(s, 1300, 9000) == rip::from_fix(rip::to_fix(300) - 100 / rip::kLateDecayDiv));  // a pause is not lateness
+    // 2026-11-21: a sample later than the largest delay can cover counts as that much, no more. A sample 3 s late (the
+    // guest was loading) used to keep the delay at its maximum for 11 minutes; now it is back at the floor in about one.
+    {
+        rip::Slot late;
+        late.reinit(0xA0100001, 1000);
+        static_assert(rip::kPeakCap == rip::kPlayerMax - rip::kPlayerMargin);
+        CHECK(rip::note_lateness(late, 1000, 3000) == rip::kPeakCap);
+        CHECK(rip::note_lateness(late, 1000, rip::kMaxLateness) == rip::kPeakCap);
+        CHECK(rip::player_target(rip::note_lateness(late, 1000, 0), 200) == rip::kPlayerMax);
+        CHECK(rip::player_target(rip::note_lateness(late, 1000 + 30000, 0), 200) < rip::kPlayerMax);  // already falling
+        CHECK(rip::player_target(rip::note_lateness(late, 1000 + 70000, 0), 200) == 200);             // the floor
+        // And it still follows the connection: a sample 200 ms late after that is the peak again.
+        CHECK(rip::note_lateness(late, 1000 + 70000, 200) == 200);
+    }
     // The delay rises towards the target without a jump (0.5 ms per ms, steps of at most 100 ms).
     uint32_t d = rip::update_player(s, 2000, 200);
     CHECK(d == 200);  // first step: from the game's value, dt 0

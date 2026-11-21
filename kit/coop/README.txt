@@ -8,7 +8,10 @@ THIS ZIP IS FOR 1.0.0.3732 (Steam's update of 19 November 2026). Both PCs need t
 everything inside the game again, so the mod was ported to it on 21 November: each of the game's addresses the mod
 uses was found again in the new game and checked against it; how the game talks over the network did not change.
 On 3732, with two copies of the game on one PC, this much was seen: both games start with the mod, the host loads
-into its world and the GUEST JOINS it, each player's panel shows both players, and no error. NOTHING ELSE below has
+into its world and the GUEST JOINS it, each player's panel shows both players, and no error. The same evening two
+players on TWO PCs joined over Steam and played together on 3732, with no error. One thing they saw is fixed in this
+version: the OTHER PLAYER'S CHARACTER MOVED HALF A SECOND LATE (its name marker ran ahead of it) for many minutes
+after a loading screen; it now catches up within about a minute. NOTHING ELSE below has
 been tried again on 3732 yet (ships and the sea, shops and market stalls, houses, fighting, mounts): it was last
 checked on 1.0.0.3663 and should work the same. Please tell us what does not. On 3663, with two copies of the game
 on one PC, these were checked: JOINING (the guest loads into the host's world), the guest going back to the title and JOINING AGAIN, the
@@ -287,6 +290,10 @@ The guest's cdmp.log lists each friend who is playing, with their SteamID64. The
 account page. Do not set Steam to Invisible or Offline while playing.
 With the launcher there is no file to edit: "Join a friend" > "Add a friend..." and pick the host. The launcher
 also shows your own SteamID64 with a Copy button, to send to the other player.
+IF THE GUEST STAYS ON "LOOKING FOR THE HOST": the host only lets in friends that Steam shows as playing Crimson
+Desert. A guest who is Invisible or Offline on Steam (or whose Game details are Private) is not shown, so the host's
+game never answers. Either the guest goes Online, or the host picks the guest by name in the launcher: "Host a game" >
+"Who may join" > "Add a friend...". Seen on 21 November 2026 between two PCs: that was the whole cause.
 
 
 4. MOUNTS
