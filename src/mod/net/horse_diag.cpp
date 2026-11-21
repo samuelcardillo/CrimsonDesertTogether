@@ -27,8 +27,11 @@ constexpr uint32_t kCopyHorse = 0xB010F002;
 // 3527's object layout and phase logic (game::layout_3527(): 3527, 3549, 3576) or 3663, whose offsets this module reads
 // were checked in its 3663 code (kPhase3663 below): the CC's +0x08 / +0x30 / +0x88 and the selector's +0x1B in the
 // verified apply arrays, the layer chart +0x118 (character_profile.h), the actor's +0x68 in listeners_entry.
+// 3732 (static, 2026-11-21; never run): the same offsets in 3732's code (the same arrays, byte for byte: kPhase3663);
+// CC+0x40 -> +0x30 at restore+0x6F (0x97803F), CC+0xA8 at pending+0x2A (0x258F25A), CC+0x08 the actor in every head;
+// CC+0x80 and the restore data's +0xF8 (log lines only) not re-derived.
 bool layout_ok() noexcept {
-    return game::layout_3527() || game::current_build() == game::Build::v3663;
+    return game::layout_3527() || game::current_build() == game::Build::v3732;
 }
 
 struct Site {
@@ -418,15 +421,23 @@ constexpr PhaseSites kPhase3576{0x94FB60, 0xB0B650, 0xB0BA2E, 0x2519FB0, 0x251A0
 // - 251A170 -> 0x258C8C0 (.pdata start; the three arrays at its +0x29 / +0x86 / +0x9D as in 3527);
 // - the AI component's read 0x22BA541 (+0x41 in 0x22BA500, as 3576's in 0x22491D0).
 // Hook points and resumes are inside the verified arrays at 3527's distances.
-constexpr PhaseSites kPhase3663{0x97D6D0, 0xB42220, 0xB426BC, 0x258B930, 0x258B998, 0x258C8E9, 0x258C946, 0x258C95D,
-                                0x22BA541, 0x258ADAB, 0x258BC11, 0x258BF03,
-                                0x258B944, 0x258B94C, 0x258C8FD, 0x258C905, 0x22BA54B};
+// Retargeted to build 1.0.0.3732 (the lines above describe 3663 with 3663's addresses). Every array of
+// install_phase_guards is byte for byte the same at its new address, the only match near old + shift:
+// 3732 (static, 2026-11-21; never run): phase was 0x97D6D0; phase_head at +0x720, a .pdata start; the movement job 0x9CAF50 calls it at the same +0x8A (0x9CAFDA) with rcx = [[rbx+0x68]+0x40] and reloads rcx after it.
+// 3732 (static, 2026-11-21; never run): query was 0xB42220, query_false 0xB426BC; query_head3663 / query_false3663 at +0x940 (.pdata start 0xB42B60..0xB43080); it reads [rcx+8] -> +0x68 -> +0x20 / +0x40; its callers pass [comps+0x1A0] (0x973D46, 0x997FD6, 0x9AA485).
+// 3732 (static, 2026-11-21; never run): apply_read was 0x258B930, apply_gate 0x258B998, selector_write 0x258ADAB, listeners 0x258BC11..0x258BF03; all +0x2490 in the application 0x258C6C0 (was 0x258A230); the listener block is 0x2F2 bytes, 178 instructions, no jump leaves or enters it, its exit reads [rsp+0x60] / [rsp+0x50].
+// 3732 (static, 2026-11-21; never run): secondary_read was 0x258C8E9, secondary_gate 0x258C946, secondary_flag 0x258C95D; +0x2490, at +0x29 / +0x86 / +0x9D of 0x258ED50 (.pdata start).
+// 3732 (static, 2026-11-21; never run): ai_flag was 0x22BA541; +0x1C20, at +0x41 of 0x22BC120 (.pdata start); the resume 0x22BC16B is its `xor cl,cl`.
+// 3732 (static, 2026-11-21; never run): apply_hook was 0x258B944, apply_resume 0x258B94C, secondary_hook 0x258C8FD, secondary_resume 0x258C905, ai_resume 0x22BA54B; inside the verified arrays at the same distances (+0x14 / +0x1C, +0x14 / +0x1C, +0xA).
+constexpr PhaseSites kPhase3732{0x97DDF0, 0xB42B60, 0xB42FFC, 0x258DDC0, 0x258DE28, 0x258ED79, 0x258EDD6, 0x258EDED,
+                                0x22BC161, 0x258D23B, 0x258E0A1, 0x258E393,
+                                0x258DDD4, 0x258DDDC, 0x258ED8D, 0x258ED95, 0x22BC16B};
 
 bool install_phase_guards() {
     if (game::current_build() == game::Build::v2976) return true;
     if (!layout_ok()) return false;
-    const bool b3663 = game::current_build() == game::Build::v3663;
-    const PhaseSites& s = b3663 ? kPhase3663 : game::current_build() == game::Build::v3576 ? kPhase3576 : kPhase3527;
+    const bool b3732 = game::current_build() == game::Build::v3732;
+    const PhaseSites& s = b3732 ? kPhase3732 : game::current_build() == game::Build::v3576 ? kPhase3576 : kPhase3527;
     const uintptr_t base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     constexpr uint8_t phase_head[]{0x48,0x89,0x5C,0x24,0x10,0x55,0x56,0x57,
                                    0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
@@ -434,9 +445,9 @@ bool install_phase_guards() {
                                        0x24,0x10,0x56,0x57,0x41,0x56,0x48,0x83};
     constexpr uint8_t query_false3527[]{0x32,0xC0,0x48,0x8B,0x5C,0x24,0x60};
     // 3663: push r12 / r14 / r15 (the new third argument), so a larger save area.
-    constexpr uint8_t query_head3663[]{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,
+    constexpr uint8_t query_head3732[]{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,
                                        0x24,0x10,0x56,0x57,0x41,0x54,0x41,0x56};
-    constexpr uint8_t query_false3663[]{0x32,0xC0,0x48,0x8B,0x5C,0x24,0x70};
+    constexpr uint8_t query_false3732[]{0x32,0xC0,0x48,0x8B,0x5C,0x24,0x70};
     constexpr uint8_t apply_read[]{0x49,0x8B,0x47,0x30,0x0F,0xB6,0x58,0x1B,
         0x49,0x8B,0x84,0xDF,0x88,0,0,0,0x48,0x8B,0x48,0x18,
         0x48,0x8B,0x41,0x28,0x0F,0xB6,0x78,0x7E,0x49,0x8B,0x4F,0x08};
@@ -455,7 +466,7 @@ bool install_phase_guards() {
         uint8_t actual[N]{};
         return game::safe_read(base + rva, actual, N) && std::memcmp(actual, bytes, N) == 0;
     };
-    const bool query_ok = b3663 ? matches(s.query, query_head3663) && matches(s.query_false, query_false3663)
+    const bool query_ok = b3732 ? matches(s.query, query_head3732) && matches(s.query_false, query_false3732)
                                 : matches(s.query, query_head3527) && matches(s.query_false, query_false3527);
     if (!game::validate_native_catalog() || !matches(s.phase, phase_head) || !query_ok ||
         !matches(s.apply_read, apply_read) || !matches(s.apply_gate, apply_gate) ||
@@ -463,8 +474,9 @@ bool install_phase_guards() {
         !matches(s.secondary_flag, secondary_flag) || !matches(s.ai_flag, ai_flag) ||
         !matches(s.selector_write, selector_write) || !matches(s.listeners_entry, listeners_entry) ||
         !matches(s.listeners_exit, listeners_exit)) {
+        // 3732 (static, 2026-11-21; never run): the label was "3663" (the build these tables now hold).
         log::error("Character phase guards: {} signatures do not match",
-                   b3663 ? "3663" : game::current_build() == game::Build::v3576 ? "3576" : "3527");
+                   b3732 ? "3732" : game::current_build() == game::Build::v3576 ? "3576" : "3527");
         return false;
     }
     g_phase_hook = safetyhook::create_mid(reinterpret_cast<void*>(base + s.phase), &on_movement_phase);

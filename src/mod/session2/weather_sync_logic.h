@@ -451,12 +451,44 @@ inline constexpr GameAddrs kGame3576{
 // 0x7245468 (setInterpolatePositionData 0x13C5A50 at +0x1C; combat_follow.cpp / remote_motion.cpp). Holder blocks A/B/C
 // at +0x20/+0x28/+0x30 (the update's `lea rcx,[rax+0x20]` at 0x4143B7D), so kLayout3549 holds. The code section ends at
 // 0x5613000.
-inline constexpr uint8_t kUpdateCall3663[12] = {0x48, 0x8B, 0x89, 0x70, 0x0F, 0x00, 0x00,
-                                                0xE8, 0xC4, 0xF6, 0x2C, 0x00};  // 0x3E74450: call 0x4143B20
-inline constexpr GameAddrs kGame3663{
-    "1.0.0.3663", 0x7160240, 0x60, 0xF70, 0x60, 0x7D7940, 0x72451C8, 0x48, 0x38, 0x619D3D0, 0x31, 0x60, 0x88,
-    0x20, 0x28, 0x30, 0x4143B20, kUpdateHead3549, kUpdateBoundaries3549, 0x3E74450, kUpdateCall3663,
-    0x1000, 0x5613000, 0x71600E8, 0x71600F0, 0x7245468};
+//
+// 3732 (static, 2026-11-21; never run), kGame3663 retargeted in place. X's update, its mixer, X's ctor, X's factory and
+// M's ctor moved together by +0x44F0 with 3663's .pdata sizes (0x70C / 0x607 / 0x367 / - / 0x4CD), so kUpdateCall3663
+// keeps its bytes, rel32 included. Read again in 3732's code: the update (`vmovaps xmm10,xmm1` +0x2E, `mov rsi,rcx`
+// +0x32, X+0x31, the mixer's call +0x54, holder [X+0x60] and its blocks +0x20/+0x28/+0x30, the sample copied to
+// A+0x1A0, A+0x1AC/+0x138/+0x198/+0x19C/+0x154/+0x158, B+0xB8, X+0x13C/+0x140/+0x14C/+0x144/+0x154..+0x160/+0x138/
+// +0x100218), the mixer (X+0x31 / +0x80 / +0x88, holder vf+0x160), the viewer derivation 0x3B85A20 (temperature
+// A+0x1A0; A+0x170 = A+0x164 = A+0x12C, A+0x168, A+0x16C) and the reflected setters of 60 of kLayout3549's 62 A/B/C
+// fields (`lea rsi,[rcx + field + 0x28]` then `lea rdx,"_name"`; windDirX/Z have no setter, the update reads them):
+// kLayout3549 holds, types included (those setters compare with vucomiss for a float, by bytes for a colour, as the
+// table says). Not read again: the data map (3549's 0x4BCAB0) and A's change handler.
+// 3732 (static, 2026-11-21; never run): was at 0x3E74450 (call 0x4143B20); the same 12 bytes at 0x3E78940.
+inline constexpr uint8_t kUpdateCall3732[12] = {0x48, 0x8B, 0x89, 0x70, 0x0F, 0x00, 0x00,
+                                                0xE8, 0xC4, 0xF6, 0x2C, 0x00};  // 0x3E78940: call 0x4148010
+// 3732 (static, 2026-11-21; never run): was 0x7160240; M's slot: the four simulators' vf7 gates read it (0xE9B459,
+// 0xE9F433, 0xEA2EF9, 0xEA3983: `mov rcx,[slot] ; call [rax+0x60] ; mov rdx,[rax+0xF70] ; cmp byte [rdx+0x31],0`) and
+// M's ctor 0x414ABB0 stores it at +0x3C as on 3663 (139 RIP references).
+// 3732 (static, 2026-11-21; never run): was 0x7D7940; [M's vtable 0x61A2A28 + 0x60] (the vtable M's ctor sets last),
+// kGetterVf60Bytes there.
+// 3732 (static, 2026-11-21; never run): was 0x72451C8; the SyncWeatherStateReq sender 0xAE96A0 (the function that calls
+// X's four getters 0x41471B0 / 0x4147260 / 0x4147310 / 0x41473A0) reads [[[it]+0x48]+0x38] at +0x3B and +0xEA as on
+// 3663; it is the world system slot + 8, as before.
+// 3732 (static, 2026-11-21; never run): was 0x619D3D0; the last store to [X] in X's ctor 0x413EBD0 (at +0x66 as on
+// 3663); no RTTI ([vt-8] = 1); its slots 0/1 are 0x413EF40 / 0x4149B10 (3663's + 0x44F0); the factory 0x4149FA0 still
+// allocates 0x100228 bytes and writes no other vtable.
+// 3732 (static, 2026-11-21; never run): was 0x4143B20; the target of the only `mov rcx,[rcx+0xF70] ; call` that matches
+// kUpdateCall3663 near old + shift; kUpdateHead3549 at its entry, a .pdata start with one rel32 caller and no
+// in-function branch into its first 20 bytes.
+// 3732 (static, 2026-11-21; never run): was 0x3E74450; where kUpdateCall3663 is (the caller 0x3E788E0 + 0x60).
+// 3732 (static, 2026-11-21; never run): was 0x5613000; the R-X section (by its flags) is 0x1000 + 0x5617000.
+// 3732 (static, 2026-11-21; never run): were 0x71600E8 / 0x71600F0; the frame clock 0x163CBB0 (3663's + 0x1B80) reads
+// base 0x71661A0 at +0x20 and frac 0x71661B0 at +0x2C (16 bytes apart again), frac / 1000 + base as before.
+// 3732 (static, 2026-11-21; never run): was 0x7245468; setInterpolatePositionData 0x13C75D0 reads it at +0x1C as on
+// 3663, then calls the frame clock.
+inline constexpr GameAddrs kGame3732{
+    "1.0.0.3732", 0x71662E0, 0x60, 0xF70, 0x60, 0x7D8060, 0x724B358, 0x48, 0x38, 0x61A2430, 0x31, 0x60, 0x88,
+    0x20, 0x28, 0x30, 0x4148010, kUpdateHead3549, kUpdateBoundaries3549, 0x3E78940, kUpdateCall3732,
+    0x1000, 0x5618000, 0x71661A0, 0x71661B0, 0x724B5F8};
 
 // The relocated prologue safetyhook may copy: whole verified instructions only (a prefix of the head whose length is
 // one of the boundaries).

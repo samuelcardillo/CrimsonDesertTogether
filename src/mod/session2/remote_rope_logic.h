@@ -666,71 +666,115 @@ inline constexpr uintptr_t kActSelfRelease3576 = 0x194785F;
 //   0x2ED0612, kTsOwnerCallBytes; vf1D8 / vf160 at +0x2C / +0x45 as in 3527).
 // - The action change's vf140 call 0x258BE91 (the same 30 bytes, unique; in 0x258A230 at +0x1C61, 3576 +0x1CC1: that
 //   function changed a little; its callers 0x973FE0 (client) and 0x2D72222 (server), as 3527's two).
-inline constexpr uintptr_t kCodeEnd3663 = 0x5613000;
-inline constexpr uintptr_t kApply3663 = 0x67AF30;
-inline constexpr uintptr_t kApplyCall3663 = 0xCA11B3;
-inline constexpr uint8_t kApplyCallBytes3663[5] = {0xE8, 0x78, 0x9D, 0x9D, 0xFF};
-inline constexpr uintptr_t kApplyReturn3663 = 0xCA11B8;
-inline constexpr uintptr_t kInfoCopy3663 = 0x67AF7F;
-inline constexpr uintptr_t kMapSite3663 = 0x67D40C;
-inline constexpr uint8_t kMapSiteBytes3663[136] = {
-    0x48, 0x8B, 0x05, 0xAD, 0x7D, 0xBC, 0x06, 0x48, 0x8B, 0x88, 0xC8, 0x00,
+//
+// 3732 (static, 2026-11-21; never run): this table now holds 1.0.0.3732's values, in place (the lines above describe 3663
+// with 3663's addresses). Found the same way: handlers by their Troc's name (troc_mapping_3663_3732.json), components by
+// RTTI (vtable_map_3663_3732.json), then each function's own bytes. Every function moved whole (only RIP / rel32 fields
+// differ) and the data offsets hold: the per-slot state +0xA4C / flight +0xB24 at 0x689C54 / 0x689CBA (in 0x689BE0, 0x66
+// apart; imul rsi,rdx,0x1A0 at 0x689C2A), the slots +0x20 / 0x58 (the slot reset 0x19AF5E1 writes 0x10106 at [comp +
+// slot*0x58 + 0x20], then the slot's class +0x08, actor +0x0C, scene id +0x10 and handle +0x20, 0x19AF60D..0x19AF61D),
+// the frame event's slot +0xC / reason +0xD (0x2A7BC54 / 0x2A7BD36), the physics' vf3B8 of
+// [WorldSystem+0xE8] (8 calls in 0x660000..0x6A0000, e.g. 0x68DCF5; no vf3B0 call). Code section (R-X): 0x1000 + 0x5617000.
+// - RemoteCatchResultAck 0x5A1CB80 slot 2 = 0xCA1790: its only call of the apply 0x67B2A0 (kApplyHead identical) at
+//   0xCA1C03 (+0x473 as before); kInfoCopyBytes at 0x67B2EF (+0x4F); both failures read 0x71D6204 (0x67B3C4 / 0x67B496,
+//   +0x124 / +0x1F6 as before).
+// - The thrower's mapping 0x67D77C (in 0x67CAC0, +0xCBC as before): 3663's bytes with new rel32 / RIP fields: WorldSystem
+//   0x724B350, ResolveUuidLookup 0x19FA110 (kResolveHead), SyncSceneObjectDataAttacher 0x5BFBA90, its base 0x59810D0 and
+//   ScopeAttacherBase 0x5B45300 (all three by RTTI); the dtor after it 0x165AF00 (kAttDtorHead).
+// - ClientRemoteCatchActorComponent 0x5999DB0: vf158 = the release 0x68F4A0 (kReleaseHead), its main-thread check
+//   0x68F50D (after GetCurrentThreadId at 0x68F4EE) -> 0x6F2FB54 (229 RIP references); vf140 0x674180 calls 0x19AEBD0
+//   at 0x6741D9 (+0x59 as before; that call is its only direct caller).
+// - ReleaseRemoteCatchResultAck 0x5A1CBA0 slot 2 = 0xCA1E40 (k2471HandlerHead3527 identical); its release call 0xCA202E
+//   (+0x1EE as before; -> 0x68F4A0).
+// - ServerFrameEventReleaseRemoteCatch 0x5F65A10 vf1 = 0x2A7BC20 (kSrvReleaseHead); kSrvArgsBytes3527 at 0x2A7BC44.
+// - ServerRemoteCatchActorComponent 0x5F67818: vf140 0x19AEBD0 (kActReleaseHead; keep test / notify / own release at
+//   the same offsets: 0x19AEE50 / 0x19AEE86 / 0x19AEF1F, their bytes identical), vf148 0x2BD8380 with the writer site
+//   0x2BD84A9 (+0x129 as before; ISendTargetFinder 0x5F6D9C0, ToNearSendTargetFinder 0x5F6DA80 by RTTI; the writer
+//   0x2C47370, kWriterHead, its two callers 0x2BD8042 / 0x2BD84DD; it still allocates 0xB bytes under
+//   `mov word [r14],0xBE1` (0x2C47497) = ReleaseRemoteCatchResultAck 3041, the same native id), vf158 = the slot reset
+//   0x19AF4C0.
+// - ToNearSendTargetFinder vf1 0x2D70CA0 (kToNearVf1Bytes; jmp 0x2ED4DB0, whose first call 0x2ED4B40 has the owner call
+//   0x2ED4B62, kTsOwnerCallBytes; vf1D8 / vf160 at +0x2C / +0x45 as before).
+// - The action change's vf140 call 0x258E321 (the same 30 bytes, unique; in 0x258C6C0 at +0x1C61 as in 3663; its
+//   callers 0x974700 (client) and 0x2D76CB2 (server)).
+inline constexpr uintptr_t kCodeEnd3732 = 0x5618000;  // 3732 (static, 2026-11-21; never run): was 0x5613000; the R-X section, 0x1000 + 0x5617000
+inline constexpr uintptr_t kApply3732 = 0x67B2A0;  // 3732 (static, 2026-11-21; never run): was 0x67AF30; the 2763 handler's only apply call; kApplyHead
+inline constexpr uintptr_t kApplyCall3732 = 0xCA1C03;  // 3732 (static, 2026-11-21; never run): was 0xCA11B3; the handler 0xCA1790 +0x473 (was E8 78 9D 9D FF)
+inline constexpr uint8_t kApplyCallBytes3732[5] = {0xE8, 0x98, 0x96, 0x9D, 0xFF};
+inline constexpr uintptr_t kApplyReturn3732 = 0xCA1C08;  // 3732 (static, 2026-11-21; never run): was 0xCA11B8; kApplyCall + 5
+inline constexpr uintptr_t kInfoCopy3732 = 0x67B2EF;  // 3732 (static, 2026-11-21; never run): was 0x67AF7F; kApply + 0x4F, kInfoCopyBytes
+// 3732 (static, 2026-11-21; never run): was 0x67D40C; the only match of the 136 bytes (relative fields masked), in
+// 0x67CAC0 at +0xCBC; the bytes below are 3732's (10 bytes of 5 RIP / rel32 fields differ from 3663's).
+inline constexpr uintptr_t kMapSite3732 = 0x67D77C;
+inline constexpr uint8_t kMapSiteBytes3732[136] = {
+    0x48, 0x8B, 0x05, 0xCD, 0xDB, 0xBC, 0x06, 0x48, 0x8B, 0x88, 0xC8, 0x00,
     0x00, 0x00, 0x48, 0x8B, 0x09, 0x4C, 0x8D, 0x45, 0x28, 0x48, 0x8D, 0x55,
-    0xA0, 0x48, 0x8B, 0x89, 0x80, 0x00, 0x00, 0x00, 0xE8, 0x6F, 0xB0, 0x37,
+    0xA0, 0x48, 0x8B, 0x89, 0x80, 0x00, 0x00, 0x00, 0xE8, 0x6F, 0xC9, 0x37,
     0x01, 0x90, 0x48, 0x8B, 0x55, 0xA8, 0x48, 0x8B, 0x4A, 0x58, 0x48, 0x85,
     0xC9, 0x74, 0x06, 0x80, 0x79, 0x15, 0x01, 0x75, 0x09, 0x80, 0xBA, 0xA4,
     0x00, 0x00, 0x00, 0x00, 0x74, 0x21, 0x48, 0x85, 0xC9, 0x74, 0x1C, 0x80,
     0x79, 0x15, 0x01, 0x74, 0x16, 0x48, 0x8B, 0x89, 0xE0, 0x00, 0x00, 0x00,
     0x48, 0x85, 0xC9, 0x74, 0x0A, 0x48, 0x8B, 0x01, 0xFF, 0x50, 0x70, 0x48,
-    0x89, 0x45, 0x38, 0x48, 0x8D, 0x05, 0x6A, 0x92, 0x57, 0x05, 0x48, 0x89,
-    0x45, 0xA0, 0x48, 0x8D, 0x05, 0x5F, 0xEB, 0x2F, 0x05, 0x48, 0x89, 0x45,
-    0xA0, 0x4C, 0x8D, 0x3D, 0x74, 0x2B, 0x4C, 0x05, 0x4C, 0x89, 0x7D, 0xA0,
+    0x89, 0x45, 0x38, 0x48, 0x8D, 0x05, 0xAA, 0xE2, 0x57, 0x05, 0x48, 0x89,
+    0x45, 0xA0, 0x48, 0x8D, 0x05, 0xDF, 0x38, 0x30, 0x05, 0x48, 0x89, 0x45,
+    0xA0, 0x4C, 0x8D, 0x3D, 0x04, 0x7B, 0x4C, 0x05, 0x4C, 0x89, 0x7D, 0xA0,
     0x48, 0x8D, 0x4D, 0xA0,
 };
-inline constexpr uintptr_t kWorldSystem3663 = 0x72451C0;
-inline constexpr uintptr_t kResolve3663 = 0x19F84A0;
-inline constexpr uintptr_t kAttDtor3663 = 0x1659380;
-inline constexpr uintptr_t kScopeAttacherBaseVtbl3663 = 0x5B40000;
-inline constexpr uintptr_t kRelease3663 = 0x68F130;
-inline constexpr uintptr_t kReleaseThreadCheck3663 = 0x68F19D;  // cmp [0x146F29B54],eax ; jnz deferred
-inline constexpr uint8_t kReleaseThreadCheckBytes3663[6] = {0x39, 0x05, 0xB1, 0xA9, 0x89, 0x06};
-inline constexpr uintptr_t kMainThreadId3663 = 0x6F29B54;
-inline constexpr uintptr_t kClientRemoteCatchVtbl3663 = 0x5994CC8;
-inline constexpr uintptr_t kApplyFailedErr3663 = 0x71D00C4;
-inline constexpr uintptr_t k2471Handler3663 = 0xCA13F0;       // k2471HandlerHead3527 / k2471HandlerBoundaries3527
-inline constexpr uintptr_t k2471HandlerSlot3663 = 0x5A179E8;  // vtable 0x5A179D8 slot 2
-inline constexpr uintptr_t k2471Release3663 = 0xCA15DE;
-inline constexpr uint8_t k2471ReleaseBytes3663[30] = {
+inline constexpr uintptr_t kWorldSystem3732 = 0x724B350;  // 3732 (static, 2026-11-21; never run): was 0x72451C0; the map site's mov rax,[rip] (3197 RIP references)
+inline constexpr uintptr_t kResolve3732 = 0x19FA110;  // 3732 (static, 2026-11-21; never run): was 0x19F84A0; the map site's call at +0x20; kResolveHead
+inline constexpr uintptr_t kAttDtor3732 = 0x165AF00;  // 3732 (static, 2026-11-21; never run): was 0x1659380; the call after the map site (0x67D804); kAttDtorHead
+inline constexpr uintptr_t kScopeAttacherBaseVtbl3732 = 0x5B45300;  // 3732 (static, 2026-11-21; never run): was 0x5B40000; RTTI pa::ScopeAttacherBase
+inline constexpr uintptr_t kRelease3732 = 0x68F4A0;  // 3732 (static, 2026-11-21; never run): was 0x68F130; the client component's vf158; kReleaseHead
+// 3732 (static, 2026-11-21; never run): was 0x68F19D (cmp [0x146F29B54],eax; 39 05 B1 A9 89 06); kRelease + 0x6D.
+inline constexpr uintptr_t kReleaseThreadCheck3732 = 0x68F50D;  // cmp [0x146F2FB54],eax ; jnz deferred
+inline constexpr uint8_t kReleaseThreadCheckBytes3732[6] = {0x39, 0x05, 0x41, 0x06, 0x8A, 0x06};
+inline constexpr uintptr_t kMainThreadId3732 = 0x6F2FB54;  // 3732 (static, 2026-11-21; never run): was 0x6F29B54; the thread check's RIP operand (+0x6000)
+inline constexpr uintptr_t kClientRemoteCatchVtbl3732 = 0x5999DB0;  // 3732 (static, 2026-11-21; never run): was 0x5994CC8; RTTI pa::ClientRemoteCatchActorComponent
+inline constexpr uintptr_t kApplyFailedErr3732 = 0x71D6204;  // 3732 (static, 2026-11-21; never run): was 0x71D00C4; the apply's two failures, 0x67B3C4 / 0x67B496
+// 3732 (static, 2026-11-21; never run): was 0xCA13F0 / slot 0x5A179E8 (vtable 0x5A179D8) / release 0xCA15DE; the
+// ReleaseRemoteCatchResultAck Troc's vtable 0x5A1CBA0 slot 2; the release call at the handler's +0x1EE (its rel32 was
+// 34 DB 9E FF).
+inline constexpr uintptr_t k2471Handler3732 = 0xCA1E40;       // k2471HandlerHead3527 / k2471HandlerBoundaries3527
+inline constexpr uintptr_t k2471HandlerSlot3732 = 0x5A1CBB0;  // vtable 0x5A1CBA0 slot 2
+inline constexpr uintptr_t k2471Release3732 = 0xCA202E;
+inline constexpr uint8_t k2471ReleaseBytes3732[30] = {
     0x48, 0x8B, 0x49, 0x68, 0xC6, 0x44, 0x24, 0x20, 0x01, 0x45,
     0x33, 0xC9, 0x44, 0x0F, 0xB6, 0x45, 0x60, 0x0F, 0xB6, 0x55,
-    0x68, 0x48, 0x8B, 0x49, 0x78, 0xE8, 0x34, 0xDB, 0x9E, 0xFF,
+    0x68, 0x48, 0x8B, 0x49, 0x78, 0xE8, 0x54, 0xD4, 0x9E, 0xFF,
 };
-inline constexpr uintptr_t kSrvRelease3663 = 0x2A794D0;
-inline constexpr uintptr_t kSrvReleaseSlot3663 = 0x5F609D8;  // vtable 0x5F609D0 slot 1
-inline constexpr uintptr_t kSrvArgs3663 = 0x2A794F4;           // kSrvArgsBytes3527
-inline constexpr uintptr_t kWriter3663 = 0x2C428E0;
-inline constexpr uintptr_t kWriterSite3663 = 0x2BD5A89;  // in vf148 0x2BD5960
-inline constexpr uint8_t kWriterSiteBytes3663[57] = {
-    0x48, 0x8D, 0x1D, 0xB0, 0x2C, 0x39, 0x03, 0x48, 0x89, 0x5C, 0x24, 0x20,
-    0xC6, 0x44, 0x24, 0x28, 0x01, 0x48, 0x8D, 0x05, 0xDF, 0x2C, 0x39, 0x03,
+// 3732 (static, 2026-11-21; never run): was 0x2A794D0 / slot 0x5F609D8 (vtable 0x5F609D0) / args 0x2A794F4; RTTI
+// pa::ServerFrameEventReleaseRemoteCatch 0x5F65A10 slot 1 (kSrvReleaseHead), the argument reads at its +0x24.
+inline constexpr uintptr_t kSrvRelease3732 = 0x2A7BC20;
+inline constexpr uintptr_t kSrvReleaseSlot3732 = 0x5F65A18;  // vtable 0x5F65A10 slot 1
+inline constexpr uintptr_t kSrvArgs3732 = 0x2A7BC44;           // kSrvArgsBytes3527
+inline constexpr uintptr_t kWriter3732 = 0x2C47370;  // 3732 (static, 2026-11-21; never run): was 0x2C428E0; the writer site's call; kWriterHead
+// 3732 (static, 2026-11-21; never run): was 0x2BD5A89 (in vf148 0x2BD5960); vf148 + 0x129; the bytes below are 3732's
+// (the two vtable lea and the rel32 differ from 3663's).
+inline constexpr uintptr_t kWriterSite3732 = 0x2BD84A9;  // in vf148 0x2BD8380
+inline constexpr uint8_t kWriterSiteBytes3732[57] = {
+    0x48, 0x8D, 0x1D, 0x10, 0x55, 0x39, 0x03, 0x48, 0x89, 0x5C, 0x24, 0x20,
+    0xC6, 0x44, 0x24, 0x28, 0x01, 0x48, 0x8D, 0x05, 0xBF, 0x55, 0x39, 0x03,
     0x48, 0x89, 0x44, 0x24, 0x20, 0x48, 0x89, 0x7C, 0x24, 0x30, 0x4C, 0x8D,
     0x4C, 0x24, 0x78, 0x4C, 0x8D, 0x44, 0x24, 0x68, 0x48, 0x8D, 0x54, 0x24,
-    0x20, 0x48, 0x8B, 0xCF, 0xE8, 0x1E, 0xCE, 0x06, 0x00,
+    0x20, 0x48, 0x8B, 0xCF, 0xE8, 0x8E, 0xEE, 0x06, 0x00,
 };
-inline constexpr uintptr_t kToNearVtbl3663 = 0x5F68780;
-inline constexpr uintptr_t kToNearVf13663 = 0x2D6C210;
-inline constexpr uintptr_t kTsOwnerCall3663 = 0x2ED0612;
-inline constexpr uintptr_t kActRelease3663 = 0x19ACF60;
-inline constexpr uintptr_t kServerRemoteCatchVtbl3663 = 0x5F62490;
-inline constexpr uintptr_t kActReleaseSlot3663 = 0x5F625D0;    // 0x5F62490 + 0x140
-inline constexpr uintptr_t kSrvCompVf158Slot3663 = 0x5F625E8;  // 0x5F62490 + 0x158 = 0x19AD850
-inline constexpr uintptr_t kSlotReset3663 = 0x19AD850;
-inline constexpr uintptr_t kActClientCall3663 = 0x673E69;  // the client's vf140 0x673E10; 0x19ACF60's only direct caller
-inline constexpr uint8_t kActClientCallBytes3663[5] = {0xE8, 0xF2, 0x90, 0x33, 0x01};
-inline constexpr uintptr_t kActDispatch3663 = 0x258BE91;  // kActDispatchBytes3527
-inline constexpr uintptr_t kActKeepTest3663 = 0x19AD1E0;
-inline constexpr uintptr_t kActNotify3663 = 0x19AD216;
-inline constexpr uintptr_t kActSelfRelease3663 = 0x19AD2AF;
+inline constexpr uintptr_t kToNearVtbl3732 = 0x5F6DA80;  // 3732 (static, 2026-11-21; never run): was 0x5F68780; RTTI pa::ToNearSendTargetFinder
+inline constexpr uintptr_t kToNearVf13732 = 0x2D70CA0;  // 3732 (static, 2026-11-21; never run): was 0x2D6C210; the ToNear vtable slot 1; kToNearVf1Bytes
+inline constexpr uintptr_t kTsOwnerCall3732 = 0x2ED4B62;  // 3732 (static, 2026-11-21; never run): was 0x2ED0612; 0x2ED4DB0's first call 0x2ED4B40 +0x22; kTsOwnerCallBytes
+inline constexpr uintptr_t kActRelease3732 = 0x19AEBD0;  // 3732 (static, 2026-11-21; never run): was 0x19ACF60; the server component's vf140; kActReleaseHead
+inline constexpr uintptr_t kServerRemoteCatchVtbl3732 = 0x5F67818;  // 3732 (static, 2026-11-21; never run): was 0x5F62490; RTTI pa::ServerRemoteCatchActorComponent
+// 3732 (static, 2026-11-21; never run): was 0x5F625D0 / 0x5F625E8 (0x5F62490 + 0x140 / + 0x158 = 0x19AD850) / 0x19AD850.
+inline constexpr uintptr_t kActReleaseSlot3732 = 0x5F67958;    // 0x5F67818 + 0x140
+inline constexpr uintptr_t kSrvCompVf158Slot3732 = 0x5F67970;  // 0x5F67818 + 0x158 = 0x19AF4C0
+inline constexpr uintptr_t kSlotReset3732 = 0x19AF4C0;
+// 3732 (static, 2026-11-21; never run): was 0x673E69 (the client's vf140 0x673E10; E8 F2 90 33 01); the client's vf140 + 0x59.
+inline constexpr uintptr_t kActClientCall3732 = 0x6741D9;  // the client's vf140 0x674180; 0x19AEBD0's only direct caller
+inline constexpr uint8_t kActClientCallBytes3732[5] = {0xE8, 0xF2, 0xA9, 0x33, 0x01};
+// 3732 (static, 2026-11-21; never run): was 0x258BE91; the only kActDispatchBytes3527 in the code section (0x258C6C0 +0x1C61).
+inline constexpr uintptr_t kActDispatch3732 = 0x258E321;  // kActDispatchBytes3527
+inline constexpr uintptr_t kActKeepTest3732 = 0x19AEE50;  // 3732 (static, 2026-11-21; never run): was 0x19AD1E0; kActRelease + 0x280; kActKeepTestBytes
+inline constexpr uintptr_t kActNotify3732 = 0x19AEE86;  // 3732 (static, 2026-11-21; never run): was 0x19AD216; kActRelease + 0x2B6; kActNotifyBytes
+inline constexpr uintptr_t kActSelfRelease3732 = 0x19AEF1F;  // 3732 (static, 2026-11-21; never run): was 0x19AD2AF; kActRelease + 0x34F; kActSelfReleaseBytes
 
 // ---------------------------------------------------------------- pure helpers
 

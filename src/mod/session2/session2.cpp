@@ -871,7 +871,7 @@ void end_tick(const troc::TrocLink& link) {
 // This is about which stages are required, not about struct offsets (each module carries its own).
 bool layout_3527() noexcept {
     const auto b = game::current_build();
-    return b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3663;
+    return b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3732;
 }
 
 }  // namespace
@@ -905,15 +905,17 @@ bool install(const Options& opt) {
         const bool v3527 = game::current_build() == game::Build::v3527;
         const bool v3549 = game::is_3549();
         const bool v3576 = game::is_3576();
-        const bool v3663 = game::is_3663();
+        const bool v3732 = game::is_3732();
+        // 3732 (2026-11-21): the 3663 path now runs on 1.0.0.3732 (build_profile.h: kPeTimestamp3663 holds 3732's), so
+        // the manifest names that build; was "1.0.0.3663" / "0x6AF5D198".
         host_save_configure({loaded_config().s2_host_save, loaded_config().s2_host_save_dir,
                              loaded_config().s2_host_save_keep,
-                             v3663   ? "1.0.0.3663"
+                             v3732   ? "1.0.0.3732"
                              : v3576 ? "1.0.0.3576"
                              : v3549 ? "1.0.0.3549"
                              : v3527 ? "1.0.0.3527"
                                      : "",
-                             v3663   ? "0x6AF5D198"
+                             v3732   ? "0x6AFDC0CF"
                              : v3576 ? "0x6AED2E85"
                              : v3549 ? "0x6AEB7D59"
                              : v3527 ? "0x6AEA07A6"

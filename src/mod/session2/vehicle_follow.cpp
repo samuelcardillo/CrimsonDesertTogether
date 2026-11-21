@@ -81,8 +81,39 @@ constexpr Addrs kAddrs3576{0xB03BB0, 0xB03FB0, 0x71C0100, 0x5914D58, 0x15C, 0x18
 // user like everything the host's client simulates. The guest got all its records and a MoveActorAck a second with its
 // real position, but drew it from its OWN simulation of that ship, as it did the player's before this module: "the
 // guest couldn't see it". Listed now, like any ordinary vehicle actor of another user a vehicle gimmick hangs from.
-constexpr Addrs kAddrs3663{0xB39E40, 0xB3A240, 0x72451C0, 0x5990BF0, 0x24C, 0x19, 7, 12, 12, 0x5989550, 0x59C3768,
-                           0x5991108};
+// Build 1.0.0.3732 (static, 2026-11-21; never run): the table below holds 3732's values (the comment above is 3663's,
+// with 3663's addresses). Each one:
+// - set_position 3732: was 0xB39E40; kSetPositionHead's 24 bytes are at 0xB3A780 and nowhere else in the code section
+//   (.pdata start, 24 callers as before). It still stores the request as described (pose TS+0x5AC at 0xB3A859, type
+//   +0x5BC at 0xB3A841, flags +0x5BD / +0x5BE from [rsp+68h] / [rsp+70h], i.e. the 6th and 7th arguments, the optional
+//   vector at +0x59C) and calls the actor's vf54 ([TS+8], +0x1B0).
+// - set_rotation 3732: was 0xB3A240; kSetRotationHead's 23 bytes are at 0xB3AB80 (0x400 after the position setter as
+//   before; the other match in the code section is 0x24A5D20, another function); 20 callers; it stores the quaternion
+//   at TS+0x5C0, its type at +0x5D0 and the flag at +0x5D1.
+// - world_slot 3732: was 0x72451C0; 3197 references; seven sites (0x3EF8B9, 0x574592, 0x5DB2D6, 0x5EF689, 0x6B475A,
+//   0xA32561, 0xB243E7) read [[0x724B350]+0x60]+0x24C with dec al; cmp al,0x17, so state_off 0x24C and
+//   in_world_state 0x19 stay.
+// - vt_child_only 3732: was 0x5990BF0; pa::ClientChildOnlyInGameActor by RTTI name (vtable_map_3663_3732.json).
+// - vt_scene_object 3732: was 0x5989550; pa::SceneObjectClient by RTTI name. vt_scene_comp 3732: was 0x59C3768;
+//   pa::ClientGimmickActorComponent by RTTI name. vt_normal 3732: was 0x5991108; pa::ClientNormalInGameActor by RTTI
+//   name.
+// - request types 7 / 12 / 12: not addresses; the 24 callers of the position setter pass the same constants as in 3663
+//   (2 x3, 4 x12, 10 x3, 11 x1, a register x5), and the movement update 0x9A8580 (was 0x9A7D00), which makes the
+//   calls at 0x9A906F / 0x9A9085, still loads 0xC with rotation type 0xB (0x9A86FA) or 7 (0x9A8742...).
+// Object offsets re-read in 3732's code (all unchanged): comps+0x1A0 is the TransformSync (19 of the 24 callers load
+// rcx = [x+0x1A0], the other five are the TransformSync's own); TS+0x08 the actor, +0x98 the local transform (0x7B1080
+// writes its position at +0x1C and sectors at +0x28, 0x7B0FD0 its quaternion at +0x0C: TS+0xB4 / +0xC0 / +0xA4);
+// the network pose TS+0x550 / +0x55C (0xB359C4, 0xB36201 subtract [ts+0x550], 0xB4334D writes it); the pending type
+// 0xF at TS+0x5BC (0xB33C31, 0xB403F5); the tick is still vf59 of pa::ClientTransformSyncActorComponent (0xB3ACF0, was
+// 0xB3A3B0); the hierarchy comps+0x1B8 with its actor at +8, the attach type at +0x18 and the parent at +0x1C
+// (Hierarchy::SetParent 0x187D7F0, was 0x187B960: 18 callers as before, writes at 0x187DA7B / 0x187DA7F; its callers
+// still pass 0 from the TransformSync, 6 for a socket and 12 for none); actor+0x60 key, +0x68 components, +0x88 info
+// (+1 type), +0x90 controller and comps+0x48 the vehicle component (0x2471990, 0x9A5B90); [[world]+0x30]+0x58 the
+// local user (160 sites; its key at +0x60 in 6) and +0x50 the own actor (67 sites); the table's count +0x88, buckets
+// +0x98 (0x100 each: key at +8, index at +0xC) and nodes +0xA0 (node+4 the key) in the container's own code
+// (0x5352F3). NOT re-read: mgr+0x08 (the table pointer) and node+8 (the actor): they are game/actor_lookup.cpp's.
+constexpr Addrs kAddrs3732{0xB3A780, 0xB3AB80, 0x724B350, 0x59961D0, 0x24C, 0x19, 7, 12, 12, 0x598E650, 0x59C8840,
+                           0x5995CB8};
 const Addrs* g_addrs = nullptr;
 // Both entries start with the same three register saves; the bytes after them tell the two apart.
 constexpr uint8_t kSetPositionHead[24] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C, 0x24, 0x10, 0x48, 0x89,
@@ -640,8 +671,13 @@ bool network_pose(uintptr_t ts, vfl::Pose* p) noexcept {
 //    parent, the request, its physics position and the ship's pose), handed to the worker, which logs them
 //    (kOwnMaxDumps times a session), and one line for each time in the air.
 // Reads but for the request's three floats and two sector words, as for a passenger.
-constexpr uint32_t kComps_Control = 0x40, kControl_Inner = 0x140, kInner_Physics3663 = 0x2D0, kPhysics_Position = 0x90;
-constexpr uint32_t kChunkOrigin3663 = 0x7231330;
+// 3732 (static, 2026-11-21; never run): the chain is unchanged: 0x39FBA01 (was 0x39F74B1) is `mov rcx,[rbx+0x2D0]; ...
+// vsubps xmm0,[rip->0x7237470]; vmovups [rcx+0x90],xmm0`; the whole chain [[[[actor+0x68]+0x40]+0x140]+0x2D0] is
+// read in 13 sites (e.g. 0x5A7959..0x5A7968).
+constexpr uint32_t kComps_Control = 0x40, kControl_Inner = 0x140, kInner_Physics3732 = 0x2D0, kPhysics_Position = 0x90;
+// 3732 (static, 2026-11-21; never run): was 0x7231330; the operand of that vsubps at 0x39FBA16; 229 references, the
+// same number as 3663's.
+constexpr uint32_t kChunkOrigin3732 = 0x7237470;
 constexpr size_t kOwnRing = 24, kOwnAfter = 8;
 constexpr uint32_t kOwnMaxDumps = 24, kOwnMaxAirLines = 60;
 struct OwnFrame {
@@ -685,7 +721,7 @@ std::atomic<uint64_t> g_air_times{0}, g_air_landed{0}, g_air_fixed_frames{0}, g_
 // The own character's own request (position_mid, its own type): the record and, in the air off a followed ship, the
 // request moved.
 void own_frame(safetyhook::Context& ctx) noexcept {
-    if (g_addrs != &kAddrs3663) return;
+    if (g_addrs != &kAddrs3732) return;
     if (g_own_trace_busy.test_and_set(std::memory_order_acquire)) return;
     struct Release {
         ~Release() { g_own_trace_busy.clear(std::memory_order_release); }
@@ -781,10 +817,10 @@ void own_frame(safetyhook::Context& ctx) noexcept {
     {
         const uintptr_t control = rd<uintptr_t>(comps + kComps_Control);
         const uintptr_t inner = control ? rd<uintptr_t>(control + kControl_Inner) : 0;
-        const uintptr_t physics = inner ? rd<uintptr_t>(inner + kInner_Physics3663) : 0;
+        const uintptr_t physics = inner ? rd<uintptr_t>(inner + kInner_Physics3732) : 0;
         float p[3], o[3];
         if (physics && game::fast_read(physics + kPhysics_Position, p, sizeof p) &&
-            game::fast_read(g_base + kChunkOrigin3663, o, sizeof o)) {
+            game::fast_read(g_base + kChunkOrigin3732, o, sizeof o)) {
             bool finite = true;
             for (int i = 0; i < 3; ++i) {
                 f.capsule[i] = static_cast<double>(p[i]) + o[i];
@@ -1213,6 +1249,11 @@ std::vector<Found> scan(uint32_t* own_out, uint32_t* dropped_out) {
 // object. At most kMaxPartFixes times per part (something else would be moving it). Only where the build's scene
 // object is known (3663). probe: logged, not written.
 constexpr uint16_t kOpMoveActorAck = 2697, kOpMoveActorReq = 2556;  // logical opcodes
+// 3732 (static, 2026-11-21; never run): unchanged. The gimmick component's virtual functions still take the scene
+// object as [this+0x18]-0x28 (18 sites, e.g. 0xA207DC / 0xA207F7; pa::SceneObjectClient has a base at +0x28 in its
+// RTTI), and the object's world transform 0x2967F50 (was 0x29657F0) still tests the link at [obj+0x80] and composes
+// or copies the 0x2C-byte local transform at [obj+0x1D0]. comps+0x30 is still the gimmick component (the
+// UpdateGimmickAck handler 0xD0AAA0 hands [[actor+0x68]+0x30] to 0xA00E40); scene_object() checks both vtables anyway.
 constexpr uint32_t kComps_SceneComp = 0x30, kSceneComp_Node = 0x18, kNode_ToObject = 0x28;
 constexpr uint32_t kScene_Link = 0x80, kScene_Local = 0x1D0, kXform_Pos = 0x1C, kXform_Sector = 0x28;
 constexpr uint8_t kAttachSocket = 6;
@@ -2410,15 +2451,15 @@ void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms
         return;
     }
     if (*m == gil::Mode::Off) return;
-    const Addrs* addrs = game::is_3576() ? &kAddrs3576 : game::is_3663() ? &kAddrs3663 : nullptr;
+    const Addrs* addrs = game::is_3576() ? &kAddrs3576 : game::is_3732() ? &kAddrs3732 : nullptr;
     if (!addrs) {
-        log::warn("VehicleFollow: vehicle_follow is for builds 3576 and 3663 only; off");
+        log::warn("VehicleFollow: vehicle_follow is for builds 3576 and 3732 only; off");
         return;
     }
     if (g_started.exchange(true)) return;
     g_addrs = addrs;
-    if (addrs == &kAddrs3663)
-        log::info("VehicleFollow: build 1.0.0.3663: vehicle requests of types {} (near) and {} (far) are followed; the "
+    if (addrs == &kAddrs3732)
+        log::info("VehicleFollow: build 1.0.0.3732: vehicle requests of types {} (near) and {} (far) are followed; the "
                   "setters' bytes are checked before hooking", addrs->request_type, addrs->request_type_far);
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     {
@@ -2431,8 +2472,8 @@ void vehicle_follow_start(const std::string& mode, bool guest, uint32_t delay_ms
     g_delay_ms.store(std::clamp<uint32_t>(delay_ms, 0, 3000));
     if (const auto air = gil::parse_mode(air_mode); !air) {
         log::warn("VehicleFollow: passenger_air_follow '{}' is not 0 | probe | 1; it stays off", air_mode);
-    } else if (*air != gil::Mode::Off && addrs != &kAddrs3663) {
-        log::warn("VehicleFollow: passenger_air_follow is for build 3663 only; off");
+    } else if (*air != gil::Mode::Off && addrs != &kAddrs3732) {
+        log::warn("VehicleFollow: passenger_air_follow is for build 3732 only; off");
     } else {
         g_air_mode.store(static_cast<uint8_t>(*air));
         if (*air != gil::Mode::Off)

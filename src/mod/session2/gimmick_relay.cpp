@@ -32,13 +32,20 @@ constexpr uint16_t kOpUpdateGimmickReq = 2758, kOpUpdateGimmickAck = 2297;  // l
 constexpr size_t kReqPayload = 4 + 0xF0;  // key | the update (0xF0 bytes)
 constexpr size_t kHeader = 5;
 // Build 3663 (vehicle_follow.cpp's constants).
-constexpr uintptr_t kWorldSlot = 0x72451C0;
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; the world system global (3197 references). The offsets below
+// are vehicle_follow.cpp's, re-read there in 3732's code (unchanged); this module also WRITES actor+0x90, the
+// controller: the gimmick update 0xA00E40 (was 0xA005C0) still compares the local user's key with it (0xA00E76 the
+// world slot, 0xA00EAA mov eax,[user+0x60], 0xA00EB1 cmp eax,[actor+0x90]).
+constexpr uintptr_t kWorldSlot = 0x724B350;
 constexpr uint32_t kWorld_Mgr = 0x30, kMgr_Table = 0x08, kMgr_User = 0x58, kUser_Key = 0x60;
 constexpr uint32_t kTable_Buckets = 0x98, kTable_Nodes = 0xA0, kTable_Count = 0x88, kBucketStride = 0x100;
 constexpr uint32_t kActor_Comps = 0x68, kActor_Info = 0x88, kActor_Controller = 0x90, kActor_Key = 0x60;
 constexpr uint32_t kComps_Hierarchy = 0x1B8, kHier_Parent = 0x1C;
 // The branch state a gimmick is in (3663): four bytes of its gimmick component, as tools/porting/livetest/sailstate.py
 // reads them. For the trace lines only.
+// 3732 (static, 2026-11-21; never run): unchanged as far as the code shows: pa::ClientGimmickActorComponent's slot 57
+// (0xA2B480) compares the u32 [this+0x270] with [[this+0x40]+8], and the UpdateGimmickAck handler (0xD0AAA0, was
+// 0xD0A050) still calls 0xA00E40 (was 0xA005C0) with rcx = [[actor+0x68]+0x30].
 constexpr uint32_t kComps_Gimmick = 0x30, kGimmick_Branch = 0x270;
 constexpr uint32_t kTraceLines = 400;
 constexpr uint8_t kTypeGimmick = 7, kTypeVehicle = 5;
@@ -829,8 +836,8 @@ void gimmick_take_configure(const std::string& raw, uint32_t hold_ms) {
         return;
     }
     if (p.mode == Mode::Off) return;
-    if (game::current_build() != game::Build::v3663) {
-        log::info("GimmickTake: only for build 3663; off");
+    if (game::current_build() != game::Build::v3732) {
+        log::info("GimmickTake: only for build 3732; off");
         return;
     }
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
@@ -894,8 +901,8 @@ void gimmick_relay_start(const std::string& raw, const std::string& states) {
         return;
     }
     if (p.mode == Mode::Off) return;
-    if (game::current_build() != game::Build::v3663) {
-        log::info("GimmickRelay: only for build 3663; off");
+    if (game::current_build() != game::Build::v3732) {
+        log::info("GimmickRelay: only for build 3732; off");
         return;
     }
     if (g_mode.load() != 0) return;

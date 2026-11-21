@@ -80,15 +80,18 @@ bool create_retry_configure(const std::string& raw, uint32_t lost_budget) {
         return false;
     }
     if (p.mode == Mode::Off) return false;
-    if (game::current_build() != game::Build::v3663) {
-        log::info("CreateRetry: only for build 3663 (the record's attach parent offset is that build's); off");
+    if (game::current_build() != game::Build::v3732) {
+        log::info("CreateRetry: only for build 3732 (the record's attach parent offset is that build's); off");
         return false;
     }
     g_lost_budget = lost_budget > 64 ? 64 : lost_budget;
     g_store.set_lost_budget(g_lost_budget);
     g_mode.store(static_cast<uint8_t>(p.mode));
+    // 3732 (static, 2026-11-21; never run): the text said exe+0x8E03AF5, 3663's; the address is game/game_errors.cpp's
+    // kPostCreateFailedFrom3663 (0x8C203CB there now, the second of two report calls in the protected section, not
+    // confirmed by a run). Only this line's text: the failures come from game_errors_post_create_failures_since().
     log::info("CreateRetry ON ({}): gimmick records that reach this client before what they dock to are kept {} s; "
-              "when the client reports that one could not be created (game error from exe+0x8E03AF5), its record is "
+              "when the client reports that one could not be created (game error from exe+0x8C203CB), its record is "
               "{} once the actor has left the table and its parent is here, at most {} times, and then the kept parts "
               "hanging from it | create_retry_lost {}: {}",
               u2f::mode_name(p.mode), crl::kKeepMs / 1000,

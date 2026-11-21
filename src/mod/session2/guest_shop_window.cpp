@@ -42,7 +42,24 @@ constexpr Addrs k3576{0x59EEB08, 0xE8C140, 0xE8C440, 0x71C740, 0x6CD0A0, 0x71C01
 //   through [[0x72451C0]+0x30] (0x7488F2).
 // The heads of both are 3576's, checked the same way before the first call. The window's +0x130 (shown) and its node
 // +0x08 / +0x100 (the body's name) are 3549's live values, not re-derived.
-constexpr Addrs k3663{0x5A6AE58, 0xEC5F40, 0xEC6210, 0x748890, 0x6F8D30, 0x7245210};
+// The values below are 1.0.0.3732's (the comment above describes 3663 with 3663's addresses):
+// 3732 (static, 2026-11-21; never run): vt_buy_store was 0x5A6AE58; by RTTI name
+//   (.?AVUIGamePlayControlRootNpcBuyStore2@uiCommonScript@pa@@ at its locator), 172 slots as before.
+// 3732 (static, 2026-11-21; never run): set_npc was 0xEC5F40; the vtable's +0x498: cmp dword [rdx+8],0 ; lea
+//   rdi,[rcx+0x2F4] (0xEC66A4) ; mov [rbx+0x2F0],ecx = [[[rdx]+8]+0x60] (0xEC66C8).
+// 3732 (static, 2026-11-21; never run): show was 0xEC6210; the vtable's +0x490: rbx = r9 the command, cmp byte
+//   [rbx],0x15 with its kind-0xE parameters of 0x18 B and type-5 variants of 0x10 B (0xEC6982..0xEC69D6).
+// 3732 (static, 2026-11-21; never run): handle was 0x748890; kHandleHead3576's 27 bytes, unique in the code section, a
+//   .pdata start; key 0 = the empty 0x20-byte handle (0x748C6D..0x748C97), else through [[0x724B350]+0x30] (0x748CB2),
+//   the actor at +8.
+// 3732 (static, 2026-11-21; never run): dispatch was 0x6F8D30; kDispatchHead3576's 42 bytes, unique in the code
+//   section, a .pdata start; [rcx+0x1A] first, the stage* / cmd* at [rsp+0x20] / [rsp+0x28] of its five callers.
+// 3732 (static, 2026-11-21; never run): ui_hub was 0x7245210; three of the dispatcher's callers read the list
+//   [[[0x724B3A0]+0x28]+0xA38] (0x6CCF12..0x6CCF33, 0x6CD4A9..0x6CD4CD, 0x6D2875..0x6D2899), all five pass edx =
+//   [actor+0x60].
+// 3732 (static, 2026-11-21; never run): kW_NpcKey 0x2F0 and +0x2F4 re-read in set_npc; kW_Shown 0x130 and the node
+//   +0x08 / +0x100 still 3549's live values (the base show is a jmp into the protected section).
+constexpr Addrs k3732{0x5A6FEE8, 0xEC6680, 0xEC6950, 0x748C50, 0x6F90A0, 0x724B3A0};
 constexpr uint8_t kHandleHead3576[] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x54, 0x24, 0x10, 0x57, 0x48, 0x83, 0xEC,
                                        0x50, 0x48, 0x8B, 0xDA, 0x33, 0xFF, 0x89, 0x7C, 0x24, 0x20, 0x45, 0x85, 0xC0};
 constexpr uint8_t kDispatchHead3576[] = {0x4C, 0x8B, 0xDC, 0x49, 0x89, 0x5B, 0x18, 0x49, 0x89, 0x73, 0x20, 0x89, 0x54, 0x24,
@@ -112,7 +129,7 @@ DWORD WINAPI worker(LPVOID) {
             Sleep(500);
         }
         Sleep(kDelayAfterWorldMs);
-        if (game::is_3576() || game::is_3663()) {  // 3663: the same heads (k3663)
+        if (game::is_3576() || game::is_3732()) {  // 3663: the same heads (k3663)
             const bool ok = head_is(g_a.handle, kHandleHead3576, sizeof kHandleHead3576) &&
                             head_is(g_a.dispatch, kDispatchHead3576, sizeof kDispatchHead3576);
             if (!ok) {
@@ -319,15 +336,16 @@ void guest_shop_window_start(const std::string& mode, bool guest) {
         log::info("GuestShopWindow: guest_shop_window is a guest key; ignored on the host");
         return;
     }
-    if (!game::is_3549() && !game::is_3576() && !game::is_3663()) {
-        log::warn("GuestShopWindow: guest_shop_window is for builds 3549, 3576 and 3663 only; off");
+    if (!game::is_3549() && !game::is_3576() && !game::is_3732()) {
+        log::warn("GuestShopWindow: guest_shop_window is for builds 3549, 3576 and 3732 only; off");
         return;
     }
     if (g_started.exchange(true)) return;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    if (game::is_3663()) {
-        g_a = k3663;
-        g_world_slot = 0x72451C0;  // docs/research/port-3663.md (two AOB patterns)
+    if (game::is_3732()) {
+        g_a = k3732;
+        // 3732 (static, 2026-11-21; never run): was 0x72451C0; 3197 references, the handle 0x748C50 reads [[it]+0x30]
+        g_world_slot = 0x724B350;  // docs/research/port-3663.md (two AOB patterns)
     } else if (game::is_3576()) {
         g_a = k3576;
         g_world_slot = 0x71C0100;  // core_globals_3576.json (no reader profile for 3576 yet)

@@ -26,9 +26,9 @@ Bytes packet_for(uint16_t op) {
 void catalogs_roundtrip() {
     CHECK(codec::entries(Build::v2976).size() == 1115);
     CHECK(codec::entries(Build::v3527).size() == 1175);
-    CHECK(codec::entries(Build::v3663).size() == 1179);
-    size_t additions = 0, additions3663 = 0;
-    for (const Build build : {Build::v2976, Build::v3527, Build::v3663}) {
+    CHECK(codec::entries(Build::v3732).size() == 1179);
+    size_t additions = 0, additions3732 = 0;
+    for (const Build build : {Build::v2976, Build::v3527, Build::v3732}) {
         std::array<bool, 65536> logical_seen{}, native_seen{};
         uint16_t last = 0;
         for (const auto& entry : codec::entries(build)) {
@@ -41,18 +41,18 @@ void catalogs_roundtrip() {
             CHECK(codec::encode(build, entry.logical) == entry.native);
             CHECK(!entry.name.empty());
             if (entry.logical >= 0xC000) {
-                ++additions3663;
-                CHECK(build == Build::v3663);
+                ++additions3732;
+                CHECK(build == Build::v3732);
                 CHECK(entry.logical == (0xC000 | entry.native));
                 CHECK(!codec::encode(Build::v3527, entry.logical));
             } else if (entry.logical >= 0x8000) {
                 if (build == Build::v3527) ++additions;
-                CHECK(build == Build::v3527 || build == Build::v3663);
+                CHECK(build == Build::v3527 || build == Build::v3732);
                 CHECK(!codec::encode(Build::v2976, entry.logical));
                 // 3527's additions keep their logical ID in 3663 (0x8000 | the 3527 native ID).
                 if (build == Build::v3527) {
                     CHECK(entry.logical == (0x8000 | entry.native));
-                    CHECK(codec::encode(Build::v3663, entry.logical).has_value());
+                    CHECK(codec::encode(Build::v3732, entry.logical).has_value());
                 }
             }
             const auto dir = entry.logical == 2001 ? host : guest;
@@ -76,13 +76,13 @@ void catalogs_roundtrip() {
         }
     }
     CHECK(additions == 67);
-    CHECK(additions3663 == 4);
+    CHECK(additions3732 == 4);
     // Every 3527 message has a 3663 native ID and the same name and kind.
     for (const auto& entry : codec::entries(Build::v3527)) {
-        const auto native = codec::encode(Build::v3663, entry.logical);
+        const auto native = codec::encode(Build::v3732, entry.logical);
         CHECK(native.has_value());
         if (!native) continue;
-        const auto& all = codec::entries(Build::v3663);
+        const auto& all = codec::entries(Build::v3732);
         const auto it = std::lower_bound(all.begin(), all.end(), *native,
             [](const codec::Entry& e, uint16_t id) { return e.native < id; });
         CHECK(it != all.end() && it->name == entry.name && it->kind == entry.kind);
@@ -104,13 +104,13 @@ void semantic_collisions() {
     CHECK(codec::encode(Build::v3527, 2223) == 2202); // StartActionReq.
     CHECK(codec::encode(Build::v3527, 2991) == 2552); // StartActionAck.
     // 3663 (opcode_mapping_3576_3663.json): the same messages under new numbers.
-    CHECK(codec::encode(Build::v3663, 2556) == 2790); // MoveActorReq.
-    CHECK(codec::encode(Build::v3663, 2697) == 3008); // MoveActorAck.
-    CHECK(codec::encode(Build::v3663, 2223) == 2431); // StartActionReq.
-    CHECK(codec::encode(Build::v3663, 2991) == 2800); // StartActionAck.
-    CHECK(codec::decode(Build::v3663, 2833) != 2556); // 3576's MoveActorReq number is another message in 3663.
-    CHECK(codec::decode(Build::v3663, 2005) == codec::decode(Build::v3527, 2005)); // ActorLoadDataAck kept 2005.
-    CHECK(codec::decode(Build::v3663, 2601) == (0xC000 | 2601)); // GameEventGiveUpStageAck, new in 3663.
+    CHECK(codec::encode(Build::v3732, 2556) == 2790); // MoveActorReq.
+    CHECK(codec::encode(Build::v3732, 2697) == 3008); // MoveActorAck.
+    CHECK(codec::encode(Build::v3732, 2223) == 2431); // StartActionReq.
+    CHECK(codec::encode(Build::v3732, 2991) == 2800); // StartActionAck.
+    CHECK(codec::decode(Build::v3732, 2833) != 2556); // 3576's MoveActorReq number is another message in 3663.
+    CHECK(codec::decode(Build::v3732, 2005) == codec::decode(Build::v3527, 2005)); // ActorLoadDataAck kept 2005.
+    CHECK(codec::decode(Build::v3732, 2601) == (0xC000 | 2601)); // GameEventGiveUpStageAck, new in 3663.
     for (const uint16_t removed : std::array<uint16_t, 7>{3045, 2584, 2296, 2141, 2686, 2198, 2097}) {
         CHECK(codec::encode(Build::v2976, removed) == removed);
         CHECK(!codec::encode(Build::v3527, removed));

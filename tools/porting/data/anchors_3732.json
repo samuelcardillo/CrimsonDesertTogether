@@ -1,0 +1,2646 @@
+{
+ "anchors": [
+  {
+   "old": 3847104,
+   "new": 3848144,
+   "kind": "call",
+   "from": "kCurrentCode2_3663+0x3f",
+   "shift": 1040
+  },
+  {
+   "old": 4044003,
+   "new": 4044944,
+   "kind": "call",
+   "from": "kWayOutBytes3663+0x4",
+   "shift": 941
+  },
+  {
+   "old": 4091827,
+   "new": 4092768,
+   "kind": "call",
+   "from": "kWayOutBytes3663+0xd",
+   "shift": 941
+  },
+  {
+   "old": 5058768,
+   "new": 5059808,
+   "kind": "call",
+   "from": "kSkipCopyBytes3663+0xa",
+   "shift": 1040
+  },
+  {
+   "old": 6795056,
+   "new": 6795936,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kApplyHead",
+   "shift": 880
+  },
+  {
+   "old": 6795135,
+   "new": 6796015,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kInfoCopyBytes",
+   "shift": 880
+  },
+  {
+   "old": 6804492,
+   "new": 6805372,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kMapSiteBytes3527",
+   "shift": 880
+  },
+  {
+   "old": 6804549,
+   "new": 6805429,
+   "kind": "call",
+   "from": "kMapSiteBytes3527+0x32",
+   "shift": 880
+  },
+  {
+   "old": 6804558,
+   "new": 6805438,
+   "kind": "call",
+   "from": "kMapSiteBytes3527+0x38",
+   "shift": 880
+  },
+  {
+   "old": 6804591,
+   "new": 6805471,
+   "kind": "call",
+   "from": "kMapSiteBytes3527+0x41",
+   "shift": 880
+  },
+  {
+   "old": 6877488,
+   "new": 6878368,
+   "kind": "call",
+   "from": "k2471ReleaseBytes3663+0x1a",
+   "shift": 880
+  },
+  {
+   "old": 7132512,
+   "new": 7133392,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kInputEntry",
+   "shift": 880
+  },
+  {
+   "old": 7132592,
+   "new": 7133472,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kUiControlEntry",
+   "shift": 880
+  },
+  {
+   "old": 7168416,
+   "new": 7169296,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kMinimapEntry3663",
+   "shift": 880
+  },
+  {
+   "old": 7171106,
+   "new": 7171986,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kMinimapOut3663",
+   "shift": 880
+  },
+  {
+   "old": 7193440,
+   "new": 7194320,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kV1EntryBytes3527",
+   "shift": 880
+  },
+  {
+   "old": 7193479,
+   "new": 7194359,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kV1Bytes3527",
+   "shift": 880
+  },
+  {
+   "old": 7196716,
+   "new": 7197596,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kV1OutBytes3527",
+   "shift": 880
+  },
+  {
+   "old": 7197967,
+   "new": 7198847,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kGuideBytes",
+   "shift": 880
+  },
+  {
+   "old": 7260320,
+   "new": 7261200,
+   "kind": "array",
+   "from": "guest_seq_foreign.cpp:kP1Sig3527",
+   "shift": 880
+  },
+  {
+   "old": 7310640,
+   "new": 7311520,
+   "kind": "array",
+   "from": "guest_shop_window.cpp:kDispatchHead3576",
+   "shift": 880
+  },
+  {
+   "old": 7637136,
+   "new": 7638096,
+   "kind": "array",
+   "from": "guest_shop_window.cpp:kHandleHead3576",
+   "shift": 960
+  },
+  {
+   "old": 10036555,
+   "new": 10038731,
+   "kind": "array",
+   "from": "remote_motion.cpp:kWallUpCallBytes",
+   "shift": 2176
+  },
+  {
+   "old": 10036593,
+   "new": 10038769,
+   "kind": "call",
+   "from": "kWallUpCallBytes+0x14",
+   "shift": 2176
+  },
+  {
+   "old": 10038108,
+   "new": 10045280,
+   "kind": "call",
+   "from": "kWallUpCallBytes+0x22",
+   "shift": 7172
+  },
+  {
+   "old": 10043104,
+   "new": 10045280,
+   "kind": "call",
+   "from": "kWallUpCall3663+0x22",
+   "shift": 2176
+  },
+  {
+   "old": 10043280,
+   "new": 10045280,
+   "kind": "call",
+   "from": "kWallUpCall3527+0x22",
+   "shift": 2000
+  },
+  {
+   "old": 10215868,
+   "new": 10219200,
+   "kind": "call",
+   "from": "kFind2981_3663+0xc",
+   "shift": 3332
+  },
+  {
+   "old": 10270283,
+   "new": 10272459,
+   "kind": "array",
+   "from": "guest_seq_play.cpp:kActorBytes3527",
+   "shift": 2176
+  },
+  {
+   "old": 10270586,
+   "new": 10272762,
+   "kind": "call",
+   "from": "kActorBytes3527+0x9",
+   "shift": 2176
+  },
+  {
+   "old": 10287077,
+   "new": 10289253,
+   "kind": "array",
+   "from": "guest_seq_play.cpp:kDtBytes3663",
+   "shift": 2176
+  },
+  {
+   "old": 10287318,
+   "new": 10289494,
+   "kind": "array",
+   "from": "guest_seq_play.cpp:kLiveCallBytes3527",
+   "shift": 2176
+  },
+  {
+   "old": 10287339,
+   "new": 10289515,
+   "kind": "call",
+   "from": "kLiveCallBytes3527+0x8",
+   "shift": 2176
+  },
+  {
+   "old": 11771456,
+   "new": 11773824,
+   "kind": "array",
+   "from": "vehicle_follow.cpp:kSetPositionHead",
+   "shift": 2368
+  },
+  {
+   "old": 12450960,
+   "new": 12453600,
+   "kind": "call",
+   "from": "kCreateCall3663+0x13",
+   "shift": 2640
+  },
+  {
+   "old": 12455926,
+   "new": 12458566,
+   "kind": "array",
+   "from": "guest_seq_present.cpp:kStartLookup3663",
+   "shift": 2640
+  },
+  {
+   "old": 12455951,
+   "new": 12458591,
+   "kind": "array",
+   "from": "guest_seq_foreign.cpp:kP1Caller3527",
+   "shift": 2640
+  },
+  {
+   "old": 12486975,
+   "new": 12489615,
+   "kind": "array",
+   "from": "guest_seq_play.cpp:kSkipCopyBytes",
+   "shift": 2640
+  },
+  {
+   "old": 12702944,
+   "new": 12705584,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCurrentCode23",
+   "shift": 2640
+  },
+  {
+   "old": 13028416,
+   "new": 13031056,
+   "kind": "array",
+   "from": "guest_seq_present.cpp:kPresetSig3527",
+   "shift": 2640
+  },
+  {
+   "old": 13028468,
+   "new": 13031108,
+   "kind": "call",
+   "from": "kPresetSig3527+0x27",
+   "shift": 2640
+  },
+  {
+   "old": 13029664,
+   "new": 13032318,
+   "kind": "array",
+   "from": "guest_seq_present.cpp:kCamRead",
+   "shift": 2654
+  },
+  {
+   "old": 13243870,
+   "new": 13246510,
+   "kind": "array",
+   "from": "remote_rope_logic.h:k2471ReleaseBytes3527",
+   "shift": 2640
+  },
+  {
+   "old": 13456955,
+   "new": 13459595,
+   "kind": "array",
+   "from": "guest_seq_route.cpp:kP2322B_3663",
+   "shift": 2640
+  },
+  {
+   "old": 14076448,
+   "new": 14079088,
+   "kind": "array",
+   "from": "guest_seq_foreign.cpp:kVecInit",
+   "shift": 2640
+  },
+  {
+   "old": 14076512,
+   "new": 14079152,
+   "kind": "array",
+   "from": "guest_seq_foreign.cpp:kVecStride3527",
+   "shift": 2640
+  },
+  {
+   "old": 14076926,
+   "new": 14079566,
+   "kind": "array",
+   "from": "guest_seq_route.cpp:kP2661B_3527",
+   "shift": 2640
+  },
+  {
+   "old": 14077003,
+   "new": 14079643,
+   "kind": "call",
+   "from": "kP2661B_3527+0x5",
+   "shift": 2640
+  },
+  {
+   "old": 14082560,
+   "new": 14086356,
+   "kind": "array",
+   "from": "guest_seq_route.cpp:kFind2981_3527",
+   "shift": 3796
+  },
+  {
+   "old": 14082560,
+   "new": 14086516,
+   "kind": "array",
+   "from": "guest_seq_route.cpp:kP2981B_3527",
+   "shift": 3956
+  },
+  {
+   "old": 14082624,
+   "new": 14086420,
+   "kind": "call",
+   "from": "kFind2981_3527+0x16",
+   "shift": 3796
+  },
+  {
+   "old": 23434112,
+   "new": 23441152,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kAttDtorHead",
+   "shift": 7040
+  },
+  {
+   "old": 23434252,
+   "new": 23441292,
+   "kind": "call",
+   "from": "kAttDtorHead+0x17",
+   "shift": 7040
+  },
+  {
+   "old": 26867776,
+   "new": 26875056,
+   "kind": "call",
+   "from": "kQuestEventCb3663Bytes+0x24",
+   "shift": 7280
+  },
+  {
+   "old": 26868944,
+   "new": 26875056,
+   "kind": "call",
+   "from": "kQuestEventCb3576Bytes+0x24",
+   "shift": 6112
+  },
+  {
+   "old": 26868992,
+   "new": 26875056,
+   "kind": "call",
+   "from": "kQuestEventCb3527Bytes+0x24",
+   "shift": 6064
+  },
+  {
+   "old": 26923695,
+   "new": 26930768,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kActKeepTestBytes",
+   "shift": 7073
+  },
+  {
+   "old": 26923695,
+   "new": 26930822,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kActNotifyBytes",
+   "shift": 7127
+  },
+  {
+   "old": 26923929,
+   "new": 26931002,
+   "kind": "call",
+   "from": "kActKeepTestBytes+0xe",
+   "shift": 7073
+  },
+  {
+   "old": 27169585,
+   "new": 27176766,
+   "kind": "array",
+   "from": "achievement_guard_logic.h:kWayOutBytes",
+   "shift": 7181
+  },
+  {
+   "old": 27231392,
+   "new": 27238672,
+   "kind": "call",
+   "from": "kMapSiteBytes3663+0x21",
+   "shift": 7280
+  },
+  {
+   "old": 27362080,
+   "new": 27369360,
+   "kind": "call",
+   "from": "kSlotRefreshSequence3663+0x59",
+   "shift": 7280
+  },
+  {
+   "old": 27367232,
+   "new": 27369360,
+   "kind": "call",
+   "from": "kSlotRefreshSequence3576+0x59",
+   "shift": 2128
+  },
+  {
+   "old": 27367280,
+   "new": 27369360,
+   "kind": "call",
+   "from": "kSlotRefreshSequence3527+0x59",
+   "shift": 2080
+  },
+  {
+   "old": 34471814,
+   "new": 34479014,
+   "kind": "array",
+   "from": "mount_sync.cpp:kGateNetOrBytes",
+   "shift": 7200
+  },
+  {
+   "old": 35411466,
+   "new": 35418992,
+   "kind": "call",
+   "from": "kCtxLookupBytes3663+0xf",
+   "shift": 7526
+  },
+  {
+   "old": 36133104,
+   "new": 36140304,
+   "kind": "array",
+   "from": "guest_x_veto.cpp:kTimelineEntry3527",
+   "shift": 7200
+  },
+  {
+   "old": 36158342,
+   "new": 36165542,
+   "kind": "array",
+   "from": "guest_seq_present.cpp:kRaBaseDtor3527",
+   "shift": 7200
+  },
+  {
+   "old": 36158365,
+   "new": 36165565,
+   "kind": "call",
+   "from": "kRaBaseDtor3527+0x8",
+   "shift": 7200
+  },
+  {
+   "old": 36210539,
+   "new": 36217739,
+   "kind": "array",
+   "from": "observer_scene_copy.cpp:kOwnerFind3527",
+   "shift": 7200
+  },
+  {
+   "old": 36262320,
+   "new": 36269520,
+   "kind": "array",
+   "from": "identity_probe.cpp:kLoadHead",
+   "shift": 7200
+  },
+  {
+   "old": 36807040,
+   "new": 36814336,
+   "kind": "array",
+   "from": "clock_gate.cpp:kGetterHead",
+   "shift": 7296
+  },
+  {
+   "old": 37088096,
+   "new": 37095641,
+   "kind": "array",
+   "from": "stage_lookup_logic.h:kBytesA3527",
+   "shift": 7545
+  },
+  {
+   "old": 37088096,
+   "new": 37095702,
+   "kind": "array",
+   "from": "guest_x_interaction.cpp:kCtxLookupBytes3663",
+   "shift": 7606
+  },
+  {
+   "old": 37602864,
+   "new": 37611776,
+   "kind": "array",
+   "from": "clock_gate.cpp:kLoadingHead",
+   "shift": 8912
+  },
+  {
+   "old": 37934304,
+   "new": 37943216,
+   "kind": "array",
+   "from": "field_leave_guard_logic.h:kEntryBytes",
+   "shift": 8912
+  },
+  {
+   "old": 37934347,
+   "new": 37943259,
+   "kind": "call",
+   "from": "kEntryBytes+0x1d",
+   "shift": 8912
+  },
+  {
+   "old": 38825584,
+   "new": 38834496,
+   "kind": "array",
+   "from": "interaction_condition.cpp:kSerializerHead",
+   "shift": 8912
+  },
+  {
+   "old": 38825747,
+   "new": 38834659,
+   "kind": "call",
+   "from": "kSerializerHead+0x33",
+   "shift": 8912
+  },
+  {
+   "old": 39368618,
+   "new": 39377978,
+   "kind": "array",
+   "from": "child_hold.cpp:kRestoreWriteBytes3527",
+   "shift": 9360
+  },
+  {
+   "old": 39370385,
+   "new": 39379745,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kActDispatchBytes3527",
+   "shift": 9360
+  },
+  {
+   "old": 39389019,
+   "new": 39398379,
+   "kind": "array",
+   "from": "guest_s3.cpp:kNullRead3527Bytes",
+   "shift": 9360
+  },
+  {
+   "old": 39586048,
+   "new": 39595408,
+   "kind": "array",
+   "from": "guest_save_host.cpp:kAddFileHead",
+   "shift": 9360
+  },
+  {
+   "old": 44097974,
+   "new": 44108086,
+   "kind": "array",
+   "from": "child_hold.cpp:kServerRealmSetBytes3527",
+   "shift": 10112
+  },
+  {
+   "old": 44104320,
+   "new": 44114432,
+   "kind": "array",
+   "from": "user2_funnels.cpp:kExecuteTrocBytes",
+   "shift": 10112
+  },
+  {
+   "old": 44104367,
+   "new": 44114479,
+   "kind": "call",
+   "from": "kExecuteTrocBytes+0x29",
+   "shift": 10112
+  },
+  {
+   "old": 44537040,
+   "new": 44547140,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kSrvArgsBytes3527",
+   "shift": 10100
+  },
+  {
+   "old": 45349296,
+   "new": 45359924,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kRecipeBytes",
+   "shift": 10628
+  },
+  {
+   "old": 45349352,
+   "new": 45359980,
+   "kind": "call",
+   "from": "kRecipeBytes+0x26",
+   "shift": 10628
+  },
+  {
+   "old": 46008080,
+   "new": 46018864,
+   "kind": "array",
+   "from": "user2_funnels.cpp:kQuestEventCbBytes",
+   "shift": 10784
+  },
+  {
+   "old": 46008224,
+   "new": 46019008,
+   "kind": "call",
+   "from": "kQuestEventCbBytes+0x2f",
+   "shift": 10784
+  },
+  {
+   "old": 46232592,
+   "new": 46251680,
+   "kind": "array",
+   "from": "identity_probe.cpp:kPhases3527Head",
+   "shift": 19088
+  },
+  {
+   "old": 46241298,
+   "new": 46260386,
+   "kind": "array",
+   "from": "user2_funnels.cpp:kDeadCallCtxBytes",
+   "shift": 19088
+  },
+  {
+   "old": 46382586,
+   "new": 46401674,
+   "kind": "array",
+   "from": "observer_scene_copy.cpp:kScopeFindBytes",
+   "shift": 19088
+  },
+  {
+   "old": 46382687,
+   "new": 46401775,
+   "kind": "call",
+   "from": "kScopeFindBytes+0x20",
+   "shift": 19088
+  },
+  {
+   "old": 46428064,
+   "new": 46447152,
+   "kind": "array",
+   "from": "child_hold.cpp:kStartActionHead3527",
+   "shift": 19088
+  },
+  {
+   "old": 46639084,
+   "new": 46659632,
+   "kind": "call",
+   "from": "kCurrentCode10_3663+0x4a",
+   "shift": 20548
+  },
+  {
+   "old": 46648652,
+   "new": 46659632,
+   "kind": "call",
+   "from": "kCurrentCode10+0x4a",
+   "shift": 10980
+  },
+  {
+   "old": 47264939,
+   "new": 47284027,
+   "kind": "array",
+   "from": "profile_s2.h:kSlotRefreshSequence3527",
+   "shift": 19088
+  },
+  {
+   "old": 47264996,
+   "new": 47284084,
+   "kind": "call",
+   "from": "kSlotRefreshSequence3527+0x2c",
+   "shift": 19088
+  },
+  {
+   "old": 47265016,
+   "new": 47284104,
+   "kind": "call",
+   "from": "kSlotRefreshSequence3527+0x47",
+   "shift": 19088
+  },
+  {
+   "old": 47265161,
+   "new": 47284249,
+   "kind": "call",
+   "from": "kSlotRefreshSequence3527+0x49",
+   "shift": 19088
+  },
+  {
+   "old": 47628624,
+   "new": 47647712,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCtorBytes",
+   "shift": 19088
+  },
+  {
+   "old": 47628690,
+   "new": 47647778,
+   "kind": "call",
+   "from": "kCtorBytes+0x31",
+   "shift": 19088
+  },
+  {
+   "old": 47628704,
+   "new": 47647792,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kVf1Bytes",
+   "shift": 19088
+  },
+  {
+   "old": 47628771,
+   "new": 47647859,
+   "kind": "call",
+   "from": "kVf1Bytes+0x20",
+   "shift": 19088
+  },
+  {
+   "old": 47628788,
+   "new": 47647876,
+   "kind": "call",
+   "from": "kVf1Bytes+0x16",
+   "shift": 19088
+  },
+  {
+   "old": 47628800,
+   "new": 47647888,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kVf2Bytes",
+   "shift": 19088
+  },
+  {
+   "old": 47628816,
+   "new": 47647904,
+   "kind": "array",
+   "from": "remote_rope_logic.h:kToNearVf1Bytes",
+   "shift": 19088
+  },
+  {
+   "old": 47661248,
+   "new": 47680336,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCurrentCode24",
+   "shift": 19088
+  },
+  {
+   "old": 47680368,
+   "new": 47699632,
+   "kind": "call",
+   "from": "kVf483527Bytes+0x1d",
+   "shift": 19264
+  },
+  {
+   "old": 47680544,
+   "new": 47699632,
+   "kind": "call",
+   "from": "kVf483663Bytes+0x1d",
+   "shift": 19088
+  },
+  {
+   "old": 47681456,
+   "new": 47700720,
+   "kind": "call",
+   "from": "kOwnerChar3527Bytes+0x3e",
+   "shift": 19264
+  },
+  {
+   "old": 47681632,
+   "new": 47700720,
+   "kind": "call",
+   "from": "kOwnerChar3663Bytes+0x3e",
+   "shift": 19088
+  },
+  {
+   "old": 48187375,
+   "new": 48206463,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCurrentFieldKey",
+   "shift": 19088
+  },
+  {
+   "old": 48222464,
+   "new": 48246768,
+   "kind": "call",
+   "from": "kDeadCallCtx3527Bytes+0xd",
+   "shift": 24304
+  },
+  {
+   "old": 48227680,
+   "new": 48246768,
+   "kind": "array",
+   "from": "user2_funnels.cpp:kOwnerCharBytes",
+   "shift": 19088
+  },
+  {
+   "old": 48227873,
+   "new": 48246961,
+   "kind": "call",
+   "from": "kOwnerCharBytes+0x9a",
+   "shift": 19088
+  },
+  {
+   "old": 48227916,
+   "new": 48247004,
+   "kind": "call",
+   "from": "kOwnerCharBytes+0xcc",
+   "shift": 19088
+  },
+  {
+   "old": 48227918,
+   "new": 48247006,
+   "kind": "call",
+   "from": "kOwnerCharBytes+0xeb",
+   "shift": 19088
+  },
+  {
+   "old": 48227995,
+   "new": 48247083,
+   "kind": "call",
+   "from": "kOwnerCharBytes+0xc0",
+   "shift": 19088
+  },
+  {
+   "old": 48228048,
+   "new": 48247136,
+   "kind": "array",
+   "from": "child_hold.cpp:kNotifyAppearHead3527",
+   "shift": 19088
+  },
+  {
+   "old": 48228423,
+   "new": 48247511,
+   "kind": "array",
+   "from": "child_hold.cpp:kNotifyReadKeysBytes3527",
+   "shift": 19088
+  },
+  {
+   "old": 48231152,
+   "new": 48250240,
+   "kind": "array",
+   "from": "user2_funnels.cpp:kVf40Bytes",
+   "shift": 19088
+  },
+  {
+   "old": 48231197,
+   "new": 48250285,
+   "kind": "call",
+   "from": "kVf40Bytes+0x28",
+   "shift": 19088
+  },
+  {
+   "old": 48231224,
+   "new": 48250312,
+   "kind": "call",
+   "from": "kVf40Bytes+0x2c",
+   "shift": 19088
+  },
+  {
+   "old": 48231264,
+   "new": 48250352,
+   "kind": "array",
+   "from": "user2_funnels.cpp:kVf48Bytes",
+   "shift": 19088
+  },
+  {
+   "old": 48231309,
+   "new": 48250397,
+   "kind": "call",
+   "from": "kVf48Bytes+0x28",
+   "shift": 19088
+  },
+  {
+   "old": 48231336,
+   "new": 48250424,
+   "kind": "call",
+   "from": "kVf48Bytes+0x2c",
+   "shift": 19088
+  },
+  {
+   "old": 48268576,
+   "new": 48287664,
+   "kind": "array",
+   "from": "field_share.cpp:kAcquireFieldHead3527",
+   "shift": 19088
+  },
+  {
+   "old": 48789920,
+   "new": 48809232,
+   "kind": "array",
+   "from": "identity_fix.cpp:kLobbyConstant3527Bytes",
+   "shift": 19312
+  },
+  {
+   "old": 49097168,
+   "new": 49116372,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCurrentCode10",
+   "shift": 19204
+  },
+  {
+   "old": 49097168,
+   "new": 49116495,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCurrentCode12",
+   "shift": 19327
+  },
+  {
+   "old": 49097168,
+   "new": 49117406,
+   "kind": "array",
+   "from": "observer_milestone.cpp:kCurrentCode13_3663",
+   "shift": 20238
+  },
+  {
+   "old": 49098033,
+   "new": 49117360,
+   "kind": "call",
+   "from": "kCurrentCode12+0x10",
+   "shift": 19327
+  },
+  {
+   "old": 58870688,
+   "new": 58888432,
+   "kind": "call",
+   "from": "kStartLookup3663+0x15",
+   "shift": 17744
+  },
+  {
+   "old": 79841744,
+   "new": 79859568,
+   "kind": "call",
+   "from": "kP1Sig3663+0x24",
+   "shift": 17824
+  },
+  {
+   "old": 93831136,
+   "new": 93851856,
+   "kind": "rip",
+   "from": "kMapSiteBytes3663+0x71",
+   "shift": 20720
+  },
+  {
+   "old": 93831776,
+   "new": 93852496,
+   "kind": "rip",
+   "from": "kOwnerChar3663Bytes+0x77",
+   "shift": 20720
+  },
+  {
+   "old": 94119296,
+   "new": 94140184,
+   "kind": "rip",
+   "from": "kOwnerChar3663Bytes+0x82",
+   "shift": 20888
+  },
+  {
+   "old": 94196112,
+   "new": 94216480,
+   "kind": "rip",
+   "from": "kP2661B_3663+0x9",
+   "shift": 20368
+  },
+  {
+   "old": 94716688,
+   "new": 94737296,
+   "kind": "rip",
+   "from": "kOwnerChar3663Bytes+0xb1",
+   "shift": 20608
+  },
+  {
+   "old": 95682560,
+   "new": 95703808,
+   "kind": "rip",
+   "from": "kMapSiteBytes3663+0x7c",
+   "shift": 21248
+  },
+  {
+   "old": 96429792,
+   "new": 96451216,
+   "kind": "rip",
+   "from": "kMapSiteBytes3663+0x66",
+   "shift": 21424
+  },
+  {
+   "old": 97803112,
+   "new": 97824240,
+   "kind": "rip",
+   "from": "kP2322B_3663+0xa",
+   "shift": 21128
+  },
+  {
+   "old": 100041100,
+   "new": 100063680,
+   "kind": "rip",
+   "from": "kCurrentCode10_3663+0x3",
+   "shift": 22580
+  },
+  {
+   "old": 100041132,
+   "new": 100063712,
+   "kind": "rip",
+   "from": "kCurrentCode10_3663+0x12",
+   "shift": 22580
+  },
+  {
+   "old": 100041996,
+   "new": 100063680,
+   "kind": "rip",
+   "from": "kCurrentCode8_3663+0x3",
+   "shift": 21684
+  },
+  {
+   "old": 100042028,
+   "new": 100063712,
+   "kind": "rip",
+   "from": "kCurrentCode8_3663+0x14",
+   "shift": 21684
+  },
+  {
+   "old": 100042560,
+   "new": 100063680,
+   "kind": "rip",
+   "from": "kCurrentCode0_3663+0x10",
+   "shift": 21120
+  },
+  {
+   "old": 100042592,
+   "new": 100063712,
+   "kind": "rip",
+   "from": "kCurrentCode0_3663+0x1e",
+   "shift": 21120
+  },
+  {
+   "old": 119102440,
+   "new": 119127352,
+   "kind": "rip",
+   "from": "kLiveCallBytes3663+0x3",
+   "shift": 24912
+  },
+  {
+   "old": 119820736,
+   "new": 119845712,
+   "kind": "rip",
+   "from": "kMapSiteBytes3663+0x3",
+   "shift": 24976
+  },
+  {
+   "old": 119820816,
+   "new": 119845792,
+   "kind": "rip",
+   "from": "kStartLookup3663+0x3",
+   "shift": 24976
+  },
+  {
+   "old": 119822032,
+   "new": 119847008,
+   "kind": "rip",
+   "from": "kSlotRefreshSequence3663+0x3",
+   "shift": 24976
+  },
+  {
+   "old": 119822064,
+   "new": 119847040,
+   "kind": "rip",
+   "from": "kVf483663Bytes+0x15",
+   "shift": 24976
+  }
+ ],
+ "unpaired": [
+  [
+   "src/mod/game/character_guard_signatures.inc",
+   "kLayer3527",
+   "0x21bf2b0",
+   []
+  ],
+  [
+   "src/mod/game/character_guard_signatures.inc",
+   "kLayers3527",
+   "0x258ea30",
+   []
+  ],
+  [
+   "src/mod/game/character_guard_signatures.inc",
+   "kUpdate3527",
+   "0x9730e0",
+   []
+  ],
+  [
+   "src/mod/game/character_guard_signatures.inc",
+   "kPending3527",
+   "0x258f230",
+   []
+  ],
+  [
+   "src/mod/game/offsets.h",
+   "kActionLayerAdvanceHead",
+   "0x21bf2b0",
+   []
+  ],
+  [
+   "src/mod/session2/catch_seq_logic.h",
+   "kCheckSiteBytes",
+   "0xa551a3",
+   [
+    "0xa548b0",
+    "0xa54923"
+   ]
+  ],
+  [
+   "src/mod/session2/catch_seq_logic.h",
+   "kCheckSiteBytes3527",
+   "0xa551a3",
+   [
+    "0xa548b0",
+    "0xa54923"
+   ]
+  ],
+  [
+   "src/mod/session2/catch_seq_logic.h",
+   "kCheckSiteBytes3576",
+   "0xa551a3",
+   [
+    "0xa548b0",
+    "0xa54923"
+   ]
+  ],
+  [
+   "src/mod/session2/catch_seq_logic.h",
+   "kCheckSiteBytes3663",
+   "0xa551a3",
+   [
+    "0xa548b0",
+    "0xa54923"
+   ]
+  ],
+  [
+   "src/mod/session2/companion_probe.cpp",
+   "kCreateHead",
+   "0x9c7ee0",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.cpp",
+   "kFindSiteBytes",
+   "0x9c7f6e",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.cpp",
+   "kFactorySiteBytes",
+   "0x9c7fe5",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.cpp",
+   "kConfirmHead",
+   "0x2299840",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.cpp",
+   "kSlotErrSiteBytes",
+   "0x2299904",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.cpp",
+   "kAttachSiteBytes",
+   "0x2299b40",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.h",
+   "kRestoreLockBytes",
+   "0x97803f",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.h",
+   "kRestoreExitBytes",
+   "0x97841a",
+   []
+  ],
+  [
+   "src/mod/session2/companion_probe.h",
+   "kRestartCallBytes",
+   "0x9783ea",
+   []
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kControllerBlockBytes",
+   "0x2a31b52",
+   [
+    "0x2a2e6c0",
+    "0x2a2f3d2",
+    "0x2a2f3db",
+    "0x2a2f431",
+    "0x2a2f43b"
+   ]
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kClientCheckBytes3527",
+   "0xa00eb1",
+   [
+    "0xa005c0",
+    "0xa0062d",
+    "0xa00631",
+    "0xa00639",
+    "0xa006a7",
+    "0xa00af0",
+    "0xa00b5b",
+    "0xa00b5f",
+    "0xa00b68",
+    "0xa00bd6"
+   ]
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kClientCheck2Bytes3527",
+   "0xa013df",
+   [
+    "0xa005c0",
+    "0xa0062d",
+    "0xa00631",
+    "0xa00639",
+    "0xa006a7",
+    "0xa00af0",
+    "0xa00b5b",
+    "0xa00b5f",
+    "0xa00b68",
+    "0xa00bd6"
+   ]
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kControllerBlockBytes3527",
+   "0x2a31b52",
+   [
+    "0x2a2e6c0",
+    "0x2a2f3d2",
+    "0x2a2f3db",
+    "0x2a2f431",
+    "0x2a2f43b"
+   ]
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kControllerWriteBytes3663",
+   "0x2a31bbb",
+   [
+    "0x2a2e6c0",
+    "0x2a2f3d2",
+    "0x2a2f3db",
+    "0x2a2f431",
+    "0x2a2f43b"
+   ]
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kControllerBlockBytes3663",
+   "0x2a31b52",
+   [
+    "0x2a2e6c0",
+    "0x2a2f3d2",
+    "0x2a2f3db",
+    "0x2a2f431",
+    "0x2a2f43b"
+   ]
+  ],
+  [
+   "src/mod/session2/docked_gimmicks_logic.h",
+   "kFieldOwnerReadBytes3663",
+   "0x2a31bb1",
+   [
+    "0x2a2e6c0",
+    "0x2a2f3d2",
+    "0x2a2f3db",
+    "0x2a2f431",
+    "0x2a2f43b"
+   ]
+  ],
+  [
+   "src/mod/session2/enemy_damage_probe.cpp",
+   "kBytes",
+   "0x22d06a0",
+   []
+  ],
+  [
+   "src/mod/session2/fast_travel.cpp",
+   "kFastTravelPointBytes",
+   "0xbde530",
+   []
+  ],
+  [
+   "src/mod/session2/field_leave_guard_logic.h",
+   "kOwnCallBytes",
+   "0x242f7db",
+   [
+    "0x242d4e0",
+    "0x242d4fe",
+    "0x242d50b",
+    "0x242d523"
+   ]
+  ],
+  [
+   "src/mod/session2/field_share.cpp",
+   "kEnterFieldHead3527",
+   "0x2ecf680",
+   [
+    "0x2ec9a70",
+    "0x2ec9c70",
+    "0x2eca480",
+    "0x2ecb130"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_actor_diag.cpp",
+   "kFinishActorBytes",
+   "0x5de450",
+   []
+  ],
+  [
+   "src/mod/session2/guest_bodyanim_diag.cpp",
+   "kName0Bytes",
+   "0xbbc903",
+   []
+  ],
+  [
+   "src/mod/session2/guest_bodyanim_diag.cpp",
+   "kName1Bytes",
+   "0xbbccaf",
+   []
+  ],
+  [
+   "src/mod/session2/guest_bodyanim_diag.cpp",
+   "kCall1Bytes",
+   "0xbbccfb",
+   []
+  ],
+  [
+   "src/mod/session2/guest_reload_wait.cpp",
+   "kReadyBytes",
+   "0x5df4e0",
+   []
+  ],
+  [
+   "src/mod/session2/guest_save_host.cpp",
+   "kFlushHead",
+   "0x1a1af40",
+   [
+    "0x1a15670",
+    "0x1a15930",
+    "0x1a16c40",
+    "0x1a192d0"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_save_host.cpp",
+   "kLoadSlotHead3527",
+   "0x1a188b0",
+   [
+    "0x1a15670",
+    "0x1a15930",
+    "0x1a16c40"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_save_host.cpp",
+   "kSaveHead3527",
+   "0x1a175a0",
+   [
+    "0x1a15670",
+    "0x1a15930",
+    "0x1a16c40"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_save_host.cpp",
+   "kFlushHead3527",
+   "0x1a1af40",
+   [
+    "0x1a15670",
+    "0x1a15930",
+    "0x1a16c40",
+    "0x1a192d0"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kCreateWalk",
+   "0xbe0855",
+   [
+    "0xbdfc90",
+    "0xbdfcb9",
+    "0xbdfe05",
+    "0xbdfe58",
+    "0xbdfef3",
+    "0xbe081e"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kCreateType",
+   "0xbe08a8",
+   [
+    "0xbdfc90",
+    "0xbdfcb9",
+    "0xbdfe05",
+    "0xbdfe58",
+    "0xbdfef3",
+    "0xbe081e"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kP21Sig",
+   "0x6eb710",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kP22Sig",
+   "0x6ebec0",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kP3Sig",
+   "0x6ed7ea",
+   [
+    "0x6ec8a0",
+    "0x6ec987",
+    "0x6ec98e",
+    "0x6ec9ca",
+    "0x6eca05",
+    "0x6ecb63",
+    "0x6ecb72",
+    "0x6ecbb4",
+    "0x6ed050"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kP4Sig",
+   "0x24fce00",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kCreateWalk3527",
+   "0xbe0855",
+   [
+    "0xbdfc90",
+    "0xbdfcb9",
+    "0xbdfe05",
+    "0xbdfe58",
+    "0xbdfef3",
+    "0xbe081e"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_foreign.cpp",
+   "kCreateType3527",
+   "0xbe08a8",
+   [
+    "0xbdfc90",
+    "0xbdfcb9",
+    "0xbdfe05",
+    "0xbdfe58",
+    "0xbdfef3",
+    "0xbe081e"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_play.cpp",
+   "kSkipTailBytes3527",
+   "0xbe9c8c",
+   [
+    "0xbe6ab0",
+    "0xbe7610",
+    "0xbe83e0",
+    "0xbe8412",
+    "0xbe8463",
+    "0xbe855c",
+    "0xbe8597",
+    "0xbe889a",
+    "0xbe8901",
+    "0xbe893f",
+    "0xbe8978",
+    "0xbe907e",
+    "0xbe90ab",
+    "0xbe90bf",
+    "0xbe922a",
+    "0xbe9236",
+    "0xbe923c",
+    "0xbe924a",
+    "0xbe929e",
+    "0xbe95d0",
+    "0xbe95f9",
+    "0xbe9931",
+    "0xbe9990"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_play.cpp",
+   "kSkipTailBytes3576",
+   "0xbe9c8c",
+   [
+    "0xbe6ab0",
+    "0xbe7610",
+    "0xbe83e0",
+    "0xbe8412",
+    "0xbe8463",
+    "0xbe855c",
+    "0xbe8597",
+    "0xbe889a",
+    "0xbe8901",
+    "0xbe893f",
+    "0xbe8978",
+    "0xbe907e",
+    "0xbe90ab",
+    "0xbe90bf",
+    "0xbe922a",
+    "0xbe9236",
+    "0xbe923c",
+    "0xbe924a",
+    "0xbe929e",
+    "0xbe95d0",
+    "0xbe95f9",
+    "0xbe9931",
+    "0xbe9990"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_play.cpp",
+   "kSkipTailBytes3663",
+   "0xbe9c8c",
+   [
+    "0xbe6ab0",
+    "0xbe7610",
+    "0xbe83e0",
+    "0xbe8412",
+    "0xbe8463",
+    "0xbe855c",
+    "0xbe8597",
+    "0xbe889a",
+    "0xbe8901",
+    "0xbe893f",
+    "0xbe8978",
+    "0xbe907e",
+    "0xbe90ab",
+    "0xbe90bf",
+    "0xbe922a",
+    "0xbe9236",
+    "0xbe923c",
+    "0xbe924a",
+    "0xbe929e",
+    "0xbe95d0",
+    "0xbe95f9",
+    "0xbe9931",
+    "0xbe9990"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_present.cpp",
+   "kLetterSig",
+   "0xda4f90",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_present.cpp",
+   "kDialogSig",
+   "0xdb9be0",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_present.cpp",
+   "kRbCall1",
+   "0x39ade04",
+   [
+    "0x39a98b4",
+    "0x39a99bd",
+    "0x39a99f0"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_present.cpp",
+   "kRbCall2",
+   "0x39adf0d",
+   [
+    "0x39a98b4",
+    "0x39a99bd",
+    "0x39a99f0"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_present.cpp",
+   "kRbRet",
+   "0x39adf40",
+   [
+    "0x39a99f0"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kCtorLoopBytes",
+   "0x978002",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kCtorBytes",
+   "0x20e1870",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kLockBytes",
+   "0x978039",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kIndex0Bytes",
+   "0x978134",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kIndex1Bytes",
+   "0x97819c",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kReloadBytes",
+   "0x9783e0",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_restore.cpp",
+   "kCallBytes",
+   "0x9783ea",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_route.cpp",
+   "kS2126Key",
+   "0xa8e009",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_route.cpp",
+   "kS2126Find",
+   "0xd7fc1b",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_route.cpp",
+   "kP2810B_3527",
+   "0xd6db45",
+   [
+    "0xd6c750",
+    "0xd6cbfe",
+    "0xd6ce61",
+    "0xd6ce70",
+    "0xd6d0f5",
+    "0xd6d2b4"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_route.cpp",
+   "kSeq2810_3527",
+   "0xd6db50",
+   [
+    "0xd6c750",
+    "0xd6cbfe",
+    "0xd6ce61",
+    "0xd6ce70",
+    "0xd6d0f5",
+    "0xd6d2b4"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_seq_route.cpp",
+   "kLookupFrameBytes",
+   "0xbe25e4",
+   []
+  ],
+  [
+   "src/mod/session2/guest_seq_route.cpp",
+   "kLookupInstBytes",
+   "0xbe2684",
+   []
+  ],
+  [
+   "src/mod/session2/guest_stage_diag.cpp",
+   "kBindTypeBytes",
+   "0xbe08a8",
+   []
+  ],
+  [
+   "src/mod/session2/guest_stage_diag.cpp",
+   "kRoute2322Bytes",
+   "0x2cd5c3d",
+   []
+  ],
+  [
+   "src/mod/session2/guest_stage_diag.cpp",
+   "kNpcOwnerBytes",
+   "0xb2fecd",
+   []
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kTimelineEntry",
+   "0x1451150",
+   []
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kSetInterEntry",
+   "0x25d1e30",
+   [
+    "0x25cf5c0",
+    "0x25cfa60"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kSetInterBytes",
+   "0x25d1e5a",
+   [
+    "0x25cf5c0",
+    "0x25cfa60",
+    "0x25cfa69",
+    "0x25cfa87"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kInputBytes",
+   "0x6cd8de",
+   [
+    "0x6cd560",
+    "0x6cd56e",
+    "0x6cd59f",
+    "0x6cd5b0",
+    "0x6cd5c5",
+    "0x6cd5e0",
+    "0x6cd69b",
+    "0x6cd729"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kLetterBytes",
+   "0x6dc640",
+   [
+    "0x6d6c22",
+    "0x6d6c55",
+    "0x6dc360",
+    "0x6dc387",
+    "0x6dc3bc"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kDeactCamBytes",
+   "0x6d7b60",
+   [
+    "0x6d61a0",
+    "0x6d61ee",
+    "0x6d6201",
+    "0x6d620b",
+    "0x6d6c22",
+    "0x6d6c55"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kDeactCamEndBytes",
+   "0x6d7b80",
+   [
+    "0x6d61a0",
+    "0x6d61ee",
+    "0x6d6201",
+    "0x6d620b",
+    "0x6d6c22",
+    "0x6d6c55"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kPresetEndBytes",
+   "0x6d7b40",
+   [
+    "0x6d61a0",
+    "0x6d61ee",
+    "0x6d6201",
+    "0x6d620b",
+    "0x6d6c22",
+    "0x6d6c55"
+   ]
+  ],
+  [
+   "src/mod/session2/guest_x_veto.cpp",
+   "kInputBytes3527",
+   "0x6cd8de",
+   [
+    "0x6cd560",
+    "0x6cd56e",
+    "0x6cd59f",
+    "0x6cd5b0",
+    "0x6cd5c5",
+    "0x6cd5e0",
+    "0x6cd69b",
+    "0x6cd729"
+   ]
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kH1LocalBytes",
+   "0x2d73bd5",
+   []
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kH1bBytes",
+   "0x2d73f20",
+   []
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kH1bCallBytes",
+   "0x2d73f2e",
+   []
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kBindAiBytes",
+   "0x22b7170",
+   []
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kRebindRes8Bytes",
+   "0xb2fe9a",
+   []
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kRebindRes8SrcBytes",
+   "0xb2fe74",
+   []
+  ],
+  [
+   "src/mod/session2/host_scene_diag.cpp",
+   "kRebindBindBytes",
+   "0xb2ff02",
+   []
+  ],
+  [
+   "src/mod/session2/identity_fix.cpp",
+   "kClearLobbySiteBytes",
+   "0x2f4f4a2",
+   [
+    "0x2f4af52",
+    "0x2f4af79"
+   ]
+  ],
+  [
+   "src/mod/session2/identity_fix.cpp",
+   "kFindByNoScanBytes",
+   "0x2d7f1b6",
+   []
+  ],
+  [
+   "src/mod/session2/identity_fix.cpp",
+   "kFindByNoReadBytes",
+   "0x2d7f1e0",
+   []
+  ],
+  [
+   "src/mod/session2/identity_probe.cpp",
+   "kComponentSiteBytes",
+   "0x2297982",
+   [
+    "0x22951b0",
+    "0x2295fee"
+   ]
+  ],
+  [
+   "src/mod/session2/identity_probe.cpp",
+   "kOwnerHead",
+   "0x2de1470",
+   []
+  ],
+  [
+   "src/mod/session2/identity_probe.cpp",
+   "kVersionThisBytes",
+   "0x19308ec",
+   [
+    "0x192ea40",
+    "0x192ec51"
+   ]
+  ],
+  [
+   "src/mod/session2/identity_probe.cpp",
+   "kVersionSiteBytes",
+   "0x1930ae1",
+   [
+    "0x192ea40",
+    "0x192ec51"
+   ]
+  ],
+  [
+   "src/mod/session2/identity_probe.cpp",
+   "kClientVersionSiteBytes",
+   "0xcc02e6",
+   []
+  ],
+  [
+   "src/mod/session2/interaction_condition.cpp",
+   "kCallBytes3663",
+   "0x23557b0",
+   [
+    "0x2353ae0",
+    "0x2353b18",
+    "0x2353b40",
+    "0x2353b47"
+   ]
+  ],
+  [
+   "src/mod/session2/npc_action_probe.cpp",
+   "kActionBytes",
+   "0x2d73b60",
+   []
+  ],
+  [
+   "src/mod/session2/npc_action_probe.cpp",
+   "kNodeBytes",
+   "0x2ac8490",
+   []
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kScopeCurBytes",
+   "0x2c40df6",
+   [
+    "0x2c3bde0",
+    "0x2c3bdfa",
+    "0x2c3c360",
+    "0x2c3c366"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode16",
+   "0x2ed87bd",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode18",
+   "0x2ed8836",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode19",
+   "0x2ed8852",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode21",
+   "0x2c40df6",
+   [
+    "0x2c3bde0",
+    "0x2c3bdfa",
+    "0x2c3c360",
+    "0x2c3c366"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kEntryBytes3527",
+   "0x2ed8852",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode18_3576",
+   "0x2ed8836",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode14_3663",
+   "0x2ed838b",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode18_3663",
+   "0x2ed8836",
+   [
+    "0x2ed29d0",
+    "0x2ed2f84",
+    "0x2ed2fff",
+    "0x2ed3360",
+    "0x2ed338e",
+    "0x2ed37b6",
+    "0x2ed39ac",
+    "0x2ed3b47",
+    "0x2ed3e3b",
+    "0x2ed4055",
+    "0x2ed40ef",
+    "0x2ed426d",
+    "0x2ed42b5",
+    "0x2ed42e6",
+    "0x2ed4302",
+    "0x2ed4338"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode25_3663",
+   "0xcd6081",
+   [
+    "0xcd5631",
+    "0xcd563b"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_milestone.cpp",
+   "kCurrentCode26_3663",
+   "0x883498",
+   [
+    "0x882d78",
+    "0x882d87"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_scene_copy.cpp",
+   "kOwnerMethodBytes",
+   "0x227f1f5",
+   []
+  ],
+  [
+   "src/mod/session2/observer_scene_copy.cpp",
+   "kSite3527",
+   "0x2b3be6a",
+   [
+    "0x2b393c0",
+    "0x2b3971a",
+    "0x2b39788"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_scene_copy.cpp",
+   "kSite3576",
+   "0x2b3be6a",
+   [
+    "0x2b393c0",
+    "0x2b3971a",
+    "0x2b39788"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_scene_copy.cpp",
+   "kSite3663",
+   "0x2b3be6a",
+   [
+    "0x2b393c0",
+    "0x2b3971a",
+    "0x2b39788"
+   ]
+  ],
+  [
+   "src/mod/session2/observer_stage.cpp",
+   "kPrepareLoopBytes",
+   "0x2d46834",
+   [
+    "0x2d42250",
+    "0x2d4239c",
+    "0x2d42725"
+   ]
+  ],
+  [
+   "src/mod/session2/offsets_s2.h",
+   "kSessionSendHead",
+   "0x165dd70",
+   []
+  ],
+  [
+   "src/mod/session2/offsets_s2.h",
+   "kAllocThreadBytes",
+   "0x4b82660",
+   []
+  ],
+  [
+   "src/mod/session2/offsets_s2.h",
+   "kToNearVf1Head",
+   "0x2d70ca0",
+   []
+  ],
+  [
+   "src/mod/session2/offsets_s2.h",
+   "kSyncSessionSendHead",
+   "0x165e6e0",
+   []
+  ],
+  [
+   "src/mod/session2/offsets_s2.h",
+   "kNetLoopPumpAob",
+   "0x3a91a4",
+   []
+  ],
+  [
+   "src/mod/session2/offsets_s2.h",
+   "kSlotRefreshReqSequenceBytes",
+   "0x2d17f3b",
+   []
+  ],
+  [
+   "src/mod/session2/owner_fanout.cpp",
+   "kVf1Bytes",
+   "0x2d70c30",
+   []
+  ],
+  [
+   "src/mod/session2/p8_probes.cpp",
+   "kRestartBytes",
+   "0x97724a",
+   []
+  ],
+  [
+   "src/mod/session2/p8_probes.cpp",
+   "kInstall78Bytes",
+   "0xbbcc8c",
+   []
+  ],
+  [
+   "src/mod/session2/pivot_guard_logic.h",
+   "kLookupBytes",
+   "0x2276ffc",
+   [
+    "0x2272840",
+    "0x2272a3e",
+    "0x22736d0",
+    "0x2275350",
+    "0x22753d1",
+    "0x22753dc",
+    "0x22753e3",
+    "0x2275514",
+    "0x2275515",
+    "0x227551b",
+    "0x22757df",
+    "0x22758ec"
+   ]
+  ],
+  [
+   "src/mod/session2/profile_s2.h",
+   "kAllocThread3527",
+   "0x4b82660",
+   [
+    "0x4b7e0c0"
+   ]
+  ],
+  [
+   "src/mod/session2/profile_s2.h",
+   "kAllocThread3576",
+   "0x4b82660",
+   [
+    "0x4b7e0c0"
+   ]
+  ],
+  [
+   "src/mod/session2/profile_s2.h",
+   "kAllocThread3663",
+   "0x4b82660",
+   [
+    "0x4b7e0c0"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_motion.cpp",
+   "kWallUpGate3527",
+   "0x994785",
+   [
+    "0x99254b",
+    "0x993ee0",
+    "0x993f05",
+    "0x993f0f"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_motion.cpp",
+   "kWallUpGate3576",
+   "0x994785",
+   [
+    "0x99254b",
+    "0x993ee0",
+    "0x993f05",
+    "0x993f0f"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_motion.cpp",
+   "kWallUpGate3663",
+   "0x994785",
+   [
+    "0x99254b",
+    "0x993ee0",
+    "0x993f05",
+    "0x993f0f"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_rope_logic.h",
+   "kWriterSiteBytes",
+   "0x2bd84a9",
+   [
+    "0x2bd5622",
+    "0x2bd5960",
+    "0x2bd5a89",
+    "0x2bd5abd"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_rope_logic.h",
+   "kTsOwnerCallBytes",
+   "0x2ed4b62",
+   [
+    "0x2ed05f0",
+    "0x2ed0612",
+    "0x2ed0860"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_rope_logic.h",
+   "kActSelfReleaseBytes",
+   "0x19aef1f",
+   [
+    "0x19acf60",
+    "0x19ad1e0",
+    "0x19ad216",
+    "0x19ad2af",
+    "0x19ad850",
+    "0x19ad971"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_rope_logic.h",
+   "kWriterSiteBytes3527",
+   "0x2bd84a9",
+   [
+    "0x2bd5622",
+    "0x2bd5960",
+    "0x2bd5a89",
+    "0x2bd5abd"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_rope_logic.h",
+   "kWriterSiteBytes3576",
+   "0x2bd84a9",
+   [
+    "0x2bd5622",
+    "0x2bd5960",
+    "0x2bd5a89",
+    "0x2bd5abd"
+   ]
+  ],
+  [
+   "src/mod/session2/remote_rope_logic.h",
+   "kWriterSiteBytes3663",
+   "0x2bd84a9",
+   [
+    "0x2bd5622",
+    "0x2bd5960",
+    "0x2bd5a89",
+    "0x2bd5abd"
+   ]
+  ],
+  [
+   "src/mod/session2/report_guard.cpp",
+   "kReporter3527Head",
+   "0x15388a0",
+   [
+    "0x1536d20",
+    "0x1536ef0"
+   ]
+  ],
+  [
+   "src/mod/session2/ride_null_guard.cpp",
+   "kPointBytes",
+   "0x620e89",
+   [
+    "0x620b13",
+    "0x620b17",
+    "0x620b19",
+    "0x620b1d",
+    "0x620b20",
+    "0x620b21",
+    "0x620b25",
+    "0x620b2c",
+    "0x620b3f"
+   ]
+  ],
+  [
+   "src/mod/session2/rope_probe_logic.h",
+   "kTreePullHead",
+   "0x7d2430",
+   []
+  ],
+  [
+   "src/mod/session2/scene_points.h",
+   "kAiReadBytes",
+   "0x20cfbb6",
+   []
+  ],
+  [
+   "src/mod/session2/scene_points.h",
+   "kAiReadCallBytes",
+   "0x20cfba8",
+   []
+  ],
+  [
+   "src/mod/session2/scene_points.h",
+   "kAiDoneBytes",
+   "0x229c698",
+   []
+  ],
+  [
+   "src/mod/session2/scene_points.h",
+   "kAiDoneCallBytes",
+   "0x229c689",
+   []
+  ],
+  [
+   "src/mod/session2/shop_probe.cpp",
+   "kGBytes",
+   "0x2b4fe7a",
+   []
+  ],
+  [
+   "src/mod/session2/shop_trade_probe.cpp",
+   "kSigP2a",
+   "0x25d2185",
+   []
+  ],
+  [
+   "src/mod/session2/shop_trade_probe.cpp",
+   "kFieldFill",
+   "0x6d731b",
+   []
+  ],
+  [
+   "src/mod/session2/shop_trade_probe.cpp",
+   "kHead2369360",
+   "0x25d1e30",
+   []
+  ],
+  [
+   "src/mod/session2/shop_trade_probe.cpp",
+   "kTarget",
+   "0x25d2080",
+   []
+  ],
+  [
+   "src/mod/session2/shop_trade_probe.cpp",
+   "kExitLock",
+   "0x25d2345",
+   []
+  ],
+  [
+   "src/mod/session2/ui_pause.cpp",
+   "kScaleHead",
+   "0x391d710",
+   [
+    "0x39191c0"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kLootCallCtxBytes",
+   "0x2e90d7c",
+   [
+    "0x2e8c61c",
+    "0x2e8c629"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kReload3527CtxBytes",
+   "0x2d59e9b",
+   [
+    "0x2d55170",
+    "0x2d5540b",
+    "0x2d55412",
+    "0x2d55415"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kApplyReload3527Bytes",
+   "0x2b5ae00",
+   [
+    "0x2b586b0"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kRankCtx13527Bytes",
+   "0x2467719",
+   [
+    "0x24652e0",
+    "0x2465449",
+    "0x2465451",
+    "0x2466160",
+    "0x24664b0",
+    "0x24664b8"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kRankCtx23527Bytes",
+   "0x2468780",
+   [
+    "0x24652e0",
+    "0x2465449",
+    "0x2465451",
+    "0x2466160",
+    "0x24664b0",
+    "0x24664b8"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kLootCallCtx3527Bytes",
+   "0x2e90d7c",
+   [
+    "0x2e8c61c",
+    "0x2e8c629"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kReload3576CtxBytes",
+   "0x2d59e9b",
+   [
+    "0x2d55170",
+    "0x2d5540b",
+    "0x2d55412",
+    "0x2d55415"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kLootCallCtx3576Bytes",
+   "0x2e90d7c",
+   [
+    "0x2e8c61c",
+    "0x2e8c629"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kReload3663CtxBytes",
+   "0x2d59e9b",
+   [
+    "0x2d55170",
+    "0x2d5540b",
+    "0x2d55412",
+    "0x2d55415"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kApplyCtx3663Bytes",
+   "0x2ed4813",
+   [
+    "0x2ed00d0",
+    "0x2ed02b0",
+    "0x2ed02c3",
+    "0x2ed02cd",
+    "0x2ed02f5"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_funnels.cpp",
+   "kLootCallCtx3663Bytes",
+   "0x2e90d7c",
+   [
+    "0x2e8c61c",
+    "0x2e8c629"
+   ]
+  ],
+  [
+   "src/mod/session2/user2_stages.cpp",
+   "kGateBytes",
+   "0x2b4fe7a",
+   []
+  ],
+  [
+   "src/mod/session2/weather_sync_logic.h",
+   "kUpdateHead2976",
+   "0x9988f0",
+   []
+  ]
+ ]
+}

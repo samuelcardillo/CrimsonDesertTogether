@@ -114,10 +114,20 @@ constexpr uintptr_t kStatusLoad3576 = 0x2BB06B0;
 // ServerStatusActorComponent's vtable 0x5F63430 by RTTI; its +0x50 is the 5-byte thunk 0x2C160B0 -> protected
 // 0xE9F4150, the same Status load: mov rax,[rdi+0x90] (0xE9F419E) ; movabs rcx,0x7FFF...FFFF, so Status -> u64*
 // characterNo is +0x90 as in 3527.
-constexpr uintptr_t kLoad3663 = 0x22951B0;
-constexpr uintptr_t kPhases3663 = 0x2C17410;
-constexpr uintptr_t kStatusVtable3663 = 0x5F63430;
-constexpr uintptr_t kStatusLoad3663 = 0x2C160B0;
+// 3732 (static, 2026-11-21; never run): was 0x22951B0; kLoadHead (49 bytes) identical, the only match in the code
+// section, .pdata 0x2296DD0..0x2297C0E (the same 0xE3E bytes); it still reads the actor's descriptor at [r14+0x88]
+// (0x2296E97) and the slot's +0x69C (0x2296F52).
+constexpr uintptr_t kLoad3732 = 0x2296DD0;
+// 3732 (static, 2026-11-21; never run): was 0x2C17410; kPhases3527Head identical, the only match in the code section,
+// .pdata 0x2C1BEA0..0x2C1C377 (the same 0x4D7 bytes).
+constexpr uintptr_t kPhases3732 = 0x2C1BEA0;
+// 3732 (static, 2026-11-21; never run): was 0x5F63430; pa::ServerStatusActorComponent by RTTI
+// (vtable_map_3663_3732.json).
+constexpr uintptr_t kStatusVtable3732 = 0x5F687B0;
+// 3732 (static, 2026-11-21; never run): was 0x2C160B0; the vtable's +0x50, a 5-byte thunk -> protected 0xE273600, the
+// same Status load: mov rax,[rdi+0x90] (0xE27364E) ; movabs rcx,0x7FFF...FFFF ; mov [rax],rcx, so Status -> u64*
+// characterNo is still +0x90 (identity_status_number_offset()).
+constexpr uintptr_t kStatusLoad3732 = 0x2C1AB40;
 
 struct IdentityProbeProfile {
     uintptr_t load, phases, status_vtable, status_load;
@@ -137,14 +147,14 @@ const IdentityProbeProfile* identity_probe_profile() noexcept {
     static constexpr IdentityProbeProfile current3576{kLoad3576, kPhases3576, kStatusVtable3576, kStatusLoad3576,
                                                        kLoadHead, sizeof kLoadHead, kPhases3527Head,
                                                        sizeof kPhases3527Head, false};
-    static constexpr IdentityProbeProfile current3663{kLoad3663, kPhases3663, kStatusVtable3663, kStatusLoad3663,
+    static constexpr IdentityProbeProfile current3732{kLoad3732, kPhases3732, kStatusVtable3732, kStatusLoad3732,
                                                        kLoadHead, sizeof kLoadHead, kPhases3527Head,
                                                        sizeof kPhases3527Head, false};
     switch (game::current_build()) {
         case game::Build::v2976: return &old;
         case game::Build::v3527: return &current;
         case game::Build::v3576: return &current3576;
-        case game::Build::v3663: return &current3663;
+        case game::Build::v3732: return &current3732;
         default: return nullptr;
     }
 }
@@ -250,12 +260,15 @@ std::string character_no(uintptr_t actor) {
 // Build 1.0.0.3663 (static, 2026-11-13; never run): 0x7160118, compared with 4 by the Status load 0xE9F4150 at
 // 0xE9F41BF, and the global the only `mov eax,[r11+0x60] ; mov [rip+..],eax` site writes (0x192EC51, in
 // CommonStatusActorComponent::LoadSaveData 0x192EA40); 21 code references.
+// 3732 (static, 2026-11-21; never run): was 0x7160118; compared with 4 by the Status load 0xE273600 at 0xE27366F, and
+// the global the only `mov eax,[r11+0x60] ; mov [rip+..],eax` site writes (0x1930AE1, in LoadSaveData 0x19308D0, the
+// same +0x211); 21 code references.
 uintptr_t restore_version_rva() {
     switch (game::current_build()) {
         case game::Build::v2976: return kRestoreVersion;
         case game::Build::v3527: return 0x70D9E90;
         case game::Build::v3576: return 0x70DBF98;
-        case game::Build::v3663: return 0x7160118;
+        case game::Build::v3732: return 0x71661D0;
         default: return 0;
     }
 }
@@ -655,7 +668,7 @@ uint32_t identity_status_number_offset() noexcept {
     const auto b = game::current_build();
     // 3663: +0x90 too (the Status load 0xE9F4150, above).
     return identity_status_number_offset_for_build(b == game::Build::v3527 || b == game::Build::v3576 ||
-                                                   b == game::Build::v3663);
+                                                   b == game::Build::v3732);
 }
 
 bool identity_character_no_at(uintptr_t actor, uint64_t& no, uint32_t status_number_offset) {

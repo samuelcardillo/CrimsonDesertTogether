@@ -246,7 +246,7 @@ public:
         if (reader_.init()) {
             // 3576's and 3663's profiles are static evidence only so far (build_profile.h): said so in the log.
             const bool static_only =
-                game::current_build() == game::Build::v3576 || game::current_build() == game::Build::v3663;
+                game::current_build() == game::Build::v3576 || game::current_build() == game::Build::v3732;
             log::info("Game reader enabled (build {} {})", game::reader_profile()->version,
                       static_only ? "offsets from static analysis, not yet run" : "verified offsets");
         } else {

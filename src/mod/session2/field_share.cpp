@@ -81,10 +81,27 @@ constexpr uintptr_t kVecPush3576 = 0x4A2890;
 // forms the FieldMover as TS+0x508 (0x2ECA74C) and every FieldMover instruction of field_mover_layout_3527.json that
 // field_share reads was found with 3527's bytes (+8/+0x10/+0x40/+0x48/+0x4A, GetField 0x2EC9C70, release 0x2EC9A70):
 // kFieldLayout3527 holds on 3663.
-constexpr uintptr_t kAcquireField3663 = 0x2E08520;
-constexpr uintptr_t kEnterField3663 = 0x2ECB130;
-constexpr uintptr_t kTryAddRef3663 = 0x1658E90;
-constexpr uintptr_t kVecPush3663 = 0x4CAE10;
+//
+// 3732 (static, 2026-11-21; never run): the four constants below are 1.0.0.3732's; the four 3527 heads still match as
+// they are. AddActor (thunk 0x2E01E30 -> the protected section's 0xE3F1900) keeps actor+0xA0 (0xE3F191F), the locks
+// +0x18/[+8] with vtable +8/+0x10, open +0x4A and the ServerField tail +2A8/+2B0/+2B8/+2D8; the field key is +0x2D0
+// (0x2E0EB82, with its pool byte 3 at +0x2D2); MoveField 0x2ECE9D0 (0xCA7 bytes as on 3663) forms the FieldMover as
+// TS+0x508 (0x2ECEC9C) from [[actor+0x68]+0x1A0], and GetField 0x2ECE1C0 / the release 0x2ECDFC0 / MoveField use
+// FM+8/+0x10/+0x40/+0x48/+0x4A with field_mover_layout_3527.json's instructions: kFieldLayout3527 holds on 3732.
+// 3732 (static, 2026-11-21; never run): was 0x2E08520; MoveField's five-argument call at 0x2ECEFA1 (r8b = 2, +0x5D1 as
+// on 3663), a .pdata start of 0x2BE bytes; out+0x24 (0x2E0CFE2), the hash +0x4C/+0x48/+0x58/+0x60
+// (0x2E0CFDC..0x2E0D01C), the traveller's key +0x60 into field+0x180 (0x2E0D1C7), out's vf+0x10 (0x2E0D236), out
+// +0x18/+8/+0x10/+0x20 (0x2E0D239..0x2E0D255).
+constexpr uintptr_t kAcquireField3732 = 0x2E0CFB0;
+// 3732 (static, 2026-11-21; never run): was 0x2ECB130; MoveField's call at 0x2ECF127 (rcx = r15 FieldMover, r8 = the
+// field; +0x757 as on 3663), 0x526 bytes; the character is [[FM]+8] at 0x2ECF6AC.
+constexpr uintptr_t kEnterField3732 = 0x2ECF680;
+// 3732 (static, 2026-11-21; never run): was 0x1658E90; the target of AcquireField's call at 0x2E0D1FD (rcx = the
+// field, then `test al,al`).
+constexpr uintptr_t kTryAddRef3732 = 0x165AA10;
+// 3732 (static, 2026-11-21; never run): was 0x4CAE10; the target of OnActorSectorChanged's call at 0x2DFB417 (+0x1E7
+// as on 3663) and of AddActor's {user, 1} push at 0xE3F19FB (+0xFB); 16-byte elements (`shl ecx,4` at 0x4CB28D).
+constexpr uintptr_t kVecPush3732 = 0x4CB220;
 
 struct FieldProfile {
     game::Build build;
@@ -123,8 +140,8 @@ const FieldProfile* field_profile() {
                                               kEnterFieldHead3527, sizeof kEnterFieldHead3527,
                                               kTryAddRefHead3527, sizeof kTryAddRefHead3527,
                                               kVecPushHead3527, sizeof kVecPushHead3527};
-    static constexpr FieldProfile current3663{game::Build::v3663,
-                                              kAcquireField3663, kEnterField3663, kTryAddRef3663, kVecPush3663,
+    static constexpr FieldProfile current3732{game::Build::v3732,
+                                              kAcquireField3732, kEnterField3732, kTryAddRef3732, kVecPush3732,
                                               kAcquireFieldHead3527, sizeof kAcquireFieldHead3527,
                                               kEnterFieldHead3527, sizeof kEnterFieldHead3527,
                                               kTryAddRefHead3527, sizeof kTryAddRefHead3527,
@@ -133,7 +150,7 @@ const FieldProfile* field_profile() {
         case game::Build::v2976: return &old;
         case game::Build::v3527: return &current;
         case game::Build::v3576: return &current3576;
-        case game::Build::v3663: return &current3663;
+        case game::Build::v3732: return &current3732;
         default: return nullptr;
     }
 }

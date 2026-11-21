@@ -30,6 +30,8 @@ inline constexpr size_t kBandWords = 5;
 inline constexpr size_t kPayloadSize = 4 + 4 + 8 + 4 + kBands * kBandWords * 4;
 
 // The game's record of one train (0x20 bytes; 12 of them make one frame of the sea's history).
+// 3732 (static, 2026-11-21; never run): unchanged; the routine that writes the records (0x3FD1460, was 0x3FCCF70) is
+// 3663's instruction for instruction, all 551 of the saved listing, but for relative fields.
 inline constexpr size_t kEntrySize = 0x20, kFrameSize = kBands * kEntrySize;
 inline constexpr size_t kEntryPhase = 0x00, kEntryFade = 0x04, kEntryDir = 0x08, kEntryOx = 0x10, kEntryOz = 0x14;
 

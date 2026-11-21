@@ -24,7 +24,7 @@ control = r.ptr(comps + 0x40)
 inner = r.ptr(control + 0x140)
 physics = r.ptr(inner + 0x2D0)
 p = r.unpack(physics + 0x90, '<3f')
-o = r.unpack(B + 0x7231330, '<3f')
+o = r.unpack(B + 0x7237470, '<3f')
 cx, cy, cz = p[0] + o[0], p[1] + o[1], p[2] + o[2]
 print(f'camera ({px:.1f}, {py:.1f}, {pz:.1f}) character ({cx:.1f}, {cy:.1f}, {cz:.1f}): {math.hypot(px - cx, pz - cz):.1f} m '
       f'away horizontally, {py - cy:+.1f} m above; pitch {math.degrees(math.asin(max(-1, min(1, fy)))):+.0f} deg, '

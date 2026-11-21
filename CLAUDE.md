@@ -23,12 +23,15 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
     cargar ninguna partida. La prueba entre dos PC sigue siendo la final (red real, túnel por Steam, cargas
     a distinta velocidad).
 - Juego: `D:\SteamLibrary\steamapps\common\Crimson Desert\bin64\CrimsonDesert.exe`,
-  versión 1.0.0.3663 desde el 2026-11-13 (PE timestamp `0x6AF5D198`), portada esa noche (estático por módulos;
-  en vivo: unión y vuelta; `docs/research/port-3663.md`). Base fija `0x140000000`. Cualquier offset o firma vale solo para su
+  versión 1.0.0.3732 desde el 2026-11-19 (PE timestamp `0x6AFDC0CF`), portada el 2026-11-21 (estático por módulos;
+  en vivo: unión; `docs/research/port-3732.md`, que explica el método). Base fija `0x140000000`. Cualquier offset o firma vale solo para su
   build; anota la build junto a cada hallazgo.
   El código admite también 3576 (`0x6AED2E85`), 3549 (`0x6AEB7D59`), 3527 (`0x6AEA07A6`; misma
   distribución que 3549 salvo la sección RWX: `Build::v3527` y `game::is_3549()`) y 2976 (`0x6AB28F00`) con tablas por build. Steam puede actualizar el juego en cualquier momento: si el mod se
   desactiva, compara con `python tools/porting/build_delta.py`.
+  **3663 (`0x6AF5D198`) ya no se admite:** sus tablas se reapuntaron a 3732 en el sitio y sus identificadores se
+  renombraron (`Build::v3732`). Desde ese port hay una copia del `.exe` de cada build en `backups/exe/` (no se sube):
+  guarda la de la build nueva antes de portar, para comparar dos ejecutables en vez de partir del fuente.
 - Las partidas están en `%LOCALAPPDATA%\Pearl Abyss\CD\save`. Haz una copia en
   `backups/` antes de cualquier prueba que **escriba** en la memoria del juego.
 - `reference/` (fuera del repositorio) puede contener proyectos de terceros sin licencia, como
@@ -46,7 +49,7 @@ se escribió sobre la build 2976: sus direcciones no valen en 3527, pero las exp
   Para probarlo sin tocar el juego **ni las partidas**:
   `--game-dir <bin64 falso> --data-dir <carpeta> --bundle <kit> --local-dir <carpeta> --no-launch`.
   Sin `--local-dir` (hace de `%LOCALAPPDATA%`) mira las partidas reales y escribe en ellas si hay progreso esperando.
-  `scripts\package_coop.ps1 -Suffix 3663-vNN` lo mete en el kit junto con `package.txt`. Otros modificadores de
+  `scripts\package_coop.ps1 -Suffix 3732-vNN` lo mete en el kit junto con `package.txt`. Otros modificadores de
   prueba: `--offline` (no pregunta por actualizaciones) y `--press update|play|keep|settings` (pulsa ese botón sin ratón).
 - Los jugadores se actualizan con el botón Update del launcher, que baja la última release de GitHub. Las releases
   se hacen siempre desde este PC (en GitHub no se compila nada): con el commit ya subido,

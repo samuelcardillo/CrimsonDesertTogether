@@ -370,47 +370,55 @@ inline constexpr RaLayout kRaLayout3576{0x591B1B8, 0x5CC4F30, 0x5EE8FE0, 0x61899
 // slots 97 / 98, `ret 0`) gives exactly these 37 differing slots with 3576's kinds and uses (the common's slot is the ret
 // for every Ret, not for VarySharpness). Each handler is the client vtable's slot (moved +0x2BE60..+0x2BF20); each
 // trampoline (stage_proc 0x60) is unique in the PE and is the vf8 / vf9 of its own StageChart_Function_* class.
-inline constexpr RaExpect kRaExpect3663[] = {
-    {0x128, 0x6CBED0, 0x25CE530, SlotKind::ClientOnly, RaUse::Ret},  // ActivateMiniGame
-    {0x130, 0x6CCC40, 0x25CE550, SlotKind::ClientOnly, RaUse::Off},  // DeactivateMiniGame: off
-    {0x138, 0x6CD190, 0x25CE570, SlotKind::ClientOnly, RaUse::Ret},  // ReserveMiniGame
-    {0x140, 0x6CD200, 0x25CE590, SlotKind::ClientOnly, RaUse::Ret},  // ExecuteMiniGameEvent
-    {0x148, 0x6CD260, 0x25CE670, SlotKind::ClientOnly, RaUse::Ret},  // Craft
-    {0x158, 0x6CD560, 0x25CE760, SlotKind::ClientOnly, RaUse::Ret},  // InputBlock
-    {0x160, 0x6CD5B0, 0x25CEE70, SlotKind::ClientOnly, RaUse::Ret},  // UIControl (the shop)
-    {0x168, 0x6D25B0, 0x25CEE90, SlotKind::ClientOnly, RaUse::Ret},  // ChangePhasePanelTag
-    {0x170, 0x6D61A0, 0x25D00F0, SlotKind::ClientOnly, RaUse::Ret},  // UIShowMinimap
-    {0x178, 0x6D6F70, 0x25D0110, SlotKind::ClientOnly, RaUse::Ret},  // UIFindPath
-    {0x1A0, 0x6D2610, 0x25D02A0, SlotKind::ClientOnly, RaUse::Ret},  // SetCustomMesh
-    {0x1A8, 0x6D2870, 0x25D02C0, SlotKind::ClientOnly, RaUse::World},  // DisableCharacterCollision: world
-    {0x1B0, 0x6D29B0, 0x25D02E0, SlotKind::ClientOnly, RaUse::World},  // its end: world
-    {0x1B8, 0x6D2AF0, 0x25D0300, SlotKind::ClientOnly, RaUse::Ret},  // SetPreviewTarget
-    {0x1C0, 0x6D77F0, 0x25D0320, SlotKind::ClientOnly, RaUse::Off},  // DeactiveSequencerCamera (dl 0): off
-    {0x1C8, 0x6D7810, 0x25D0340, SlotKind::ClientOnly, RaUse::Ret},  // its end (dl 1): back on
-    {0x1D0, 0x6D7830, 0x25D0360, SlotKind::ClientOnly, RaUse::Off},  // SequencerCamera: on/off in data
-    {0x1D8, 0x6D76A0, 0x25D0380, SlotKind::ClientOnly, RaUse::Off},  // DeactivateSequencerCameraFadeIn: off
-    {0x1E0, 0x6D7740, 0x25D03A0, SlotKind::ClientOnly, RaUse::Off},  // its end (opaque): kept
-    {0x1E8, 0x6D7300, 0x25D03C0, SlotKind::ClientOnly, RaUse::Ret},  // CameraPreset: on
-    {0x1F0, 0x6D77D0, 0x25D03E0, SlotKind::ClientOnly, RaUse::Off},  // its end: off
-    {0x1F8, 0x6D3CD0, 0x25D0400, SlotKind::ClientOnly, RaUse::Ret},  // ForceLockOn
-    {0x200, 0x6DC2E0, 0x25D0570, SlotKind::ClientOnly, RaUse::Ret},  // UIStageIcon
-    {0x208, 0x6DE660, 0x25D0660, SlotKind::ClientServer, RaUse::Ret},  // HireMercenary
-    {0x210, 0x6DC2D0, 0x25D0680, SlotKind::ClientOnly, RaUse::Ret},  // LetterBox (dl 1): on
-    {0x218, 0x6DEDA0, 0x25D06A0, SlotKind::ClientOnly, RaUse::Off},  // FadeInOut: direction in data
-    {0x220, 0x6DC360, 0x25D0790, SlotKind::ClientServer, RaUse::Ret},  // Loading
-    {0x228, 0x6DD050, 0x25D07B0, SlotKind::ClientOnly, RaUse::Ret},  // LookAt: on
-    {0x230, 0x6DD270, 0x25D07D0, SlotKind::ClientOnly, RaUse::Off},  // its end: off
-    {0x240, 0x6DD4F0, 0x25D0810, SlotKind::ClientOnly, RaUse::Ret},  // UIStageGuide
-    {0x248, 0x6DDAC0, 0x25D0830, SlotKind::ClientOnly, RaUse::Ret},  // UIStageBackgroundGuide
-    {0x250, 0x6DDB80, 0x25D0850, SlotKind::ClientOnly, RaUse::Ret},  // UIHint: on
-    {0x258, 0x6DDC70, 0x25D0870, SlotKind::ClientOnly, RaUse::Off},  // its end: off
-    {0x260, 0x6DDCF0, 0x25D0940, SlotKind::ClientServer, RaUse::Ret},  // Reward
-    {0x268, 0x6DDEB0, 0x25D09E0, SlotKind::ClientOnly, RaUse::Ret},  // PostProcess
-    {0x270, 0x6DE000, 0x25D0A90, SlotKind::ClientOnly, RaUse::Ret},  // MaterialParameter
-    {0x290, 0x6DE960, 0x25D0BB0, SlotKind::CommonDiffers, RaUse::Common},  // VarySharpness -> the common's own
+// 1.0.0.3732 (static, 2026-11-21; never run): the table and kRaLayout3663 retargeted in place, derived the same way.
+// The three vtables by RTTI name: 0x599CB30 / 0x5D45E48 / 0x5F681C0 (were 0x5997A38 / 0x5D40A38 / 0x5F62E40), 107 slots
+// each (rtti_3732.json), COLs at [vt-8] 0x620B5B0 / 0x6343F68 / 0x63E8C70 (were 0x6206240 / 0x633EC68 / 0x63E3910); ret
+// 0x3A7190 (was 0x3A6D80; `ret 0`, slots 97 / 98 of both event classes). slot_kind over [0x100,0x2B0) gives the same 37
+// differing slots with the same kinds, and the common's slot is the ret for every Ret and its own for VarySharpness.
+// Every handler is the client vtable's slot = 3663's + 0x370; every trampoline (tramp_bytes with 0x60) has exactly one
+// hit in the code section = 3663's + 0x2490.
+inline constexpr RaExpect kRaExpect3732[] = {
+    {0x128, 0x6CC240, 0x25D09C0, SlotKind::ClientOnly, RaUse::Ret},  // ActivateMiniGame
+    {0x130, 0x6CCFB0, 0x25D09E0, SlotKind::ClientOnly, RaUse::Off},  // DeactivateMiniGame: off
+    {0x138, 0x6CD500, 0x25D0A00, SlotKind::ClientOnly, RaUse::Ret},  // ReserveMiniGame
+    {0x140, 0x6CD570, 0x25D0A20, SlotKind::ClientOnly, RaUse::Ret},  // ExecuteMiniGameEvent
+    {0x148, 0x6CD5D0, 0x25D0B00, SlotKind::ClientOnly, RaUse::Ret},  // Craft
+    {0x158, 0x6CD8D0, 0x25D0BF0, SlotKind::ClientOnly, RaUse::Ret},  // InputBlock
+    {0x160, 0x6CD920, 0x25D1300, SlotKind::ClientOnly, RaUse::Ret},  // UIControl (the shop)
+    {0x168, 0x6D2920, 0x25D1320, SlotKind::ClientOnly, RaUse::Ret},  // ChangePhasePanelTag
+    {0x170, 0x6D6510, 0x25D2580, SlotKind::ClientOnly, RaUse::Ret},  // UIShowMinimap
+    {0x178, 0x6D72E0, 0x25D25A0, SlotKind::ClientOnly, RaUse::Ret},  // UIFindPath
+    {0x1A0, 0x6D2980, 0x25D2730, SlotKind::ClientOnly, RaUse::Ret},  // SetCustomMesh
+    {0x1A8, 0x6D2BE0, 0x25D2750, SlotKind::ClientOnly, RaUse::World},  // DisableCharacterCollision: world
+    {0x1B0, 0x6D2D20, 0x25D2770, SlotKind::ClientOnly, RaUse::World},  // its end: world
+    {0x1B8, 0x6D2E60, 0x25D2790, SlotKind::ClientOnly, RaUse::Ret},  // SetPreviewTarget
+    {0x1C0, 0x6D7B60, 0x25D27B0, SlotKind::ClientOnly, RaUse::Off},  // DeactiveSequencerCamera (dl 0): off
+    {0x1C8, 0x6D7B80, 0x25D27D0, SlotKind::ClientOnly, RaUse::Ret},  // its end (dl 1): back on
+    {0x1D0, 0x6D7BA0, 0x25D27F0, SlotKind::ClientOnly, RaUse::Off},  // SequencerCamera: on/off in data
+    {0x1D8, 0x6D7A10, 0x25D2810, SlotKind::ClientOnly, RaUse::Off},  // DeactivateSequencerCameraFadeIn: off
+    {0x1E0, 0x6D7AB0, 0x25D2830, SlotKind::ClientOnly, RaUse::Off},  // its end (opaque): kept
+    {0x1E8, 0x6D7670, 0x25D2850, SlotKind::ClientOnly, RaUse::Ret},  // CameraPreset: on
+    {0x1F0, 0x6D7B40, 0x25D2870, SlotKind::ClientOnly, RaUse::Off},  // its end: off
+    {0x1F8, 0x6D4040, 0x25D2890, SlotKind::ClientOnly, RaUse::Ret},  // ForceLockOn
+    {0x200, 0x6DC650, 0x25D2A00, SlotKind::ClientOnly, RaUse::Ret},  // UIStageIcon
+    {0x208, 0x6DE9D0, 0x25D2AF0, SlotKind::ClientServer, RaUse::Ret},  // HireMercenary
+    {0x210, 0x6DC640, 0x25D2B10, SlotKind::ClientOnly, RaUse::Ret},  // LetterBox (dl 1): on
+    {0x218, 0x6DF110, 0x25D2B30, SlotKind::ClientOnly, RaUse::Off},  // FadeInOut: direction in data
+    {0x220, 0x6DC6D0, 0x25D2C20, SlotKind::ClientServer, RaUse::Ret},  // Loading
+    {0x228, 0x6DD3C0, 0x25D2C40, SlotKind::ClientOnly, RaUse::Ret},  // LookAt: on
+    {0x230, 0x6DD5E0, 0x25D2C60, SlotKind::ClientOnly, RaUse::Off},  // its end: off
+    {0x240, 0x6DD860, 0x25D2CA0, SlotKind::ClientOnly, RaUse::Ret},  // UIStageGuide
+    {0x248, 0x6DDE30, 0x25D2CC0, SlotKind::ClientOnly, RaUse::Ret},  // UIStageBackgroundGuide
+    {0x250, 0x6DDEF0, 0x25D2CE0, SlotKind::ClientOnly, RaUse::Ret},  // UIHint: on
+    {0x258, 0x6DDFE0, 0x25D2D00, SlotKind::ClientOnly, RaUse::Off},  // its end: off
+    {0x260, 0x6DE060, 0x25D2DD0, SlotKind::ClientServer, RaUse::Ret},  // Reward
+    {0x268, 0x6DE220, 0x25D2E70, SlotKind::ClientOnly, RaUse::Ret},  // PostProcess
+    {0x270, 0x6DE370, 0x25D2F20, SlotKind::ClientOnly, RaUse::Ret},  // MaterialParameter
+    {0x290, 0x6DECD0, 0x25D3040, SlotKind::CommonDiffers, RaUse::Common},  // VarySharpness -> the common's own
 };
-inline constexpr RaLayout kRaLayout3663{0x5997A38, 0x5D40A38, 0x5F62E40, 0x6206240, 0x633EC68, 0x63E3910, 0x3A6D80, 107,
-                                        0x100, 0x2B0, kRaExpect3663, 0x60};
+// 3732: was {0x5997A38, 0x5D40A38, 0x5F62E40, 0x6206240, 0x633EC68, 0x63E3910, 0x3A6D80, ...}; see above kRaExpect3663.
+inline constexpr RaLayout kRaLayout3732{0x599CB30, 0x5D45E48, 0x5F681C0, 0x620B5B0, 0x6343F68, 0x63E8C70, 0x3A7190, 107,
+                                        0x100, 0x2B0, kRaExpect3732, 0x60};
 inline const RaExpect* ra_expect(const RaLayout& l, uint32_t off) {
     for (const RaExpect& e : l.expect) {
         if (e.off == off) return &e;
@@ -625,8 +633,14 @@ inline constexpr uint32_t kRbCallers3576[] = {0x393033D, 0x3930446};
 // return addresses are 0x39A98BD / 0x39A99C6. The timeline vtable (no RTTI, [-1] is code): 0x60C1868, the only table
 // whose slots 0 / 1 (0x3808590 / 0x3805130) are 3576's + 0x772F0 and 0x3460 apart; its constructor 0x10B1E270 (thunk
 // 0x3808260) writes it at [T] (0x10B1E28A) and a second vptr at [T+0x28], as 3527's 0x1062DB50.
-inline constexpr uint32_t kVtTimeline3663 = 0x60C1868;
-inline constexpr uint32_t kRbCallers3663[] = {0x39A98BD, 0x39A99C6};
+// 1.0.0.3732 (static, 2026-11-21; never run): retargeted in place. The dispatcher's three pieces (2976's bytes, each the
+// only one in the code section) are at 0x39ADE04 / 0x39ADF0D / 0x39ADF40 (3663's + 0x4550), so the return addresses were
+// 0x39A98BD / 0x39A99C6 and are 0x39ADE0D / 0x39ADF16. The timeline vtable was 0x60C1868: the only table in the file
+// whose slots 0 / 1 are 3663's two thunks + 0x4550 (0x380CAE0 / 0x3809680, 0x3460 apart) is 0x60C7558, [-1] is code (no
+// RTTI); its constructor 0x10310E50 (thunk 0x380C7B0, 3663's + 0x4550) writes it at [T] (0x10310E6A) and a second vptr
+// at [T+0x28], and only it and 0x10319D64 load it (every disp32 of both executable sections tried).
+inline constexpr uint32_t kVtTimeline3732 = 0x60C7558;
+inline constexpr uint32_t kRbCallers3732[] = {0x39ADE0D, 0x39ADF16};
 
 enum class RbVerdict : uint8_t {
     NotSlot99,      // the return address is not one of the dispatcher's two slot-99 call sites
@@ -858,10 +872,14 @@ inline EvInfo ev_info_3576(Ev e) {
 }
 // Build 1.0.0.3663 (static, 2026-11-13; never run): vtables by RTTI name (vtable_map_3576_3663.json), COLs at [vt-8]
 // (= rtti_3663.json's), slot 99 read from them; slots 97 / 98 of both are the `ret 0` 0x3A6D80.
-inline EvInfo ev_info_3663(Ev e) {
+// 1.0.0.3732 (static, 2026-11-21; never run): retargeted in place, the same way: pa::CameraSelectorEventData was
+// {0x5996EB0, 0x6205F20, 0x3818600} and pa::SequencerPlayerCameraPreset_ITimeLineEventData {0x5A04B08, 0x6238338,
+// 0xC6CC40}; the vtables by RTTI name (109 slots each), the COLs read at [vt-8] (= rtti_3732.json's), slot 99 read from
+// them; slots 97 / 98 of both are the `ret 0` 0x3A7190.
+inline EvInfo ev_info_3732(Ev e) {
     switch (e) {
-        case Ev::CameraSelector: return {"CameraSelectorEventData", 0x5996EB0, 0x6205F20, 0x3818600};
-        case Ev::PlayerCameraPreset: return {"SequencerPlayerCameraPreset", 0x5A04B08, 0x6238338, 0xC6CC40};
+        case Ev::CameraSelector: return {"CameraSelectorEventData", 0x599BFA8, 0x620B268, 0x381CB50};
+        case Ev::PlayerCameraPreset: return {"SequencerPlayerCameraPreset", 0x5A09BC0, 0x623D6C8, 0xC6D690};
         default: return {"?", 0, 0, 0};
     }
 }
@@ -886,7 +904,13 @@ inline constexpr StageLayout kStageLayout3576{0x60, 0xA0, 0x2C4, 0x2D0, 0x50, 0x
 // destructor 0x227BB86 with 3527's 23 bytes, the only hit; the constructor 0x907172A; the trampolines), the owner +0xA0
 // (0x228876B), the name [[stage+0x50]+0x1B8] (SetInteraction 0x25CFA60 / 0x25CFA69, P1 0x6ECA05), the timeline's id
 // +0x1F8 (0x3824BE5 cmp, 0x382457D mov after a lock xadd) and its listed byte +0x1F1 (0x3824BDC).
-inline constexpr StageLayout kStageLayout3663{0x60, 0xA0, 0x2D4, 0x2E0, 0x50, 0x1B8, 0x1F8, 0x1F1, kVtTimeline3663};
+// 1.0.0.3732 (static, 2026-11-21; never run): the fields are unchanged, each read again at the same instruction: the
+// timeline id +0x2E0 (0xBE1A4D mov edx,[rdx+0x2E0] before P1's call; the stage constructor writes -1 there at
+// 0x8E184E9), the processor +0x60 (the base destructor 0x227D7A6 with 3527's 23 bytes, the only hit; the constructor
+// 0x8E18738; the trampolines), the owner +0xA0 (0x228A38B), the name [[stage+0x50]+0x1B8] (SetInteraction 0x25D1EF0 /
+// 0x25D1EF9, P1 0x6ECD75), the timeline's id +0x1F8 (0x3829135 cmp, 0x3828ACD mov after a lock xadd) and its listed
+// byte +0x1F1 (0x382912C). started +0x2D4 stays [E]. Only the timeline vtable moved (kVtTimeline3663).
+inline constexpr StageLayout kStageLayout3732{0x60, 0xA0, 0x2D4, 0x2E0, 0x50, 0x1B8, 0x1F8, 0x1F1, kVtTimeline3732};
 
 // Whose timeline an event belongs to.
 enum class Tl : uint8_t {

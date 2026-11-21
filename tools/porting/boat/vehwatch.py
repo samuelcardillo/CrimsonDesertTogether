@@ -109,10 +109,10 @@ while time.time() - t0 < secs:
             prev[k] = (p, now)
             ga = G.actor(k)
             if not ga:
-                line += f' | {k:08X} {"player" if vt == 0x5990bf0 else "NPC"} {sp:4.1f} m/s at ({p[0]:.0f},{p[2]:.0f}) ABSENT on the guest'
+                line += f' | {k:08X} {"player" if vt == 0x59961d0 else "NPC"} {sp:4.1f} m/s at ({p[0]:.0f},{p[2]:.0f}) ABSENT on the guest'
                 continue
             gpos, gnet, req = G.pos(ga)
-            line += (f' | {k:08X} {"player" if vt == 0x5990bf0 else "NPC"} {sp:4.1f} m/s at ({p[0]:.0f},{p[2]:.0f}) guest copy '
+            line += (f' | {k:08X} {"player" if vt == 0x59961d0 else "NPC"} {sp:4.1f} m/s at ({p[0]:.0f},{p[2]:.0f}) guest copy '
                      f'{math.dist(p, gpos):6.1f} m off, its network pose {math.dist(p, gnet):6.1f} m off, req {req}')
         print(line, flush=True)
     except Exception as e:

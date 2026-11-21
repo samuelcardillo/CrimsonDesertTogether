@@ -87,20 +87,41 @@ constexpr uintptr_t kWorldTime3576 = 0x6EAD9B8;  // server-realm FieldTime
 // 0x236B6B0 -> 0x23DC630 (+0x70F80; the only one of the four `cmp [rbp+0x50],r12b ; je +0x10C` in the expected range,
 // at +0x3B as on 3527); its head saves rbx/rsi/rdi at +0x10/+0x18/+0x20 (2976's head bytes, not 3527's), with 3527's
 // argument moves (r13 = r9, rsi = r8, r14 = rdx, rbx = rcx); its flag path publishes 0x6F31C98 at 0x23DC72C.
-constexpr uintptr_t kTravelOwnerCmp3663 = 0x2ECAABD;
-constexpr uint8_t kTravelOwnerCmp3663Bytes[] = {0x39, 0x86, 0x80, 0x01, 0x00, 0x00};  // cmp [rsi+0x180],eax
-constexpr uintptr_t kTravelGetterCall3663 = 0x2ECABAF;
-constexpr uint8_t kTravelGetterCall3663Bytes[] = {0xE8, 0xCC, 0xF5, 0x44, 0xFF};  // 0x2ECABAF: call 0x231A180
-constexpr uintptr_t kTravelSetterCall3663 = 0x2ECABBA;
-constexpr uint8_t kTravelSetterCall3663Bytes[] = {0xE8, 0x01, 0x6C, 0x51, 0xFF};  // 0x2ECABBA: call 0x23E17C0
-constexpr uintptr_t kLoading3663 = 0x23DC630;
-constexpr uint8_t kLoadingHead3663[] = {0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x48,
+//
+// 3732 (static, 2026-11-21; never run): the values below are 1.0.0.3732's. MoveField is 0x2ECE9D0 (+0x4550; .pdata
+// 0xCA7 bytes as on 3663; it calls AcquireField 0x2E0CFB0 at 0x2ECEFA1 and EnterField 0x2ECF680 at 0x2ECF127) with
+// every site at 3663's offset: the destination field is still RSI (`mov rsi,[rbp-0x68]` at 0x2ECEFE7), R15 the
+// FieldMover (`mov r15,rcx` at 0x2ECE9F0) and eax [[[r15]+8]+0xA0]+0x60 or 0 (0x2ECEFF2..0x2ECF00A); `jne 0x2ECF0F4`
+// is the non-owner branch. The owner branch publishes inline at 0x2ECF09C.
+// 3732 (static, 2026-11-21; never run): was 0x2ECAABD; MoveField +0x63D, the only exact match near the shift.
+constexpr uintptr_t kTravelOwnerCmp3732 = 0x2ECF00D;
+constexpr uint8_t kTravelOwnerCmp3732Bytes[] = {0x39, 0x86, 0x80, 0x01, 0x00, 0x00};  // cmp [rsi+0x180],eax
+// 3732 (static, 2026-11-21; never run): was 0x2ECABAF (E8 CC F5 44 FF, call 0x231A180); MoveField +0x72F, rcx = rsi
+// (the field), to GetCurrentFieldTime 0x231BE00.
+constexpr uintptr_t kTravelGetterCall3732 = 0x2ECF0FF;
+constexpr uint8_t kTravelGetterCall3732Bytes[] = {0xE8, 0xFC, 0xCC, 0x44, 0xFF};  // 0x2ECF0FF: call 0x231BE00
+// 3732 (static, 2026-11-21; never run): was 0x2ECABBA (E8 01 6C 51 FF, call 0x23E17C0); MoveField +0x73A, to the thunk
+// 0x23E3A90 (jmp 0xCA480F0 in the protected section: stores the 32 bytes at TS+0x450 (0xCA48104), and when TLS +0x1EB
+// is set and [field+0x180] == [[TS+8]+0xA0]+0x60 the server-realm FieldTime 0x6F37C98 (0xCA48160)).
+constexpr uintptr_t kTravelSetterCall3732 = 0x2ECF10A;
+constexpr uint8_t kTravelSetterCall3732Bytes[] = {0xE8, 0x81, 0x49, 0x51, 0xFF};  // 0x2ECF10A: call 0x23E3A90
+// 3732 (static, 2026-11-21; never run): was 0x23DC630; the head (unchanged, below) has one match near the shift, a
+// .pdata start (0x38C bytes); the flag is still the fifth argument, [rbp+0x50].
+constexpr uintptr_t kLoading3732 = 0x23DE900;
+constexpr uint8_t kLoadingHead3732[] = {0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x48,
                                         0x89, 0x7C, 0x24, 0x20, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56,
                                         0x41, 0x57, 0x48, 0x8B, 0xEC, 0x48, 0x83, 0xEC, 0x60, 0x4D, 0x8B,
                                         0xE9, 0x49, 0x8B, 0xF0, 0x4C, 0x8B, 0xF2, 0x48, 0x8B, 0xD9};
-constexpr uintptr_t kLoadingFlagCmp3663 = 0x23DC66B;
-constexpr uintptr_t kGetter3663 = 0x231A180;
-constexpr uintptr_t kWorldTime3663 = 0x6F31C98;  // server-realm FieldTime
+// 3732 (static, 2026-11-21; never run): was 0x23DC66B; LoadingComplete +0x3B, `cmp [rbp+0x50],r12b ; je +0x10C` with
+// the same rel32; the flag path publishes 0x6F37C98 at 0x23DE9FC.
+constexpr uintptr_t kLoadingFlagCmp3732 = 0x23DE93B;
+// 3732 (static, 2026-11-21; never run): was 0x231A180; the target of MoveField's getter call, kGetterHead unchanged
+// (one match near the shift).
+constexpr uintptr_t kGetter3732 = 0x231BE00;
+// 3732 (static, 2026-11-21; never run): was 0x6F31C98 (+0x6000, as the Troc singleton block); written by
+// LoadingComplete at 0x23DE9FC, by MoveField's owner branch at 0x2ECF09C and by the protected setter at 0xCA48160,
+// each when TLS +0x1EB is set; the client realm's is 0x6F37C78.
+constexpr uintptr_t kWorldTime3732 = 0x6F37C98;  // server-realm FieldTime
 
 struct ClockProfile {
     game::Build build;
@@ -160,27 +181,27 @@ const ClockProfile* clock_profile() {
                                               kTravelGetterCall3576Bytes, kTravelSetterCall3576Bytes};
     static_assert(sizeof kTravelGetterCall3576Bytes == sizeof kTravelGetterCall3527Bytes &&
                   sizeof kTravelSetterCall3576Bytes == sizeof kTravelSetterCall3527Bytes);
-    static constexpr ClockProfile current3663{game::Build::v3663,
-                                              kLoading3663,
-                                              kLoadingHead3663,
-                                              sizeof kLoadingHead3663,
-                                              kLoadingFlagCmp3663,
+    static constexpr ClockProfile current3732{game::Build::v3732,
+                                              kLoading3732,
+                                              kLoadingHead3732,
+                                              sizeof kLoadingHead3732,
+                                              kLoadingFlagCmp3732,
                                               kLoadingFlagCmp3527Bytes,
                                               sizeof kLoadingFlagCmp3527Bytes,
-                                              kGetter3663,
-                                              kWorldTime3663,
+                                              kGetter3732,
+                                              kWorldTime3732,
                                               true,
-                                              kTravelOwnerCmp3663, kTravelGetterCall3663, kTravelSetterCall3663,
-                                              kTravelGetterCall3663Bytes, kTravelSetterCall3663Bytes,
-                                              kTravelOwnerCmp3663Bytes, true};
-    static_assert(sizeof kTravelGetterCall3663Bytes == sizeof kTravelGetterCall3527Bytes &&
-                  sizeof kTravelSetterCall3663Bytes == sizeof kTravelSetterCall3527Bytes &&
-                  sizeof kTravelOwnerCmp3663Bytes == sizeof kTravelOwnerCmp3527Bytes);
+                                              kTravelOwnerCmp3732, kTravelGetterCall3732, kTravelSetterCall3732,
+                                              kTravelGetterCall3732Bytes, kTravelSetterCall3732Bytes,
+                                              kTravelOwnerCmp3732Bytes, true};
+    static_assert(sizeof kTravelGetterCall3732Bytes == sizeof kTravelGetterCall3527Bytes &&
+                  sizeof kTravelSetterCall3732Bytes == sizeof kTravelSetterCall3527Bytes &&
+                  sizeof kTravelOwnerCmp3732Bytes == sizeof kTravelOwnerCmp3527Bytes);
     switch (game::current_build()) {
         case game::Build::v2976: return &old;
         case game::Build::v3527: return &current;
         case game::Build::v3576: return &current3576;
-        case game::Build::v3663: return &current3663;
+        case game::Build::v3732: return &current3732;
         default: return nullptr;
     }
 }

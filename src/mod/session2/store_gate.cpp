@@ -35,7 +35,20 @@ constexpr Pts k3576{0x23C7350, 0x23C74BB, 0x23C7787, 0x71C0100};
 // 0x2438D94 / 0x2438D9C), r12 = the requester's current scene ([rbx+0xA0] or [rbx+0x90] at 0x2438D18 / 0x2438D21) and
 // reloaded at 0x2438D94 right after the test, [rbp-0x31] its scene id (0x2438D3D), rbx the shopkeeper's (0x243900F),
 // rsi = r8 the shopkeeper actor (0x2438FF1); the world slot 0x72451C0.
-constexpr Pts k3663{0x2438BE0, 0x2438D53, 0x243901F, 0x72451C0};
+// The values below are 1.0.0.3732's (the comment above describes 3663 with 3663's addresses):
+// 3732 (static, 2026-11-21; never run): fn was 0x2438BE0; kFnHead at the .pdata start 0x243AEB0-0x243B5B3 (the same
+//   0x703 B) that holds both points.
+// 3732 (static, 2026-11-21; never run): has_scene was 0x2438D53; kHasSceneBytes, unique in the code section, at the
+//   same +0x173; r12 = [rbx+0xA0] or [rbx+0x90] (0x243AFE8 / 0x243AFF1), reloaded at 0x243B064 (mov r12,[r13+8]) right
+//   after the test; r13 = rcx never rewritten.
+// 3732 (static, 2026-11-21; never run): same_scene was 0x243901F; kSameSceneBytes (the je's rel32 too), unique in the
+//   code section, at the same +0x43F; [rbp-0x31] written at 0x243B00D, rbx the shopkeeper's scene (0x243B2DF), rsi =
+//   r8 still the shopkeeper actor (0x243B2C1).
+// 3732 (static, 2026-11-21; never run): world_slot was 0x72451C0; 3197 references, [[world]+0x30] in the press handler
+//   0xC05440 (interact_gate).
+// 3732 (static, 2026-11-21; never run): kComp_Actor / kActor_User / kRbpCurrent below unchanged: [r13+8] the actor and
+//   [actor+0xA0] its user at 0x243B064 / 0x243B06C; the chain +0x30 / +0x58 / +0x60 at 0xCB0324..0xCB0338.
+constexpr Pts k3732{0x243AEB0, 0x243B023, 0x243B2EF, 0x724B350};
 const Pts* g_p = &k3549;  // written once by store_gate_start
 
 constexpr uint8_t kFnHead[10] = {0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
@@ -176,13 +189,13 @@ void store_gate_start(const std::string& mode, bool guest) {
         return;
     }
     if (*m == gil::Mode::Off) return;
-    if (!game::is_3549() && !game::is_3576() && !game::is_3663()) {
-        log::warn("StoreGate: store_gate is for builds 3549, 3576 and 3663 only; off");
+    if (!game::is_3549() && !game::is_3576() && !game::is_3732()) {
+        log::warn("StoreGate: store_gate is for builds 3549, 3576 and 3732 only; off");
         return;
     }
     if (g_started.exchange(true)) return;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    g_p = game::is_3663() ? &k3663 : game::is_3576() ? &k3576 : &k3549;
+    g_p = game::is_3732() ? &k3732 : game::is_3576() ? &k3576 : &k3549;
     if (g_p->world_slot) {
         g_world_slot = g_p->world_slot;
     } else if (const auto* profile = game::reader_profile()) {

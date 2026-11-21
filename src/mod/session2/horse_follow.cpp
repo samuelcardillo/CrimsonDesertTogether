@@ -46,11 +46,13 @@ std::atomic<uint64_t> c_gimmick_parent{0}, c_rev_gimmick_parent{0};
 // wheel mount 0xB0100E5C; the synthetic 2697 of that "horse" (the rider's WORLD pose, parent -1, ~13 a second) reached
 // the guest, whose wheel 0xB0100E5D was then drawn 2.9 m up and 1.9 m back (its offset to the mount counted twice). The
 // same synthetic Acks of the wheel piece were seen on 3576 (docs/ESTADO-3527.md, "13-nov: BARCO", 224,000 in a night).
+// 3732 (static, 2026-11-21; never run): unchanged; the game still reads the type so (CommonVehicle vf53 0x2471B12:
+// mov rax,[r14+88h]; cmp byte [rax+1],4; ClientVehicle vf54 0xB85809: the type-3 jump table off [[actor+0x88]+1]).
 constexpr uint32_t kActor_Info = 0x88;
 constexpr uint8_t kTypeGimmick = 7;
 std::atomic<uint64_t> g_type_cache{0};  // (key << 8) | type of the last parent looked up
 uint8_t parent_type(uint32_t key) noexcept {
-    if (!game::is_3576() && !game::is_3663()) return 0;  // actor +0x88 / info +1 checked on these (vehicle_follow)
+    if (!game::is_3576() && !game::is_3732()) return 0;  // actor +0x88 / info +1 checked on these (vehicle_follow)
     const uint64_t c = g_type_cache.load(std::memory_order_relaxed);
     if (c && static_cast<uint32_t>(c >> 8) == key) return static_cast<uint8_t>(c);
     uint8_t type = 0;

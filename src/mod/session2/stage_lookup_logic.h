@@ -236,6 +236,11 @@ inline constexpr uintptr_t kVtClientStageMgr3576 = 0x5959438;  // pa::ClientSequ
 // 0x235EB60, R's out slot +0x8E0, the manager's map at +0x138/+0x13C/+0x148/+0x150, every offset +8 from 3527's;
 // pa::ClientField 0x59C97C0, pa::ClientSequencerStageManager 0x59D57E8). Nothing else here is build-specific: the
 // other users of this header (shop_probe, shop_trade_probe, user2_shops) are 2976-only and keep kLayout2976.
+// 3732 (static, 2026-11-21; never run): nothing to retarget here. What that table takes from this header still matches
+// 1.0.0.3732's function 0x23607D0 (0x466 bytes as on 3663): kCtxABytes3527 at 0x23608CE, kBytesA3527 at 0x23608D9
+// (unique in the code section) and kBytesF3527 at 0x2360C09 (+0x439), the field at [rsp+0x48], the manager used at
+// [rbp+0x8F8], the stage id at [r13+0x20]; its lookup 0x21C7370 keeps the 0x100-byte buckets of {hash, index} pairs
+// from +8, element +8 the id and +0x10 the instance, instance +0x15 dead, and the hash 0x1588060 is the same lookup3.
 
 // RTTI vtables (build 2976).
 inline constexpr uintptr_t kVtClientField = 0x55BCEA0;    // pa::ClientField (vf48 0x9A5BE0)

@@ -61,9 +61,29 @@ constexpr Addrs k3576{0x6CD0A0, 0xE8C140, 0x255CEE0, 0x255D5D0, 0x22036A0, 0x21F
 //   u8 at [rsp+0x30], the pointer at [rsp+0x40]), called at +0x1950 (0x2C09310; 3576 +0x1940) by the stage step
 //   0x2C079C0 (head kStageStepBytes, 0x1BA5 B; the only function with that head and a call to the node event there);
 // - the StageChart_Function_* vtables by RTTI (vtable_map_3576_3663.json).
-constexpr Addrs k3663{0x6F8D30, 0xEC5F40, 0x25CE760, 0x25CEE70, 0x2272840, 0x226DB80, 0x2C079C0,
-                      0x5DC0FD0, 0x5DC1038, 0x5DC10A0, 0x5DC1108, 0x5DC1170, 0x5DC11D8, 0x5DC1240, 0x5DC12A8,
-                      0x5DC1310, 0x5DC0A58, 0x5DC1B48};
+// The values below are 1.0.0.3732's (the comment above describes 3663 with 3663's addresses):
+// 3732 (static, 2026-11-21; never run): ui_control was 0x6F8D30; kDispatchHead3576 of guest_shop_window, unique in the
+//   code section, a .pdata start; [rcx+0x1A] first, the stage* / cmd* at the entry's [rsp+0x28] / [rsp+0x30].
+// 3732 (static, 2026-11-21; never run): set_npc was 0xEC5F40; slot +0x498 of UIGamePlayControlRootNpcBuyStore2
+//   0x5A6FEE8 (RTTI): rdx = {handle*, n}, [handle+8] the actor.
+// 3732 (static, 2026-11-21; never run): fn_ib / fn_ui were 0x25CE760 / 0x25CEE70; slot 8 of
+//   StageChart_Function_InputBlock 0x5DC5FA8 / _UIControl 0x5DC5F40: the same thunks (mov rax,[rdx] ; mov r8,rcx ; mov
+//   rcx,[rax+0x60] ; mov rax,[rcx] ; jmp [rax+0x158] / [+0x160]), not in .pdata.
+// 3732 (static, 2026-11-21; never run): exec was 0x2272840; the only .pdata start between the neighbours' shifts
+//   (+0x1C20), head kExecBytes: r15 = rcx, [node+0x38] -> +0x48 / +0x50 (0x22744E9), the +0x10 / +0x14 windows, call
+//   [rax+0x40] (0x227465E), node +0x68 / +0x78, r12b = r9b; the other function with that head 0x450 after it
+//   (0x22748B0).
+// 3732 (static, 2026-11-21; never run): node_event was 0x226DB80; head kNodeEventBytes, +0x1C20 as the executor:
+//   [rcx+0x38], the event u32* at the entry's [rsp+0x28] ([rbp+0x970]), the u8 at +0x30, the pointer at +0x40; four
+//   callers, one of them the stage step at +0x1950 (0x2C0D200).
+// 3732 (static, 2026-11-21; never run): stage_step was 0x2C079C0; head kStageStepBytes, the same 0x1BA5 B (.pdata
+//   0x2C0B8B0-0x2C0D455), the caller of the node event at the same +0x1950.
+// 3732 (static, 2026-11-21; never run): the vtables were 0x5DC0FD0 0x5DC1038 0x5DC10A0 0x5DC1108 0x5DC1170 0x5DC11D8
+//   0x5DC1240 0x5DC12A8 0x5DC1310 0x5DC0A58 0x5DC1B48; each by its RTTI name, read back from its locator (fn_name's
+//   order; KeepAggro and SetBattleTarget moved within the image).
+constexpr Addrs k3732{0x6F90A0, 0xEC6680, 0x25D0BF0, 0x25D1300, 0x2274460, 0x226F7A0, 0x2C0B8B0,
+                      0x5DC67B8, 0x5DC6820, 0x5DC5E08, 0x5DC5E70, 0x5DC5ED8, 0x5DC5F40, 0x5DC5FA8, 0x5DC6010,
+                      0x5DC6078, 0x5DC6218, 0x5DC6F00};
 Addrs g_a = k3549;
 // mov r11,rsp ; mov [r11+0x18],rbx
 constexpr uint8_t kUiControlBytes[7] = {0x4C, 0x8B, 0xDC, 0x49, 0x89, 0x5B, 0x18};
@@ -431,15 +451,16 @@ DWORD WINAPI worker(LPVOID) {
 
 void shop_ui_trace_start(const std::string& mode, bool guest) {
     if (mode != "1") return;
-    if (!game::is_3549() && !game::is_3576() && !game::is_3663()) {
-        log::warn("ShopUiTrace: shop_ui_trace is for builds 3549, 3576 and 3663 only; off");
+    if (!game::is_3549() && !game::is_3576() && !game::is_3732()) {
+        log::warn("ShopUiTrace: shop_ui_trace is for builds 3549, 3576 and 3732 only; off");
         return;
     }
     if (g_started.exchange(true)) return;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    if (game::is_3663()) {
-        g_a = k3663;
-        g_world_slot = 0x72451C0;  // docs/research/port-3663.md (two AOB patterns)
+    if (game::is_3732()) {
+        g_a = k3732;
+        // 3732 (static, 2026-11-21; never run): was 0x72451C0; 3197 references, [[world]+0x30] in the press handler 0xC05440
+        g_world_slot = 0x724B350;  // docs/research/port-3663.md (two AOB patterns)
     } else if (game::is_3576()) {
         g_a = k3576;
         g_world_slot = 0x71C0100;  // core_globals_3576.json (no reader profile for 3576 yet)

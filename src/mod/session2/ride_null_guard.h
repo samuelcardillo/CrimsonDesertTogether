@@ -12,6 +12,8 @@
 // mount is missing; the next update, with the mount there, runs as the game wrote it.
 // One mid hook over two whole instructions (8 bytes, verified). 'RideNullGuard' lines: installed, and each of the first
 // eight times it acts.
+// 3732 (static, 2026-11-21; never run): the addresses above are 3663's; the function is 0x620900 there, the two
+// instructions 0x620E89 and the way out 0x620EAF (ride_null_guard.cpp).
 
 namespace cdmp::session2 {
 

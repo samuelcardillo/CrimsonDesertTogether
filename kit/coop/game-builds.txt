@@ -2,4 +2,4 @@
 # (package.txt, the "game=" lines; docs/LAUNCHER.md), and cdmp_launcher.exe only installs a kit on a game it names.
 # One per line: <version> 0x<PE timestamp of CrimsonDesert.exe>. Change it in the same commit as a port to a new
 # game build, so the release made from that commit is offered to the right game.
-1.0.0.3663 0x6AF5D198
+1.0.0.3732 0x6AFDC0CF

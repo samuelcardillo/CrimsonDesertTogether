@@ -34,22 +34,26 @@ constexpr uintptr_t kVtMercenaryClan3576 = 0x594F340;
 // Build 1.0.0.3663 (static, 2026-11-13; never run): the vtable by RTTI name (vtable_map_3576_3663.json); its vf23 is
 // 0x2385E20 and the focus routine is again vf23 + 0xE0 (0x2385F00, a .pdata start), still storing the new key with
 // `mov [rdi+0x118],r15d` at its +0x2AC (0x23861AC), as 3576's at 0x23154AC. The component slot +0x110 is not re-derived.
-constexpr uintptr_t kVtMercenaryClan3663 = 0x59CAFB8;
+// 3732 (static, 2026-11-21; never run): was 0x59CAFB8; pa::ClientMercenaryClanActorComponent by RTTI name (vtable_map_3663_3732.json); its vf23 is 0x23880E0 and the focus routine vf23 + 0xE0 (0x23881C0, a .pdata start).
+constexpr uintptr_t kVtMercenaryClan3732 = 0x59D00A0;
+// 3732 (static, 2026-11-21; never run): both unchanged; 0x1990F16 calls the focus routine on [[actor+0x68]+0x110], which stores the new key with `mov [rdi+0x118],r15d` at its +0x2AC (0x238846C).
 constexpr uint32_t kComponents_Clan = 0x110, kClan_Focus = 0x118;
 
 // The physics object in the control's inner. Build 1.0.0.3663 (static, 2026-11-13; never run): +0x2D0, not +0x2C0: the
 // inner's constructor stores it at 0x39F0007 (`mov [rdi+0x2D0],rax`), 38 sites read [[x+0x140]+0x2D0] (1 reads +0x2C0)
 // and world_offset_sub (0x39F74B1) takes it from [rbx+0x2D0] (build_profile.h, current3663).
+// 3732 (static, 2026-11-21; never run): 0x2D0 unchanged; the constructor's store is at 0x39F4557, 37 sites read [[x+0x140]+0x2D0] (1 reads +0x2C0), world_offset_sub (0x39FBA01) takes it from [rbx+0x2D0].
 uint32_t inner_physics_offset() {
-    return current_build() == Build::v3663 ? 0x2D0 : off::kControlInner_Physics;
+    return current_build() == Build::v3732 ? 0x2D0 : off::kControlInner_Physics;
 }
 
 // The stamina entry's id in the stat container. 22 up to 3576. On 3663 there is no entry 22 (the panel said "Stamina
 // 0/0"); live, 2026-11-15, two copies (tools/porting/livetest/statseries.py): with W and SHIFT held for six seconds
 // entry 25 goes 440 -> 410.7 -> 383.5 and is back at 440 two and a half seconds after the keys are released; 26
 // (170) and 27 (120) do not move, and nothing else does on a run from the Vellua nexus to the quay (statwatch.py).
+// 3732 (static, 2026-11-21; never run): 25 kept, NOT verified: the id is only seen live (statseries.py on a running game).
 uint64_t stamina_stat_id() {
-    return current_build() == Build::v3663 ? 25 : off::kStatId_Stamina;
+    return current_build() == Build::v3732 ? 25 : off::kStatId_Stamina;
 }
 
 }  // namespace
@@ -77,7 +81,7 @@ std::optional<uintptr_t> PlayerReader::resolve_actor() {
     if (!actor) return fail("no controlled actor (not in world)");
     if (!has_vtable(*actor, base_ + profile_->vt_controlled_actor))
         return fail("controlled actor has unexpected type");
-    if (follow_focus_ && (layout_3527() || current_build() == Build::v3663)) {
+    if (follow_focus_ && (layout_3527() || current_build() == Build::v3732)) {
         if (auto focus = focus_actor(*actor)) return focus;
     }
     return actor;
@@ -88,7 +92,7 @@ std::optional<uintptr_t> PlayerReader::focus_actor(uintptr_t main_actor) {
     auto components = read_ptr(main_actor + off::kActor_ComponentTable);
     if (!components) return std::nullopt;
     auto clan = read_ptr(*components + kComponents_Clan);
-    const uintptr_t vt_clan = current_build() == Build::v3663   ? kVtMercenaryClan3663
+    const uintptr_t vt_clan = current_build() == Build::v3732   ? kVtMercenaryClan3732
                               : current_build() == Build::v3576 ? kVtMercenaryClan3576
                                                                 : kVtMercenaryClan;
     if (!clan || !has_vtable(*clan, base_ + vt_clan)) return std::nullopt;

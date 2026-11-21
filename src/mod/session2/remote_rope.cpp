@@ -111,26 +111,28 @@ const Addrs kAddrs3576{rrp::kCodeEnd3576,
 // Build 1.0.0.3663 (static, 2026-11-13; never run): remote_rope_logic.h's 3663 table; 3527's data offsets (re-read in the
 // 3663 code, see there) and the 3527 arrays that are byte-identical there (the 2471 head and boundaries, the server's
 // argument reads, the dispatch).
-const Addrs kAddrs3663{rrp::kCodeEnd3663,
-                       rrp::kApply3663, rrp::kApplyCall3663, rrp::kApplyReturn3663, rrp::kInfoCopy3663, rrp::kMapSite3663,
-                       rrp::kWorldSystem3663, rrp::kResolve3663, rrp::kAttDtor3663, rrp::kScopeAttacherBaseVtbl3663,
+// 3732 (static, 2026-11-21; never run): the table's values are 1.0.0.3732's (remote_rope_logic.h, with the evidence); the
+// same data offsets, re-read in 3732's code there, and the same 3527 arrays still byte-identical.
+const Addrs kAddrs3732{rrp::kCodeEnd3732,
+                       rrp::kApply3732, rrp::kApplyCall3732, rrp::kApplyReturn3732, rrp::kInfoCopy3732, rrp::kMapSite3732,
+                       rrp::kWorldSystem3732, rrp::kResolve3732, rrp::kAttDtor3732, rrp::kScopeAttacherBaseVtbl3732,
                        rrp::kPhysics_vfTransform3527, rrp::kStateBase3527, rrp::kFlightBase3527, rrp::kData_Slot3527,
-                       rrp::kRelease3663, rrp::kReleaseThreadCheck3663, rrp::kMainThreadId3663,
-                       rrp::kClientRemoteCatchVtbl3663, rrp::kApplyFailedErr3663,
-                       rrp::k2471Handler3663, rrp::k2471HandlerSlot3663, rrp::k2471Release3663,
-                       rrp::kSrvRelease3663, rrp::kSrvReleaseSlot3663, rrp::kSrvArgs3663,
-                       rrp::kWriter3663, rrp::kWriterSite3663, rrp::kToNearVtbl3663, rrp::kToNearVf13663,
-                       rrp::kTsOwnerCall3663,
-                       rrp::kActRelease3663, rrp::kServerRemoteCatchVtbl3663, rrp::kActReleaseSlot3663,
-                       rrp::kSrvCompVf158Slot3663, rrp::kSlotReset3663,
-                       rrp::kActClientCall3663, rrp::kActDispatch3663, rrp::kActKeepTest3663, rrp::kActNotify3663,
-                       rrp::kActSelfRelease3663,
-                       rrp::kApplyCallBytes3663, rrp::kMapSiteBytes3663, rrp::kReleaseThreadCheckBytes3663,
-                       rrp::k2471HandlerHead3527, rrp::k2471ReleaseBytes3663, rrp::k2471HandlerBoundaries3527,
-                       rrp::kSrvArgsBytes3527, rrp::kWriterSiteBytes3663, rrp::kActClientCallBytes3663,
+                       rrp::kRelease3732, rrp::kReleaseThreadCheck3732, rrp::kMainThreadId3732,
+                       rrp::kClientRemoteCatchVtbl3732, rrp::kApplyFailedErr3732,
+                       rrp::k2471Handler3732, rrp::k2471HandlerSlot3732, rrp::k2471Release3732,
+                       rrp::kSrvRelease3732, rrp::kSrvReleaseSlot3732, rrp::kSrvArgs3732,
+                       rrp::kWriter3732, rrp::kWriterSite3732, rrp::kToNearVtbl3732, rrp::kToNearVf13732,
+                       rrp::kTsOwnerCall3732,
+                       rrp::kActRelease3732, rrp::kServerRemoteCatchVtbl3732, rrp::kActReleaseSlot3732,
+                       rrp::kSrvCompVf158Slot3732, rrp::kSlotReset3732,
+                       rrp::kActClientCall3732, rrp::kActDispatch3732, rrp::kActKeepTest3732, rrp::kActNotify3732,
+                       rrp::kActSelfRelease3732,
+                       rrp::kApplyCallBytes3732, rrp::kMapSiteBytes3732, rrp::kReleaseThreadCheckBytes3732,
+                       rrp::k2471HandlerHead3527, rrp::k2471ReleaseBytes3732, rrp::k2471HandlerBoundaries3527,
+                       rrp::kSrvArgsBytes3527, rrp::kWriterSiteBytes3732, rrp::kActClientCallBytes3732,
                        rrp::kActDispatchBytes3527};
 const Addrs& addrs() noexcept {
-    static const Addrs& a = game::current_build() == game::Build::v3663   ? kAddrs3663
+    static const Addrs& a = game::current_build() == game::Build::v3732   ? kAddrs3732
                             : game::current_build() == game::Build::v3576 ? kAddrs3576
                             : game::current_build() == game::Build::v3527 ? kAddrs3527
                                                                           : kAddrs2976;
@@ -1095,7 +1097,7 @@ bool install_hooks(bool host) {
 bool build_ok() {
     const game::Build b = game::current_build();
     return g_base == g2976::kImageBase && (b == game::Build::v2976 || b == game::Build::v3527 || b == game::Build::v3576 ||
-                                           b == game::Build::v3663);
+                                           b == game::Build::v3732);
 }
 
 std::string b8(uint64_t f) { return rrp::opt8_ok(f) ? std::format("{}", rrp::opt8_val(f)) : std::string("?"); }
@@ -1472,7 +1474,7 @@ void remote_rope_start(const std::string& raw, bool guest) {
     if (g_started.exchange(true)) return;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     if (!build_ok()) {
-        log::error("RemoteRope: unsupported game build (not 1.0.0.2976, 1.0.0.3527, 1.0.0.3576 or 1.0.0.3663); remote_rope "
+        log::error("RemoteRope: unsupported game build (not 1.0.0.2976, 1.0.0.3527, 1.0.0.3576 or 1.0.0.3732); remote_rope "
                    "stays off");
         return;
     }

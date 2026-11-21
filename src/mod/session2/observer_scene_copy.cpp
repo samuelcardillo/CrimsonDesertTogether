@@ -204,26 +204,41 @@ const Region kRegions3576[] = {
 // mov rax,[rcx+0x1F8]. The 2661 it books: its serializer 0x2D41C70 writes u8 4 | u32 actor | 87 bytes of play data
 // (0x26B31E0: owner u32 first, then the u64 id) | 11 bytes per binding: 3527's prefix 92. MoveFieldAck (0x2C7A2B0):
 // u8 | u32 | u32 | u32 | u32 + 0x30 per entry (0x26AB510), as 3527's.
-constexpr uint8_t kSite3663[] = {
+// 3732 (static, 2026-11-21; never run): the 3663 regions and layout below now hold 1.0.0.3732's, in place (the lines
+// above describe 3663). Each region found again by its bytes (relative fields masked), one hit each. The site 0x2B3BE6A
+// in DeleteSequencer 0x2B3BB10 (+0x35A as in 3663): the same bytes but for its two lea (base pa::ISendTargetFinder
+// 0x5F6D9C0 / pa::ToTargetSendTargetFinder 0x5F6D9E0 by RTTI) and its call of the serializer 0x2D46CE0 (its only caller;
+// it returns to 0x2B3BED8); the sequencer still in rdi ([rdi+0x30]) and the manager in r13 ([r13+0x18]), r9 = [rsi+8].
+// The owner lookup 0x228A38B (in 0x228A310, key +0xA0; unique), the serializer's body (from 0x2D46CE5, identical to
+// 3527's, rel32 included) and its opcode write 0x2D46E2C (+0x14C as before), still `mov word [r14],0xA63` =
+// DeleteSequencerAck 2659 (the catalogue did not change). ToTarget 0x5F6D9E0: vf0 0x2D70B80, vf1 0x2D70C30, vf2
+// 0x2D70C90 (vf1 / vf2 identical); the constructor 0x2D70BE0 (between them; 39 direct callers) differs only in its two
+// lea (the same vtables). The scope lookup 0x2C4088A (in 0x2C40870) and the realm mark 0x2A10936 (in 0x2A10920)
+// identical and unique. The vf 0xE8 getters: ChildOnlyInGame 0xC1DF30 mov rax,[rcx+0xD0], NormalInGame 0x3AD920
+// xor eax,eax. The 2661 it books: its serializer 0x2D46700 writes u8 4 | u32 actor | 87 bytes of play data (0x26B5940:
+// 21 writes, owner u32 first, then the u64 id) | 11 bytes per binding: prefix 92 as before.
+constexpr uint8_t kSite3732[] = {
     0x48, 0x8B, 0xF0, 0x48, 0x8B, 0x47, 0x30, 0x48, 0x89, 0x85, 0x50, 0x03, 0x00, 0x00, 0x49, 0x8B, 0x4D, 0x18, 0x4C,
-    0x8D, 0x3D, 0x0D, 0xF0, 0x42, 0x03, 0x4C, 0x89, 0x7C, 0x24, 0x70, 0xC6, 0x44, 0x24, 0x78, 0x00, 0x48, 0x8D, 0x05,
-    0x1C, 0xF0, 0x42, 0x03, 0x48, 0x89, 0x44, 0x24, 0x70, 0x48, 0xC7, 0x45, 0x80, 0x00, 0x00, 0x00, 0x00, 0x48, 0x85,
+    0x8D, 0x3D, 0x3D, 0x1B, 0x43, 0x03, 0x4C, 0x89, 0x7C, 0x24, 0x70, 0xC6, 0x44, 0x24, 0x78, 0x00, 0x48, 0x8D, 0x05,
+    0x4C, 0x1B, 0x43, 0x03, 0x48, 0x89, 0x44, 0x24, 0x70, 0x48, 0xC7, 0x45, 0x80, 0x00, 0x00, 0x00, 0x00, 0x48, 0x85,
     0xC9, 0x74, 0x0D, 0x48, 0x8B, 0x01, 0xFF, 0x90, 0xE8, 0x00, 0x00, 0x00, 0x48, 0x89, 0x45, 0x80, 0x48, 0x8D, 0x85,
     0x68, 0x03, 0x00, 0x00, 0x48, 0x89, 0x44, 0x24, 0x20, 0x4C, 0x8D, 0x4E, 0x08, 0x4C, 0x8D, 0x85, 0x50, 0x03, 0x00,
-    0x00, 0x48, 0x8D, 0x54, 0x24, 0x70, 0x49, 0x8B, 0x4D, 0x18, 0xE8, 0xC8, 0x8A, 0x20, 0x00};
-constexpr uint8_t kCtor3663[] = {0x48, 0x89, 0x4C, 0x24, 0x08, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B, 0xD9, 0x48, 0x8D, 0x05,
-                                 0xDC, 0xC5, 0x1F, 0x03, 0x48, 0x89, 0x01, 0xC6, 0x41, 0x08, 0x00, 0x48, 0x8D, 0x05, 0xEE, 0xC5};
-constexpr uint8_t kEmitOp3663[] = {0x66, 0x41, 0xC7, 0x06, 0x63, 0x0A};
-const Region kRegions3663[] = {
-    {0x2B3971A, kSite3663, "the native 2810 call in DeleteSequencer 0x2B393C0"},
-    {0x228876B, kOwnerFind3527, "the owner lookup by [sequencer+0xA0]"},
-    {0x2D42255, kEmitBody3527, "the 2810 serializer's body"},
-    {0x2D4239C, kEmitOp3663, "the 2810 serializer's opcode write"},
-    {0x2D6C150, kCtor3663, "ToTarget constructor"},
-    {0x2D6C1A0, kVf1_3527, "ToTarget vf1 (recipients)"},
-    {0x2D6C200, kVf2_3527, "ToTarget vf2 (equality)"},
-    {0x2C3BDFA, kScope3527, "the scope sender lookup"},
-    {0x2A0E1B6, kRealm3527, "ServerRunThread's realm mark (TLS +0x1EB)"},
+    0x00, 0x48, 0x8D, 0x54, 0x24, 0x70, 0x49, 0x8B, 0x4D, 0x18, 0xE8, 0x08, 0xAE, 0x20, 0x00};
+constexpr uint8_t kCtor3732[] = {0x48, 0x89, 0x4C, 0x24, 0x08, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B, 0xD9, 0x48, 0x8D, 0x05,
+                                 0xCC, 0xCD, 0x1F, 0x03, 0x48, 0x89, 0x01, 0xC6, 0x41, 0x08, 0x00, 0x48, 0x8D, 0x05, 0xDE, 0xCD};
+constexpr uint8_t kEmitOp3732[] = {0x66, 0x41, 0xC7, 0x06, 0x63, 0x0A};
+// 3732 (static, 2026-11-21; never run): was 0x2B3971A (in 0x2B393C0), 0x228876B, 0x2D42255, 0x2D4239C, 0x2D6C150, 0x2D6C1A0,
+// 0x2D6C200, 0x2C3BDFA, 0x2A0E1B6, in this order; each is the only match of its bytes (see above).
+const Region kRegions3732[] = {
+    {0x2B3BE6A, kSite3732, "the native 2810 call in DeleteSequencer 0x2B3BB10"},
+    {0x228A38B, kOwnerFind3527, "the owner lookup by [sequencer+0xA0]"},
+    {0x2D46CE5, kEmitBody3527, "the 2810 serializer's body"},
+    {0x2D46E2C, kEmitOp3732, "the 2810 serializer's opcode write"},
+    {0x2D70BE0, kCtor3732, "ToTarget constructor"},
+    {0x2D70C30, kVf1_3527, "ToTarget vf1 (recipients)"},
+    {0x2D70C90, kVf2_3527, "ToTarget vf2 (equality)"},
+    {0x2C4088A, kScope3527, "the scope sender lookup"},
+    {0x2A10936, kRealm3527, "ServerRunThread's realm mark (TLS +0x1EB)"},
 };
 
 struct Layout {
@@ -234,7 +249,10 @@ constexpr Layout kLayout2976{kReturnRva, kEmitRva, kCtorRva, kVtToTarget, kVtFin
 constexpr Layout kLayout3527{0x2AD4645, 0x2CDAB60, 0x2D04590, 0x5EEC840, 0x5EEC860, 0x2D04530, 0x2D045E0, 0x2D04640, 0xA0, 0x1EB};
 constexpr Layout kLayout3576{0x2AD5295, 0x2CDB7D0, 0x2D05200, 0x5EEEA60, 0x5EEEA80, 0x2D051A0, 0x2D05250, 0x2D052B0, 0xA0, 0x1EB};
 // Build 1.0.0.3663 (static, 2026-11-13; never run): see kRegions3663.
-constexpr Layout kLayout3663{0x2B39788, 0x2D42250, 0x2D6C150, 0x5F68760, 0x5F68740, 0x2D6C0F0, 0x2D6C1A0, 0x2D6C200, 0xA0, 0x1EB};
+// 3732 (static, 2026-11-21; never run): was {0x2B39788, 0x2D42250, 0x2D6C150, 0x5F68760, 0x5F68740, 0x2D6C0F0, 0x2D6C1A0,
+// 0x2D6C200, 0xA0, 0x1EB}: the site's return (site + 0x6E), the serializer (the site's rel32), the constructor, the two
+// vtables by RTTI and ToTarget's slots 0-2; the key +0xA0 and TLS +0x1EB are in kOwnerFind3527 / kRealm3527, unchanged.
+constexpr Layout kLayout3732{0x2B3BED8, 0x2D46CE0, 0x2D70BE0, 0x5F6D9E0, 0x5F6D9C0, 0x2D70B80, 0x2D70C30, 0x2D70C90, 0xA0, 0x1EB};
 const Layout* g_layout = &kLayout2976;  // published before g_verified
 
 constexpr uint32_t kActor_Key = 0x60, kActor_User = 0xA0, kUser_Main = 0xD0;
@@ -514,11 +532,11 @@ bool observer_scene_copy_verify_current(uintptr_t base) {
     if (!g_wanted.load()) return false;
     g_base = base;
     const bool b3576 = game::current_build() == game::Build::v3576;
-    const bool b3663 = game::current_build() == game::Build::v3663;
-    const char* build_name = b3663 ? "3663" : b3576 ? "3576" : "3527";
-    g_layout = b3663 ? &kLayout3663 : b3576 ? &kLayout3576 : &kLayout3527;
+    const bool b3732 = game::current_build() == game::Build::v3732;
+    const char* build_name = b3732 ? "3732" : b3576 ? "3576" : "3527";
+    g_layout = b3732 ? &kLayout3732 : b3576 ? &kLayout3576 : &kLayout3527;
     std::string bad;
-    for (const Region& r : b3663   ? std::span<const Region>(kRegions3663)
+    for (const Region& r : b3732   ? std::span<const Region>(kRegions3732)
                            : b3576 ? std::span<const Region>(kRegions3576)
                                    : std::span<const Region>(kRegions3527)) {
         std::vector<uint8_t> actual(r.bytes.size());

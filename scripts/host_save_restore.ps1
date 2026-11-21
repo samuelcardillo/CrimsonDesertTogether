@@ -36,7 +36,7 @@ $ErrorActionPreference = 'Stop'
 
 $kHeader = 'cdmp host save generation (P8 S35 phase E)'
 $kBuilds = @{ '1.0.0.2976' = '0x6AB28F00'; '1.0.0.3527' = '0x6AEA07A6'; '1.0.0.3549' = '0x6AEB7D59'
-              '1.0.0.3576' = '0x6AED2E85'; '1.0.0.3663' = '0x6AF5D198' }
+              '1.0.0.3576' = '0x6AED2E85'; '1.0.0.3663' = '0x6AF5D198'; '1.0.0.3732' = '0x6AFDC0CF' }
 $saveRoot = Join-Path $env:LOCALAPPDATA 'Pearl Abyss\CD\save'
 
 function Refuse([string]$why) {

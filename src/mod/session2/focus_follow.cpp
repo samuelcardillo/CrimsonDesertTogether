@@ -29,7 +29,14 @@ constexpr uintptr_t kVtClan3576 = 0x594F340, kVtStatus3576 = 0x591C7C0, kWorldSl
 // +0x3B8 / +0x3C0 (0x23860F7 / 0x23860F1); Status' setter 0x1932980 keeps the +0x3B8 store (remote_visible.cpp). The
 // clan component is still at components +0x110: the client component factory 0x9C3100 builds it (vtable store at
 // 0x9C33A0) and registers it with index 0x22 (0x9C33FB), stored at table + index * 8 (0x2297192).
-constexpr uintptr_t kVtClan3663 = 0x59CAFB8, kVtStatus3663 = 0x5998B60, kWorldSlot3663 = 0x72451C0;
+// 3732 (static, 2026-11-21; never run): was 0x59CAFB8; RTTI pa::ClientMercenaryClanActorComponent (slot 23 = 0x23880E0,
+// the focus routine after it 0x23881C0 = 3663's + 0x22C0 with every offset in place: Status+0x369 at +0x3C, +0x3C0 /
+// +0x3B8 at +0x1F1 / +0x1F7, the clan+0x118 store at +0x2AC; the factory 0x9C3980 stores this vtable at 0x9C3C20 and
+// registers it with index 0x22 at 0x9C3C7B, kept at [actor+0x68] + index * 8 by 0x2298D10).
+// 3732 (static, 2026-11-21; never run): was 0x5998B60; RTTI pa::ClientStatusActorComponent.
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; the world system slot (3197 RIP references; world -> +0x30 ->
+// +0x58 read so at 0xAC8F75).
+constexpr uintptr_t kVtClan3732 = 0x59D00A0, kVtStatus3732 = 0x599DC40, kWorldSlot3732 = 0x724B350;
 constexpr uint32_t kWorldManager = 0x30, kManagerUser = 0x58, kUserMain = 0xD0;
 constexpr uint32_t kActorKey = 0x60, kActorComps = 0x68, kActorInfo = 0x88, kInfoType = 0x01, kActorUser = 0xA0;
 constexpr uint32_t kCompsStatus = 0x20, kCompsClan = 0x110, kClanFocus = 0x118;
@@ -202,18 +209,18 @@ void focus_follow_start(bool enabled, bool guest) {
         return;
     }
     const bool b3576 = game::current_build() == game::Build::v3576;
-    const bool b3663 = game::current_build() == game::Build::v3663;
-    if (game::current_build() != game::Build::v3527 && !b3576 && !b3663) {
-        log::info("FocusFollow: only for builds 3527, 3549, 3576 and 3663, off");
+    const bool b3732 = game::current_build() == game::Build::v3732;
+    if (game::current_build() != game::Build::v3527 && !b3576 && !b3732) {
+        log::info("FocusFollow: only for builds 3527, 3549, 3576 and 3732, off");
         return;
     }
     const auto* profile = game::reader_profile();
-    if (!profile && !b3576 && !b3663) return;
+    if (!profile && !b3576 && !b3732) return;
     g_guest = guest;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    g_world_slot = g_base + (b3663 ? kWorldSlot3663 : b3576 ? kWorldSlot3576 : profile->world_system);
-    g_vt_status = g_base + (b3663 ? kVtStatus3663 : b3576 ? kVtStatus3576 : profile->vt_status);
-    g_vt_clan = g_base + (b3663 ? kVtClan3663 : b3576 ? kVtClan3576 : kVtClan);
+    g_world_slot = g_base + (b3732 ? kWorldSlot3732 : b3576 ? kWorldSlot3576 : profile->world_system);
+    g_vt_status = g_base + (b3732 ? kVtStatus3732 : b3576 ? kVtStatus3576 : profile->vt_status);
+    g_vt_clan = g_base + (b3732 ? kVtClan3732 : b3576 ? kVtClan3576 : kVtClan);
     g_on.store(true, std::memory_order_release);
     if (const HANDLE t = CreateThread(nullptr, 0, sender_thread, nullptr, 0, nullptr)) {
         CloseHandle(t);

@@ -78,6 +78,12 @@ constexpr size_t kN = std::size(kTargets);
 // ResetContext, PlaceObject, Validate, CommitEdit, EditAction, SetStageState, HouseList, HouseListCaller, ProximityTick
 // (0xA9A190 calls EnterStage / LeaveEditStage / ClearAndBuild: a candidate), Fn469970, Fn45CE80 and Fn453000 are not
 // resolved.
+// 3732 (static, 2026-11-21; never run): still NOT ported (3576-only, nothing here is used on 3732). The ones above that
+// were re-derived, all +0x410 but the last two: Store2733 0x475FC0, RebuildActiveStage 0x4812A0 (see housing_redraw.cpp),
+// the VHousingManager 0x5986890 slots (Mgr1 0x46E740, Mgr4 0x4AD030, Mgr5 0x4AD1D0, Mgr8 0x4AD350, Mgr10 0x46F410, Mgr11
+// 0x4703C0, Mgr12 0x46F170, Mgr13 0x470780, Mgr14 0x4708A0, Mgr22 0x499550, Mgr23 0x499640, Mgr24 0x499D80, Mgr26
+// 0x470DE0, Mgr27 0x4712A0, Mgr31 0x477F50, Mgr32 0x47DB80 (still a byte 00 before it), Mgr33 0x480880, Mgr34 0x490DC0,
+// Mgr35 0x4913D0), the body Mgr32 wraps 0x485350, RebuildCaller 0xA950E0, RecordIndexRebuild 0x182AAF0.
 
 struct Event {
     uint64_t ms = 0;

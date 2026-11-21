@@ -776,12 +776,17 @@ struct GoodbyeGuards {
 };
 constexpr GoodbyeGuards kGoodbye3527{kServerRecvRet3527, kSeqEventApply3527, kSeqEventApplyRet3527};
 constexpr GoodbyeGuards kGoodbye3576{0x29ACC6A, 0x2AEFE40, 0x2AF0109};
-constexpr GoodbyeGuards kGoodbye3663{0x2A0F29A, 0x2B53E50, 0x2B54119};
+// 3732 (static, 2026-11-21; never run): was {0x2A0F29A, 0x2B53E50, 0x2B54119}. OnRecvPacket 0x2A111F0 (profile_s2.h)
+// is .pdata 0x2A111F0..0x2A11A1B, the same 0x82B bytes, its only `ret` at +0x82A (0x2A11A1A). The apply:
+// kSeqEventApplyHead3527 has one match, 0x2B565A0 (3663 +0x2750), .pdata ..0x2B5686A (the same 0x2CA bytes), its only
+// `ret` at +0x2C9 (0x2B56869), and +0x54 (0x2B565F4) is the same `mov rdx,[rdx]` after `lea rdx,[rcx+8]` (rcx = this,
+// rdx = the int* result, as on_seq_event_apply reads them at the entry).
+constexpr GoodbyeGuards kGoodbye3732{0x2A11A1A, 0x2B565A0, 0x2B56869};
 const GoodbyeGuards* goodbye_guards() noexcept {
     switch (game::current_build()) {
         case game::Build::v3527: return &kGoodbye3527;
         case game::Build::v3576: return &kGoodbye3576;
-        case game::Build::v3663: return &kGoodbye3663;
+        case game::Build::v3732: return &kGoodbye3732;
         default: return nullptr;
     }
 }
@@ -1395,9 +1400,12 @@ void server_probe_log(const char* when) {
     // Build 1.0.0.3663 (static, 2026-11-13; never run): 0x6F31C98. GetCurrentFieldTime is 0x231A180 (clock_gate's
     // kGetterHead, unique in the image); with the TLS realm byte +0x1EB set it loads that 32-byte FieldTime at 0x231A1F4,
     // the client's 0x6F31C78 otherwise (the same +0x20 pair as 3576's); 5 functions read each of the two.
+    // 3732 (static, 2026-11-21; never run): was 0x6F31C98; GetCurrentFieldTime 0x231BE00 (clock_gate's kGetterHead,
+    // one match in the code) loads 0x6F37C98 at 0x231BE74 when the TLS realm byte +0x1EB is set, the client's
+    // 0x6F37C78 otherwise: the Troc block's +0x6000.
     uint8_t ft[32] = {};
     const auto b = game::current_build();
-    const uintptr_t world_time = b == game::Build::v3663   ? 0x6F31C98
+    const uintptr_t world_time = b == game::Build::v3732   ? 0x6F37C98
                                  : b == game::Build::v3576 ? 0x6EAD9B8
                                  : b == game::Build::v3527 ? 0x6EAB9B8
                                  : b == game::Build::v2976 ? 0x6A6D238

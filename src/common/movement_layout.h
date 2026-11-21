@@ -25,8 +25,10 @@ inline constexpr const Layout* layout(Build build) noexcept {
     // MoveActorAck / StartActionReq / StartActionAck / MoveFieldAck / LoadingFieldDataAck handlers and their MoveData,
     // StartAction A/B, Path, Transform and MoveField entry readers are 3527's instruction for instruction with relative
     // operands masked (game::wire_build() in build_profile.h lists the addresses). So 3527's payloads.
+    // 3732 (static, 2026-11-21; never run): no value here changes; the seven handlers of game::wire_build() and their
+    // helpers compared again with the saved 3527 listings, 0 differences (its comment lists 3732's addresses).
     return build == Build::v2976 ? &k2976
-           : build == Build::v3527 || build == Build::v3576 || build == Build::v3663 ? &k3527
+           : build == Build::v3527 || build == Build::v3576 || build == Build::v3732 ? &k3527
                                                                                   : nullptr;
 }
 inline constexpr size_t action_shift(bool ack) noexcept { return ack ? 139 : 138; }

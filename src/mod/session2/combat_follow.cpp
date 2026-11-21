@@ -42,6 +42,14 @@ using cfl::Skip;
 // [comps+0x1A0]; TransformSync's load reader 0x23DCEA0 is 3527's 0x236BF20 instruction for instruction; 0x146C2C7..
 // 0x146C315 still adds [+0xB4/+0xB8/+0xBC] to the sector shorts [+0xC0/+0xC2] * 1000), but the quaternion +0xA4, the
 // control byte +0xC8 and the actor manager's table are not re-derived.
+// Retargeted to build 1.0.0.3732 (static, 2026-11-21; never run; the values are set in combat_follow_start): the frame
+// clock 0x163CBB0 (called right before the delay read of setInterpolatePositionData 0x13C75D0) reads ms 0x71661A0 at
+// +0x20 and us 0x71661B0 at +0x2C (16 bytes apart again), setInterpolatePositionData reads the bias 0x724B5F8 at +0x1C
+// (0x13C75EC). The offsets below in 3732's code: comps +0x68 and TransformSync comps+0x1A0 (the action query 0xB42B60
+// is called on [comps+0x1A0], 0x973D3F; TransformSync's load reader 0x23DF170 is 3527's 0x236BF20 operand for operand;
+// 0x146DE47..0x146DE95 adds [+0xB4/+0xB8/+0xBC] to the sector shorts [+0xC0/+0xC2] * 1000); the hash table's layout
+// (count +0x88, 0x100-byte buckets +0x98, key / index pairs from +8, nodes +0xA0, node key +4) is in 21 lookups of
+// 3732's code (0x535124, 0x5352F3...). The quaternion +0xA4, the control byte +0xC8 and manager+8 are not re-derived.
 uintptr_t kClockBase = 0x6C8CD68;
 uintptr_t kClockFrac = 0x6C8CD70;
 uintptr_t kClockBias = 0x6D69438;
@@ -555,7 +563,7 @@ bool combat_follow_start(const std::string& raw, const std::string& raw_v2) {
     if (g_started.exchange(true)) return false;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     if (g_base != g2976::kImageBase || (!game::legacy_layout() && game::current_build() != game::Build::v3576 &&
-                                        game::current_build() != game::Build::v3663)) {
+                                        game::current_build() != game::Build::v3732)) {
         log::warn("CombatFollow: unexpected image base or build; off");
         return false;
     }
@@ -567,10 +575,10 @@ bool combat_follow_start(const std::string& raw, const std::string& raw_v2) {
         kClockBase = 0x70DBF68;
         kClockFrac = 0x70DBF78;
         kClockBias = 0x71C03A8;
-    } else if (game::current_build() == game::Build::v3663) {
-        kClockBase = 0x71600E8;
-        kClockFrac = 0x71600F0;
-        kClockBias = 0x7245468;
+    } else if (game::current_build() == game::Build::v3732) {
+        kClockBase = 0x71661A0;  // 3732 (static, 2026-11-21; never run): was 0x71600E8; the frame clock 0x163CBB0 reads it at +0x20 (ms)
+        kClockFrac = 0x71661B0;  // 3732 (static, 2026-11-21; never run): was 0x71600F0; the frame clock reads it at +0x2C (us)
+        kClockBias = 0x724B5F8;  // 3732 (static, 2026-11-21; never run): was 0x7245468; setInterpolatePositionData 0x13C75D0 reads it at +0x1C
     }
     if (pv2.mode != Mode::Off) {
         LARGE_INTEGER f;

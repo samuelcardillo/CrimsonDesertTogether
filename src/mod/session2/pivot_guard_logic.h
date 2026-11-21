@@ -10,6 +10,7 @@
 //   0x22059FF  test r14,r14 ; je 0x2205ADA ; then frees the [rsp+0x78] elements of r14: the way out every other path of the
 //              function takes, already correct for an empty result.
 // Build 1.0.0.3576: the same function at +0xC40 (kSites3576 below); 1.0.0.3663 at +0x6FDE0 (kSites3663).
+// kSites3663 now holds 1.0.0.3732's sites (3663's + 0x1C20; static, 2026-11-21, never run).
 
 #include <cstddef>
 #include <cstdint>
@@ -47,11 +48,18 @@ static_assert(kSites3576.lookup - kSites3576.entry == kLookupResult - kEntry &&
 // before the lookup's test; the virtual caller is 0x2272A3E (call [rax+0x40], in 0x2272840). The function's only rel32
 // branch to the point is the jne at 0x22753E3 to its start, and no rel32 of the exe's executable sections lands in
 // 0x2275515..0x227551B.
-inline constexpr Sites kSites3663{0x2275350, 0x22753DC, 0x2275514, 0x22757DF};
-static_assert(kSites3663.lookup - kSites3663.entry == kLookupResult - kEntry &&
-                  kSites3663.point - kSites3663.entry == kPoint - kEntry &&
-                  kSites3663.exit - kSites3663.entry == kExit - kEntry,
-              "3663: the same function, moved whole");
+// 3732 (static, 2026-11-21; never run): was {0x2275350, 0x22753DC, 0x2275514, 0x22757DF}; the whole handler moved by
+// +0x1C20 with the same bytes at the four sites, both rel32 included (the lookup's 13 bytes and the exit's 9 are each
+// the only exact match near the shift). 0x2276F70 begins a .pdata entry (to 0x227750C, 0x59C bytes as on 3663);
+// 0x2276FF1 calls 0x22752F0 (a jmp into the protected section) before the lookup's test; the virtual caller is
+// 0x227465E (call [rax+0x40], in 0x2274460); the count is still [rsp+0x78] (0x2277408) and rbx the processor (`mov
+// rbx,rcx` at 0x2276F9B). The only rel32 of the exe's executable sections that lands in 0x2277134..0x227713B is the jne
+// at 0x2277003, to the point's start.
+inline constexpr Sites kSites3732{0x2276F70, 0x2276FFC, 0x2277134, 0x22773FF};
+static_assert(kSites3732.lookup - kSites3732.entry == kLookupResult - kEntry &&
+                  kSites3732.point - kSites3732.entry == kPoint - kEntry &&
+                  kSites3732.exit - kSites3732.entry == kExit - kEntry,
+              "3732: the same function, moved whole");
 
 // No target: the function's own way out (`exit_rva`: the build's), instead of reading the element 0 of nothing.
 // Otherwise the native path, untouched.

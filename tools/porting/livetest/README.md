@@ -8,7 +8,9 @@ cerradas (el lanzador hace copia de las partidas en `backups/saves-2inst-*`).
   (comprueba que está delante antes de mandar nada) y capturas (`-Out`; `UI_CROP=x,y,w,h` recorta a resolución real).
   **No manda ALT si la ventana ya está delante:** hasta el 14-nov mandaba un toque de ALT en cada acción, y el
   personaje seguía corriendo tras un W corto.
-- `cdbuild.py`: el slot del mundo y el de la cámara de la build instalada (3576 o 3663).
+- `cdbuild.py`: el slot del mundo y el de la cámara de la build instalada (3576, 3663 o 3732). Las demás
+  direcciones del juego que llevan estas herramientas y las de `../boat/` son de 3732 desde el 21-nov (el origen del
+  trozo, el slot del cliente del clima, la vtable del actor del jugador y los búferes del mar).
 - `posnow.py pid`: posición del personaje propio ahora mismo (local a su padre si lo tiene, y la clave del padre).
 - `face.py pid x z`: gira la cámara hacia un punto del mundo. `walk.py pid [-s parada] [-n pasos] x z [x z ...]`: anda
   a puntos del mundo con W cortos, leyendo la posición en vivo (vale nadando). `goto3576.py`: lo mismo, más rápido en

@@ -28,15 +28,28 @@ namespace {
 //                        as origin, its strength up again).
 //   0x3FCE750 (sea)      copies four frames of that history into the static buffer exe+0x75AD350 (0x770 bytes,
 //                        "OceanWaveConstantBuffer"); 0x3FCF410, its only caller, hands that buffer to the GPU.
-constexpr uintptr_t kFill = 0x3FCE750;
+// Build 1.0.0.3732 (static, 2026-11-21; never run; the values below are 3732's, the three lines above 3663's): the
+// same two routines, each compared with its saved 3663 listing instruction by instruction: 0x3FD1460 (was 0x3FCCF70;
+// all 551 instructions equal but for relative fields and the two tables' image addresses, now 0x597BA60 lengths and
+// 0x597BAB0 multipliers) and 0x3FD2C40 (was 0x3FCE750; 0xCBC bytes as before, the 420 instructions of the saved
+// listing equal but for relative fields, the rest had not been saved). The static buffer is exe+0x75B3590
+// (was 0x75AD350); the callers are 0x3F2483C (advance) and 0x3FD3AE2 in 0x3FD3900 (fill, the only one).
+// 3732 (static, 2026-11-21; never run): was 0x3FCE750; kFillHead's 24 bytes are there and nowhere else in the code
+// section, a .pdata start; the sea object still comes in rcx (mov rcx,rdi at 0x3FD3ADF; mov rbx,rcx at 0x3FD2C85).
+constexpr uintptr_t kFill = 0x3FD2C40;
 constexpr std::array<uint8_t, 24> kFillHead = {0x48, 0x8B, 0xC4, 0x48, 0x89, 0x50, 0x10, 0x53, 0x56, 0x57, 0x41, 0x54,
                                                0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x81, 0xEC, 0x30, 0x01, 0x00};
 constexpr size_t kFillPatch = 7;  // mov rax, rsp ; mov [rax+0x10], rdx
+// 3732 (static, 2026-11-21; never run): the three offsets, the 16-byte records, the five slots and the twelve trains
+// are unchanged: 0x3FD309E reads [sea+0x303C4], 0x3FD30A7 [sea+0x303E8], 0x3FD3124 [sea+0x303F8]; the advance writes
+// [sea+slot*4+0x303F8] at 0x3FD178A, steps the slot modulo 5 (0x3FD15BF) and loops to 12 (cmp edi,0Ch, 0x3FD1947).
 constexpr uint32_t kSeaSlot = 0x303C4;    // u32: the history frame being written, 0..4
 constexpr uint32_t kSeaFrames = 0x303E8;  // -> records of 16 bytes; the first word of record n -> frame n (12 x 0x20)
 constexpr uint32_t kSeaWind = 0x303F8;    // f32 per frame: the wind's strength for the swell, 0..1
 constexpr uint32_t kSlots = 5;
-constexpr uintptr_t kWorldSlot = 0x72451C0;
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; the world system global, 3197 references (lead's anchor; vf178
+// 0x5DF500 reads [[0x724B350]+0x30]+0x58).
+constexpr uintptr_t kWorldSlot = 0x724B350;
 constexpr uint64_t kSeaGoneUs = 2000000;  // the host: another sea object is taken once the one in use is not seen
 constexpr uint64_t kFaultLimit = 50;      // writes or reads that faulted: the module stops touching the sea
 constexpr size_t kMaxBacklog = 256 * 1024;  // the host does not add the sea to a tunnel this far behind
@@ -226,7 +239,7 @@ uintptr_t fill_detour(uintptr_t sea, uintptr_t a2, uintptr_t a3, uintptr_t a4) {
 bool install() {
     std::array<uint8_t, kFillHead.size()> actual{};
     if (!game::safe_read(g_base + kFill, actual.data(), actual.size()) || actual != kFillHead) {
-        log::error("SeaSync: exe+0x{:X} is not build 3663's entry of the sea's buffer routine; REFUSED, nothing written",
+        log::error("SeaSync: exe+0x{:X} is not build 3732's entry of the sea's buffer routine; REFUSED, nothing written",
                    kFill);
         return false;
     }
@@ -350,8 +363,8 @@ void sea_sync_start(bool enabled, bool guest) {
         log::info("SeaSync: off (sea_sync=0)");
         return;
     }
-    if (game::current_build() != game::Build::v3663) {
-        log::info("SeaSync: only for build 1.0.0.3663, off");
+    if (game::current_build() != game::Build::v3732) {
+        log::info("SeaSync: only for build 1.0.0.3732, off");
         return;
     }
     g_guest = guest;

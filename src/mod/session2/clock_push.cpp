@@ -53,12 +53,15 @@ u2f::Mode mode() { return static_cast<u2f::Mode>(g_mode.load(std::memory_order_a
 // Build 1.0.0.3663 (static, 2026-11-13; never run): 0x6F31C98. GetCurrentFieldTime 0x231A180 (clock_gate's kGetterHead,
 // unique) loads that 32-byte FieldTime at 0x231A1F4 when the TLS realm byte +0x1EB is set, the client's 0x6F31C78
 // otherwise (3576's +0x20 pair); the same 5 functions read each.
+// 3732 (static, 2026-11-21; never run): was 0x6F31C98; GetCurrentFieldTime 0x231BE00 (clock_gate's kGetterHead, one
+// match in the code, .pdata start) loads the 32 bytes at 0x6F37C98 (0x231BE74) when the TLS realm byte +0x1EB is set
+// (mov edx,0x1EB at 0x231BE64), the client's 0x6F37C78 otherwise: the Troc block's +0x6000.
 uintptr_t server_clock_rva() noexcept {
     switch (game::current_build()) {
         case game::Build::v2976: return ckp::kServerClock;
         case game::Build::v3527: return 0x6EAB9B8;
         case game::Build::v3576: return 0x6EAD9B8;
-        case game::Build::v3663: return 0x6F31C98;
+        case game::Build::v3732: return 0x6F37C98;
         default: return 0;
     }
 }

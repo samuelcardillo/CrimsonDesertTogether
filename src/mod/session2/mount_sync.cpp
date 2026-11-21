@@ -136,15 +136,55 @@ constexpr Addrs kAddrs3576{0x23FDDC0, 0xB4DCF0, 0x23FEA20, 0xB4DD10, 0x750210, 0
 //   mode function (3527's bytes). NOT re-derived: the link (+0x08/+0x0C/+0x10/+0x14), the seat tables (vc+0x48/+0x88/
 //   +0xC8), CC+0x100 / +0x228 and the attach type +0x08, the hierarchy comps+0x1B8 (+0x18/+0x1C), TransformSync
 //   +0xA4/+0xB4/+0xC0 (its load reader 0x23DCEA0 is 3527's 0x236BF20 instruction for instruction).
-constexpr Addrs kAddrs3663{0x246F6C0, 0xB84E80, 0x2470330, 0xB84EA0, 0x77C3A0, 0x77D370, 0xD11830, 0xD12300, 0xC9CA10, 0x5613000,
-                           0x258CAA0, 0x976BE3, 0x976BD6, 0x20DFF86, 0x9A50D0, 0xB852D0,
-                           {0xE9, 0xCB, 0x76, 0xFE, 0x08},  // jmp 0x9B6C550
-                           {0xE9, 0x3B, 0xAC, 0xD4, 0x0A},  // jmp 0xD1BAF70
+// Build 1.0.0.3732 (static, 2026-11-21; never run): the table below holds 3732's values (the comment above is 3663's,
+// with 3663's addresses); each one found again the way that comment says, every head compared byte for byte:
+// - common_vf53 3732: was 0x246F6C0; slot 53 of pa::CommonVehicleActorComponent 0x5D72B30 (RTTI name; kEntry7, .pdata
+//   start). client_vf53 3732: was 0xB84E80; slot 53 of pa::ClientVehicleActorComponent 0x59C7848, the thunk
+//   `jmp 0x98BEFB0` (protected section; no rel32 of the code lands in its +1..+4). client_vf54 3732: was 0xB84EA0; slot
+//   54 of the same vtable (kVf54, .pdata start).
+// - rideoff_thunk 3732: was 0x2470330; the target of vf53's call at its +0x209 (0x2471B99, the same offset and the
+//   same five argument instructions as in 3663; the thunk is vf53 + 0xC70 as before): `jmp 0xCBB0B60` (protected
+//   section; 13 callers as in 3663; no rel32 lands in its +1..+4).
+// - ride_on / ride_off 3732: were 0x77C3A0 / 0x77D370; slot 7 of pa::RideOnMovementMethod 0x59A7DF8 and
+//   pa::RideOffMovementMethod 0x59A7D48 (kRideEnter, .pdata starts).
+// - h2663 / h2916 / h2991 3732: were 0xD11830 / 0xD12300 / 0xC9CA10; slot 2 of pa::TrocTrInteractionPreemption-
+//   StepSuccessAck 0x5A1A5A0, pa::TrocTrInteractionDoStepSuccessAck 0x5A1A5E0 and pa::TrocTrStartActionAck 0x5A1C9A0
+//   (kHandler, .pdata starts; each still takes the packet as [r8+0x18] with its length at +3).
+// - code_end 3732: was 0x5613000; the R-X section is 0x1000 + 0x5617000.
+// - gate 3732: was 0x258CAA0; the only match of kGateHead3527 near (.pdata start; 3 callers; it copies two 0x78-byte
+//   entries, reads CC+0x08 / +0x80 / +0x88 / +0x90 and writes CC+0xA8, tests def+0x0A & 0x40). gate_site 3732: was
+//   0x976BD6; the only match of the array in the whole code section but for the call's rel32 (`lea rdx,[rsp+20h];
+//   mov rcx,r15; call 0x258EF30; mov [r14],r12d`); gate_ret 3732: was 0x976BE3; the address after that call.
+//   gate_or 3732: was 0x20DFF86; the only match of kGateNetOrBytes in the whole code section.
+// - hold 3732: was 0x9A50D0; the only match of kHoldEntry near (.pdata start; reads mc+0x60 = CC, CC+8 = actor,
+//   comps+0x1A0); the mode function moved by the same +0x880 (0x9A5B90) and still reads actor+0x90, [actor+0x88]+1,
+//   vc+0xEB and vc+0xC8. action_req 3732: was 0xB852D0; the only match of kActionReqBytes near (.pdata start; 2
+//   callers, one vf54's own at +0x333 as in 3663, behind `call [rax+178h]`).
+// - vf178_actor 3732: was 0x5DF1C0; slot 47 of pa::ClientActor 0x5996708, pa::ClientNormalInGameActor 0x5995CB8 and
+//   pa::ClientChildOnlyInGameActor 0x59961D0 ([[0x724B350]+0x30]+0x58 vs [this+0xA0], then [this+0x94]).
+//   vf178_user 3732: was 0x9BE630; slot 47 of pa::ClientUserActor 0x59C6E78 (`movzx eax,[rcx+94h]; ret`).
+// - mc_method 0x13C / mc_methods 0x140 / rideoff_key 0xD0: unchanged; 11 sites read the byte [mc+0x13C] (cmp al,17h)
+//   and index [mc+idx*8+0x140]; RideOff::Enter writes the horse key at +0xD0 at its +0x223 (0x77DAB3) as in 3663.
+// Also re-read in 3732's code (unchanged): vf53 uses vc+0x08, vc+0x18 -> link (+0x08, +0x0C, +0x10), vc+0x48 /
+// +0x88 / +0xC8, comps+0x40 / +0x48 / +0x90 / +0xB0 / +0x1A0 and [actor+0x88]+1; actor+0xC8 (ClientActor slot 49,
+// 0x5DAF30); CC+0x100 (vf54's callee 0xB86670); the hierarchy comps+0x1B8 with +0x18 / +0x1C (Hierarchy::SetParent
+// 0x187D7F0, whose callers still pass 12 for "none"); CC+0xC8 the movement controller ([[[actor+0x68]+0x40]+0xC8]+
+// 0x13C at 0x3EF75B, 9 such sites); the attach struct's type at +8 (0xBA7349 cmp byte [r15+8],4; 0xBABAD9 writes it
+// with the type it gives SetParent); the method's actor at +0x20 (RideOff::Enter 0x77D8F7); CC+0x228 (the body of CC
+// vf19, 0x9445FA8 in the protected section: mov byte [rcx+228h],1); actor+0x96 (384 sites test it after
+// [[actor+0x88]+1] == 1, e.g. 0x3B0828); the entries' +0x00 / +0x50 / +0x51 (their builder 0x20E1B80). NOT re-read (as
+// in 3663): link +0x14 (its setter 0x2474840 is a thunk into the protected section) and the definition's hash +0x18.
+// NOT RIGHT on 3732 (nor, by remote_interp.cpp's tables, since 3527): msl::kMcEmptyFlag, see there.
+constexpr Addrs kAddrs3732{0x2471990, 0xB857C0, 0x2472600, 0xB857E0, 0x77C8C0, 0x77D890, 0xD12280, 0xD12D50, 0xC9D460, 0x5618000,
+                           0x258EF30, 0x977303, 0x9772F6, 0x20E1BA6, 0x9A5950, 0xB85C10,
+                           {0xE9, 0xEB, 0x97, 0xD3, 0x08},  // jmp 0x98BEFB0 (3732; was E9 CB 76 FE 08, jmp 0x9B6C550)
+                           {0xE9, 0x5B, 0xE5, 0x73, 0x0A},  // jmp 0xCBB0B60 (3732; was E9 3B AC D4 0A, jmp 0xD1BAF70)
                            kGateHead3527, sizeof kGateHead3527,
-                           {0x48, 0x8D, 0x54, 0x24, 0x20, 0x49, 0x8B, 0xCF, 0xE8, 0xBD, 0x5E, 0xC1, 0x01, 0x45, 0x89, 0x26},
-                           0x13C, 0x140, 0xD0, 0x5DF1C0, 0x9BE630};
+                           // 3732: the call's rel32 is 2D 7C C1 01 (was BD 5E C1 01); the other bytes are the same.
+                           {0x48, 0x8D, 0x54, 0x24, 0x20, 0x49, 0x8B, 0xCF, 0xE8, 0x2D, 0x7C, 0xC1, 0x01, 0x45, 0x89, 0x26},
+                           0x13C, 0x140, 0xD0, 0x5DF500, 0x9BEEB0};
 const Addrs& addrs() noexcept {
-    static const Addrs& a = game::current_build() == game::Build::v3663 ? kAddrs3663
+    static const Addrs& a = game::current_build() == game::Build::v3732 ? kAddrs3732
                             : game::current_build() == game::Build::v3576 ? kAddrs3576
                             : game::is_3549()                           ? kAddrs3549
                             : game::current_build() == game::Build::v3527 ? kAddrs3527
@@ -2171,7 +2211,7 @@ DWORD WINAPI install_thread(LPVOID) {
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     std::vector<gad::Section> secs;
     if ((!game::legacy_layout() && game::current_build() != game::Build::v3576 &&
-         game::current_build() != game::Build::v3663) ||
+         game::current_build() != game::Build::v3732) ||
         !p8_exe_sections(g_base, secs)) {
         log::error("MountSync: unsupported game build or unreadable sections; nothing installed");
         return 0;

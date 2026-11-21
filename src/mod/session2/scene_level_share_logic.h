@@ -205,24 +205,50 @@ inline constexpr std::array<uint8_t, 82> kCallSite3576{
 // 0x2CA9FFD) has the 3527 instructions with those displacements and two new rel32 (0x231AA90; the delete 0x2AD51C0).
 // The string object's +8 length is the shared string's (interaction_condition.cpp); its +0xC hash is 3527's, not
 // re-derived.
-inline constexpr uint32_t kPeTimestamp3663 = 0x6AF5D198;
-inline constexpr uint32_t kVtServerField3663 = 0x5F6C7E8;
-inline constexpr uint32_t kGateFnBegin3663 = 0x2ADBE00, kGateFnEnd3663 = 0x2ADC2DD;
-inline constexpr uint32_t kGateRva3663 = 0x2ADBE4D;
-inline constexpr uint32_t kGateSigRva3663 = 0x2ADBE32;
-static_assert(kGateRva3663 - kGateSigRva3663 == kGateSigPatchAt);
-inline constexpr uint32_t kDeleteRva3663 = 0x2AD51C0, kDeleteEnd3663 = 0x2AD5D33;
-inline constexpr uint32_t kRet28343663 = 0x2CAA04F, kRetOwnerLoad3663 = 0x2AE1D14, kRetLoader3663 = 0x2B36240;
-inline constexpr uint32_t kFrameSiteRva3663 = 0x2CA9D50;
-inline constexpr std::array<uint8_t, 12> kFrameSite3663{0x48, 0x8D, 0x6C, 0x24, 0xA0, 0x48, 0x81, 0xEC, 0x70, 0x01, 0x00, 0x00};
-inline constexpr uint32_t kCallSiteRva3663 = 0x2CA9FFD;
-inline constexpr std::array<uint8_t, 82> kCallSite3663{
-    0x44, 0x8B, 0x45, 0xD8, 0x48, 0x8D, 0x55, 0x28, 0x48, 0x8B, 0x8B, 0x10, 0x02, 0x00, 0x00, 0xE8, 0x7F, 0x0A, 0x67, 0xFF,
+//
+// 3732 (static, 2026-11-21; never run), every value below retargeted in place. A and B moved whole by +0x2750 with
+// 3663's .pdata sizes (0x4DD / 0xB73): A is 0x2ADE550 (the 40-byte signature once in the code section, 3527's bytes, at
+// +0x32; 0x2ADE575 mov rdi,r9; 0x2ADE578 mov r13,rcx; 0x2ADE57B mov r8,[rcx+0x210]; its ready write at +0x181; no
+// in-function branch lands inside the cmp), B is 0x2AD7910 (the same 16-byte head; the name still [holder] -> S, [S]
+// chars, [S+8] length or -1; the type-0 map still mgr + (type + 4) * 0x20). B's rel32 callers in the code section are
+// the same six at the same offsets in their functions: the 2834 handler 0x2CAE7D0 (+0x30A), the owner's load 0x2AE4200
+// (+0x25F; it still walks +0x84 / +0x98 / +0x8C, node +0x40 / +0x10, and clears +0x238 / +0x258), the loader 0x2B38950
+// (+0x3B); 0x2AC8084, 0x2B396D4 and 0x2D9B9A3 are the others (the seventh was in the protected section: not looked
+// for). The 2834 handler moved by +0x4A90 with 3663's frame (7 pushes, `lea rbp,[rsp-0x60] ; sub rsp,0x170`) and call
+// site: the same instructions and displacements (&name [rbp+0x28], &type [rbp-0x78], the hash [rbp-0x28], parsed at
+// +0x12C and only read up to the call), two new rel32 (the lookup thunk 0x231C710; the delete 0x2AD7910).
+// 3732 (static, 2026-11-21; never run): was 0x6AF5D198; 1.0.0.3732's PE timestamp (the exe's header; build_profile.h).
+inline constexpr uint32_t kPeTimestamp3732 = 0x6AFDC0CF;
+// 3732 (static, 2026-11-21; never run): was 0x5F6C7E8; RTTI pa::ServerField.
+inline constexpr uint32_t kVtServerField3732 = 0x5F721D8;
+// 3732 (static, 2026-11-21; never run): was 0x2ADBE00 / 0x2ADC2DD; the .pdata function that holds the signature.
+inline constexpr uint32_t kGateFnBegin3732 = 0x2ADE550, kGateFnEnd3732 = 0x2ADEA2D;
+// 3732 (static, 2026-11-21; never run): was 0x2ADBE4D; the signature + 27, `cmp [r8+0x180],eax`.
+inline constexpr uint32_t kGateRva3732 = 0x2ADE59D;
+// 3732 (static, 2026-11-21; never run): was 0x2ADBE32; kGateSig3527 once in the whole code section, unchanged bytes.
+inline constexpr uint32_t kGateSigRva3732 = 0x2ADE582;
+static_assert(kGateRva3732 - kGateSigRva3732 == kGateSigPatchAt);
+// 3732 (static, 2026-11-21; never run): was 0x2AD51C0 / 0x2AD5D33; kDeleteHead once near old + shift, its .pdata entry.
+inline constexpr uint32_t kDeleteRva3732 = 0x2AD7910, kDeleteEnd3732 = 0x2AD8483;
+// 3732 (static, 2026-11-21; never run): were 0x2CAA04F / 0x2AE1D14 / 0x2B36240; the returns of the rel32 calls of
+// 0x2AD7910 at 0x2CAEADA, 0x2AE445F and 0x2B3898B.
+inline constexpr uint32_t kRet28343732 = 0x2CAEADF, kRetOwnerLoad3732 = 0x2AE4464, kRetLoader3732 = 0x2B38990;
+// 3732 (static, 2026-11-21; never run): was 0x2CA9D50; the 2834 handler 0x2CAE7D0 + 0x10, kFrameSite3663 unchanged.
+inline constexpr uint32_t kFrameSiteRva3732 = 0x2CAE7E0;
+inline constexpr std::array<uint8_t, 12> kFrameSite3732{0x48, 0x8D, 0x6C, 0x24, 0xA0, 0x48, 0x81, 0xEC, 0x70, 0x01, 0x00, 0x00};
+// 3732 (static, 2026-11-21; never run): was 0x2CA9FFD; the handler + 0x2BD as on 3663.
+inline constexpr uint32_t kCallSiteRva3732 = 0x2CAEA8D;
+// 3732 (static, 2026-11-21; never run): was at 0x2CA9FFD; only the two rel32 differ (7F 0A 67 FF -> 6F DC 66 FF, 71 B1
+// E2 FF -> 31 8E E2 FF).
+inline constexpr std::array<uint8_t, 82> kCallSite3732{
+    0x44, 0x8B, 0x45, 0xD8, 0x48, 0x8D, 0x55, 0x28, 0x48, 0x8B, 0x8B, 0x10, 0x02, 0x00, 0x00, 0xE8, 0x6F, 0xDC, 0x66, 0xFF,
     0x90, 0x83, 0x7D, 0x48, 0x00, 0x74, 0x3A, 0x48, 0x8B, 0x45, 0x28, 0x48, 0x8B, 0x10, 0x48, 0x85, 0xD2, 0x74, 0x2E, 0x80,
     0x3A, 0x00, 0x74, 0x29, 0x44, 0x88, 0x75, 0x88, 0x40, 0x88, 0x74, 0x24, 0x30, 0xC6, 0x44, 0x24, 0x28, 0x00, 0xC6, 0x44,
-    0x24, 0x20, 0x00, 0x41, 0xB1, 0x01, 0x4C, 0x8D, 0x45, 0x88, 0x48, 0x8D, 0x55, 0x28, 0x48, 0x8B, 0xCB, 0xE8, 0x71, 0xB1,
+    0x24, 0x20, 0x00, 0x41, 0xB1, 0x01, 0x4C, 0x8D, 0x45, 0x88, 0x48, 0x8D, 0x55, 0x28, 0x48, 0x8B, 0xCB, 0xE8, 0x31, 0x8E,
     0xE2, 0xFF};
-inline constexpr uintptr_t kFrameName3663 = 0x138, kFrameType3663 = 0x98, kFrameHash3663 = 0xE8;
+// 3732 (static, 2026-11-21; never run): unchanged (0x138 / 0x98 / 0xE8): the handler's frame and the call site's
+// displacements are 3663's.
+inline constexpr uintptr_t kFrameName3732 = 0x138, kFrameType3732 = 0x98, kFrameHash3732 = 0xE8;
 
 inline bool frame_matches(uintptr_t frame, uintptr_t name_arg, uintptr_t type_arg, uintptr_t name_off, uintptr_t type_off) {
     return frame && name_arg == frame + name_off && type_arg == frame + type_off;

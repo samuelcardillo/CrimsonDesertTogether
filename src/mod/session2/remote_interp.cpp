@@ -93,15 +93,27 @@ constexpr HookSite kHooks3576[rip::kSites] = {
 // offsets: the CC's constructor 0x96FB30 (vptr 0x59C1660) builds the controller with 0x98CD80(mc, cc) and stores it at
 // CC+0xC8 (0x96FEA7); 0x98CD80 stores the CC at mc+0x60 (0x98D556) and initializes mc+0x430 and mc+0x4E8 with the same
 // call (0x98D1DA / 0x98D20A). The four functions read the buffer's +0x08 array, +0x10 count, 0xA0-byte samples, ts +0x98.
-constexpr HookSite kHooks3663[rip::kSites] = {
-    {0x13C5A8E, {0x4C, 0x63, 0x15, 0xB3, 0x8F, 0xDC, 0x05}, Site::SetPos, 0x430,
-     "the delay read of setInterpolatePositionData 0x1386C00 (3663 0x13C5A50)"},
-    {0x13C61B0, {0x4C, 0x63, 0x1D, 0x91, 0x88, 0xDC, 0x05}, Site::SetRot, 0x4E8,
-     "the delay read of setInterpolateRotateData 0x1387310 (3663 0x13C6160)"},
-    {0x13C5F1A, {0x48, 0x63, 0x05, 0x27, 0x8B, 0xDC, 0x05}, Site::UpdPos, 0x430,
-     "the delay read of updateInterpolatePositionData 0x1387050 (3663 0x13C5EA0)"},
-    {0x13C65E2, {0x48, 0x63, 0x05, 0x5F, 0x84, 0xDC, 0x05}, Site::UpdRot, 0x4E8,
-     "the delay read of updateInterpolateRotateData 0x1387720 (3663 0x13C6570)"},
+// Retargeted to build 1.0.0.3732 (the lines above describe 3663 with 3663's addresses): in 0x13C6250..0x13C8D70 only
+// one global is read by four `movsxd r64,[rip+X]`: 3663's four sites + 0x1B80, at the same distances (0x48C / 0x722 /
+// 0xB54), each at the same offset of its function (+0x3E / +0x50 / +0x7A / +0x72; all four .pdata starts), the same
+// instruction with a new RIP displacement, the same registers (rdi the buffer; set: `lea r9/r10,[rax+rbx]` after it,
+// rbp the new sample; update: `lea rcx,[rax+rbx]` before it); all four read the delay 0x7194B98. The buffer offsets:
+// the CC's constructor 0x970250 (vptr 0x59C6748) builds the controller with 0x98D600(mc, cc) and stores it at CC+0xC8
+// (0x9705C7); 0x98D600 stores the CC at mc+0x60 (0x98DDD6) and initializes mc+0x430 / mc+0x4E8 (0x98DA5A / 0x98DA8A).
+// The functions read the buffer's +0x08 array, +0x10 count, 0xA0-byte samples (`lea rdx,[rax+rax*4]; shl rdx,5`), ts +0x98.
+constexpr HookSite kHooks3732[rip::kSites] = {
+    // 3732 (static, 2026-11-21; never run): was 0x13C5A8E, `4C 63 15 B3 8F DC 05`; +0x3E of 0x13C75D0 (was 0x13C5A50).
+    {0x13C760E, {0x4C, 0x63, 0x15, 0x83, 0xD5, 0xDC, 0x05}, Site::SetPos, 0x430,
+     "the delay read of setInterpolatePositionData 0x1386C00 (3732 0x13C75D0)"},
+    // 3732 (static, 2026-11-21; never run): was 0x13C61B0, `4C 63 1D 91 88 DC 05`; +0x50 of 0x13C7CE0 (was 0x13C6160).
+    {0x13C7D30, {0x4C, 0x63, 0x1D, 0x61, 0xCE, 0xDC, 0x05}, Site::SetRot, 0x4E8,
+     "the delay read of setInterpolateRotateData 0x1387310 (3732 0x13C7CE0)"},
+    // 3732 (static, 2026-11-21; never run): was 0x13C5F1A, `48 63 05 27 8B DC 05`; +0x7A of 0x13C7A20 (was 0x13C5EA0).
+    {0x13C7A9A, {0x48, 0x63, 0x05, 0xF7, 0xD0, 0xDC, 0x05}, Site::UpdPos, 0x430,
+     "the delay read of updateInterpolatePositionData 0x1387050 (3732 0x13C7A20)"},
+    // 3732 (static, 2026-11-21; never run): was 0x13C65E2, `48 63 05 5F 84 DC 05`; +0x72 of 0x13C80F0 (was 0x13C6570).
+    {0x13C8162, {0x48, 0x63, 0x05, 0x2F, 0xCA, 0xDC, 0x05}, Site::UpdRot, 0x4E8,
+     "the delay read of updateInterpolateRotateData 0x1387720 (3732 0x13C80F0)"},
 };
 const HookSite* g_sites = kHooks2976;
 constexpr uint32_t kHookLen = 7;
@@ -517,7 +529,7 @@ bool patch_threshold() {
 bool player_in_world() {
     uintptr_t world = 0, mgr = 0, vt = 0, actor = 0, avt = 0;
     if (const auto* profile = game::reader_profile();
-        profile && (game::layout_3527() || game::current_build() == game::Build::v3663)) {
+        profile && (game::layout_3527() || game::current_build() == game::Build::v3732)) {
         return peek(g_base + profile->world_system, world) && world &&
                peek(world + g2976::kWorldSystem_ActorManager, mgr) && mgr && peek(mgr, vt) &&
                vt == g_base + profile->vt_actor_manager && peek(mgr + g2976::kActorManager_ControlledActor, actor) && actor &&
@@ -753,7 +765,7 @@ DWORD WINAPI interp_thread(LPVOID) {
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     const auto build = game::current_build();
     if (build == game::Build::unsupported ||
-        (!game::legacy_layout() && build != game::Build::v3576 && build != game::Build::v3663)) {
+        (!game::legacy_layout() && build != game::Build::v3576 && build != game::Build::v3732)) {
         log::error("RemoteInterp: unsupported game build; remote_interp stays off");
         return 0;
     }
@@ -771,14 +783,14 @@ DWORD WINAPI interp_thread(LPVOID) {
         g_threshold_sites[0] = 0x1387453;
         g_threshold_sites[1] = 0x1387B55;
         g_code_end = 0x5597000;
-    } else if (build == game::Build::v3663) {
+    } else if (build == game::Build::v3732) {
         // kHooks3663; the thresholds at 3527's + 0x3EE50 (0x13C5AF3, 0x13C61F5); the real code section is the first one,
         // [0x1000, 0x5613000) (its flags: execute, not write).
-        g_sites = kHooks3663;
-        g_delay_global = 0x718EA48;
-        g_threshold_sites[0] = 0x13C5AF3;
-        g_threshold_sites[1] = 0x13C61F5;
-        g_code_end = 0x5613000;
+        g_sites = kHooks3732;
+        g_delay_global = 0x7194B98;       // 3732 (static, 2026-11-21; never run): was 0x718EA48; the target of all four movsxd of kHooks3663
+        g_threshold_sites[0] = 0x13C7673;  // 3732 (static, 2026-11-21; never run): was 0x13C5AF3; `cmp r8,0x3E8` then jbe, +0xA3 of 0x13C75D0 (+0x1B80)
+        g_threshold_sites[1] = 0x13C7D75;  // 3732 (static, 2026-11-21; never run): was 0x13C61F5; `cmp r8,0x3E8` then jbe, +0x95 of 0x13C7CE0 (+0x1B80); no other in 0x13C7000..0x13C9000
+        g_code_end = 0x5618000;            // 3732 (static, 2026-11-21; never run): was 0x5613000; the first section is [0x1000, 0x5618000), execute and not write
     }
     if (!p8_exe_sections(g_base, g_secs)) {
         log::error("RemoteInterp: the game's section table is unreadable; remote_interp stays off");

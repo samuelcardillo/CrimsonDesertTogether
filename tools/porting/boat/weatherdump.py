@@ -1,6 +1,6 @@
 """weatherdump.py pid [pid2] : the scene weather system X and its holder blocks A/B/C as raw floats (build 3663).
 With two pids, prints only the words that differ (by more than 1e-3, or as raw words when not floats).
-X = [[[exe+0x72451C8]+0x48]+0x38]; holder = [X+0x60]; A/B/C = [holder+0x20/+0x28/+0x30] (weather_sync_logic.h kGame3663).
+X = [[[exe+0x724B358]+0x48]+0x38] (3732; 3663: 0x72451C8); holder = [X+0x60]; A/B/C = [holder+0x20/+0x28/+0x30] (weather_sync_logic.h kGame3663).
 Read-only."""
 import struct
 import sys
@@ -13,7 +13,7 @@ RANGES = {'A': (0x100, 0x1C0), 'B': (0x28, 0x130), 'C': (0xE0, 0x200), 'X': (0x2
 
 def blocks(pid):
     r = Reader(pid)
-    x = r.ptr(r.ptr(r.ptr(B + 0x72451C8) + 0x48) + 0x38)
+    x = r.ptr(r.ptr(r.ptr(B + 0x724B358) + 0x48) + 0x38)
     h = r.ptr(x + 0x60)
     out = {'X': x, 'A': r.ptr(h + 0x20), 'B': r.ptr(h + 0x28), 'C': r.ptr(h + 0x30)}
     data = {}

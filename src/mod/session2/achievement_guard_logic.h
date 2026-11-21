@@ -43,12 +43,19 @@ static_assert(sizeof kWayOutBytes3576 == sizeof kWayOutBytes);
 // (3576 +0x65C70, .pdata 0x19E9070..0x19E9331, the same 0x2C1 bytes) has the same 27-byte head and the point's same 7
 // bytes at +0x33. The way out at +0x25E has the same instructions (masked match, the only one in the function); only
 // its two calls' rel32 differ (targets 0x3DB480 and 0x3E6F50).
-inline constexpr uintptr_t kVtSteamManager3663 = 0x5BF4138;
-inline constexpr uintptr_t kUnlock3663 = 0x19E9070, kPoint3663 = 0x19E90A3, kWayOut3663 = 0x19E92CE;
-inline constexpr uint8_t kWayOutBytes3663[] = {0x49, 0x8B, 0xCF, 0xE8, 0xAA, 0x21, 0x9F, 0xFE, 0x90, 0x48, 0x8B, 0xCE,
-                                               0xE8, 0x71, 0xDC, 0x9F, 0xFE, 0xB0, 0x01};
-static_assert(kPoint3663 - kUnlock3663 == kPoint - kUnlock && kWayOut3663 - kUnlock3663 == kWayOut - kUnlock);
-static_assert(sizeof kWayOutBytes3663 == sizeof kWayOutBytes);
+// 3732 (static, 2026-11-21; never run): was 0x5BF4138; pa::PlatformAchievementManager_Steam by RTTI
+// (vtable_map_3663_3732.json).
+inline constexpr uintptr_t kVtSteamManager3732 = 0x5BF94F8;
+// 3732 (static, 2026-11-21; never run): was 0x19E9070 / 0x19E90A3 / 0x19E92CE; vf2 of 0x5BF94F8 is 0x19EACE0 (3663
+// +0x1C70), .pdata 0x19EACE0..0x19EAFA1 (the same 0x2C1 bytes), kUnlockBytes identical at the head and kPointBytes
+// at +0x33 (mov rcx,[rcx+0x10] ; mov rdx,[r8]); the way out at +0x25E has the same instructions.
+inline constexpr uintptr_t kUnlock3732 = 0x19EACE0, kPoint3732 = 0x19EAD13, kWayOut3732 = 0x19EAF3E;
+// 3732 (static, 2026-11-21; never run): was ..0xE8,0xAA,0x21,0x9F,0xFE.. and ..0xE8,0x71,0xDC,0x9F,0xFE..; only the
+// two calls' rel32 differ (targets 0x3DB890 and 0x3E7360, 3663's +0x410).
+inline constexpr uint8_t kWayOutBytes3732[] = {0x49, 0x8B, 0xCF, 0xE8, 0x4A, 0x09, 0x9F, 0xFE, 0x90, 0x48, 0x8B, 0xCE,
+                                               0xE8, 0x11, 0xC4, 0x9F, 0xFE, 0xB0, 0x01};
+static_assert(kPoint3732 - kUnlock3732 == kPoint - kUnlock && kWayOut3732 - kUnlock3732 == kWayOut - kUnlock);
+static_assert(sizeof kWayOutBytes3732 == sizeof kWayOutBytes);
 
 // Sticky: once this guest has played in a host's world, its game holds the host's progress until it is restarted.
 class Gate {

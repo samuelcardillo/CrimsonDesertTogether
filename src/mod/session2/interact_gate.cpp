@@ -78,8 +78,33 @@ constexpr Addrs k3576{0x22E6F50, {0xE9, 0x3B, 0x14, 0x7F, 0x0A}, 0xBCD284, 0xBCD
 // - target +0x60 key (0xC04C30), +0x90 the controller (0xCAF8CE mov eax,[actor+0x90] compared with the own user key
 //   [[[world]+0x30]+0x58]+0x60, 0xCAF8D4..0xCAF8E8; the same chain at 0xAC86C5); +0x88 the type info with the type at
 //   +1 (1399 `mov r,[r+0x88] ; movzx ..,byte [r+1]` in the code section).
-constexpr Addrs k3663{0x2357780, {0xE9, 0xAB, 0x27, 0xBC, 0x0A}, 0xC04B07, 0x12A4570,
-                      {0xE8, 0x74, 0x2C, 0x75, 0x01}, {0xE8, 0x0B, 0x32, 0x0B, 0x01}, 0xC049F0, 0x72451C0,
+// The values below are 1.0.0.3732's (the comment above describes 3663 with 3663's addresses):
+// 3732 (static, 2026-11-21; never run): gate was 0x2357780; the target of the call at +0x117 of the press handler: a
+//   5-byte jmp into the protected section (-> 0xC963B60), int3 before it, not in .pdata, exactly two callers in the
+//   code section.
+// 3732 (static, 2026-11-21; never run): gate_bytes were E9 AB 27 BC 0A; the thunk's own bytes (its rel32 is each
+//   build's).
+// 3732 (static, 2026-11-21; never run): call_press was 0xC04B07; press + 0x117 as in 3663, after lea r9,[rbp-0x70] ;
+//   mov r8,rdi ; mov rdx,r12 ; mov rcx,rsi, the result byte read back at 0xC05563.
+// 3732 (static, 2026-11-21; never run): call_pre was 0x12A4570; the thunk's only other caller, +0x1B0 of 0x12A5F40
+//   (was 0x12A43C0) as in 3663: rcx = [[x+0x68]+0x98], rdx = r15, r8 = r14, r9 = the result at [rbp-0x69], and the
+//   same global read after the call as the press (0x71B4B58).
+// 3732 (static, 2026-11-21; never run): call_press_bytes / call_pre_bytes were E8 74 2C 75 01 / E8 0B 32 0B 01; only
+//   the rel32s.
+// 3732 (static, 2026-11-21; never run): press was 0xC049F0; kPressHead at the .pdata start 0xC05440-0xC05CCD (the same
+//   0x88D B), the same roles where read: rdi = r9, r12 = r8, r15 = rdx returned (0xC05CAF), stack arguments
+//   [rbp+0x120] and [rbp+0x128] only (six arguments).
+// 3732 (static, 2026-11-21; never run): world_slot was 0x72451C0; mov rcx,[rip+d] ; mov rcx,[rcx+0x30] at 0xC05499 and
+//   0xC05518 of the press handler (3197 references).
+// 3732 (static, 2026-11-21; never run): the offsets and byte arrays after it are unchanged: no-entry exit mov
+//   eax,[0x71D5E0C] / mov [rdx],eax at +0x48 / +0x4E; lea rcx,[rdi+0x10] ; call 0x3DB180 at +0x249 (was 0x3DAD70);
+//   0x3DB180 reads t = [0x724C528] (was 0x7246388) at +0x8, cmp r8d,[rcx+0x28] at +0xF, 0x18-B entries at [t+0x20],
+//   the record at entry+8; mov edx,[rax+8] the key (0xC05692).
+// 3732 (static, 2026-11-21; never run): kActor_* / kEntry_Index / kWorld_Mgr.. below unchanged: target +0x60
+//   (0xC05680), +0x90 against [[[world]+0x30]+0x58]+0x60 (0xCB031E..0xCB0338, was 0xCAF8CE), +0x88 / +1 (1423 sites),
+//   entry +0x10 u16 and +0x20 u64 (the entry's copy 0x2360320, called at 0xC05C69).
+constexpr Addrs k3732{0x23593F0, {0xE9, 0x6B, 0xA7, 0x60, 0x0A}, 0xC05557, 0x12A60F0,
+                      {0xE8, 0x94, 0x3E, 0x75, 0x01}, {0xE8, 0xFB, 0x32, 0x0B, 0x01}, 0xC05440, 0x724B350,
                       0x48, 0x249, {0x48, 0x8D, 0x4F, 0x10, 0xE8}, 0x08, {0x48, 0x8B, 0x0D}, 0x0F, {0x44, 0x3B, 0x41, 0x28},
                       4, 0x28, 0x20, 0x18, 8};
 const Addrs* g_a = &k3549;  // written once by interact_gate_start, before the worker
@@ -500,12 +525,12 @@ void interact_gate_start(const std::string& mode, const std::string& errors, con
         return;
     }
     if (*m == gil::Mode::Off) return;
-    if (!game::is_3549() && !game::is_3576() && !game::is_3663()) {
-        log::warn("InteractGate: interact_gate is for builds 3549, 3576 and 3663 only (its thunk's rel32 is each build's); "
+    if (!game::is_3549() && !game::is_3576() && !game::is_3732()) {
+        log::warn("InteractGate: interact_gate is for builds 3549, 3576 and 3732 only (its thunk's rel32 is each build's); "
                   "off");
         return;
     }
-    g_a = game::is_3663() ? &k3663 : game::is_3576() ? &k3576 : &k3549;
+    g_a = game::is_3732() ? &k3732 : game::is_3576() ? &k3576 : &k3549;
     const auto ev = gil::parse_events(errors);
     if (!ev) {
         log::warn("InteractGate: interact_gate_errors '{}' is not a list of at most {} hex values; it stays off", errors,

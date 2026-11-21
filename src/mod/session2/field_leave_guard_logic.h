@@ -42,9 +42,16 @@ static_assert(kPoint3576 - kEntry3576 == kPoint - kEntry && kOwnCall3576 - kEntr
 // offsets (the component's own manager is still [rdi+0x18]). The actor/user offsets below are 3527's, not re-derived
 // here (SavePlayerToSlot 0x1A15930 still reads the character's user at r14+0xA0, 0x1A15A8B; ClientField::vf48
 // 0xAE0710 still reads the owner key at field+0x180).
-inline constexpr uintptr_t kEntry3663 = 0x242D4E0, kPoint3663 = 0x242D4FE, kOwnCall3663 = 0x242D50B;
-inline constexpr uintptr_t kVtServerComponent3663 = 0x5F70CB0;
-static_assert(kPoint3663 - kEntry3663 == kPoint - kEntry && kOwnCall3663 - kEntry3663 == kOwnCall - kEntry);
+// 3732 (static, 2026-11-21; never run): was 0x242D4E0 / 0x242D4FE / 0x242D50B; the vf34 (+0x110) of all three vtables
+// (by RTTI, vtable_map_3663_3732.json: Server 0x5F76040, Common 0x5D50BB8, ClientSelf 0x59D4F00) is 0x242F7B0 (3663
+// +0x22D0), .pdata 0x242F7B0..0x242F7F3 (the same 0x43 bytes); kEntryBytes, kPointBytes and kOwnCallBytes are identical
+// at the same offsets (rdi = the component, rbx = the field, rax = field->vf48(); the own manager is [rdi+0x18]).
+// The actor/user offsets below are still 3527's: SavePlayerToSlot 0x1A175A0 reads the character's user at r14+0xA0
+// (0x1A176FB) and ClientField::vf48 0xAE0FC0 the owner key at field+0x180.
+inline constexpr uintptr_t kEntry3732 = 0x242F7B0, kPoint3732 = 0x242F7CE, kOwnCall3732 = 0x242F7DB;
+// 3732 (static, 2026-11-21; never run): was 0x5F70CB0; pa::ServerSequencerActorComponent by RTTI.
+inline constexpr uintptr_t kVtServerComponent3732 = 0x5F76040;
+static_assert(kPoint3732 - kEntry3732 == kPoint - kEntry && kOwnCall3732 - kEntry3732 == kOwnCall - kEntry);
 
 inline constexpr uint32_t kComponentActor = 0x08, kComponentOwnManager = 0x18;
 inline constexpr uint32_t kActorKey = 0x60, kActorUser = 0xA0, kUserKey = 0x60;

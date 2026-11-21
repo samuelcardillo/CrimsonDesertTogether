@@ -105,9 +105,13 @@ inline constexpr RuntimeFieldLayout kFieldLayout3527{0x508, 0x2A8, 0x2B0, 0x2B8,
 // +2A8/+2B0/+2B8/+2D8, MoveField 0x2ECA480 forms TS+0x508, and the FieldMover instructions of
 // field_mover_layout_3527.json are found with 3527's bytes (+0x10/+0x40/+0x48/+0x4A); the TS sector +0x548 is read by
 // ToNearExceptOne* vf1 (child_hold.cpp).
+// 3732 (static, 2026-11-21; never run): Build::v3663 is now 1.0.0.3732 and keeps this layout: AddActor (protected
+// 0xE3F1900) reads +2A8/+2B0/+2B8/+2D8, the field key is written at +0x2D0 (0x2E0EB82), MoveField 0x2ECE9D0 forms
+// TS+0x508 (0x2ECEC9C), GetField 0x2ECE1C0 and the release 0x2ECDFC0 use FM+0x10/+0x40/+0x48/+0x4A (0x2ECE206,
+// 0x2ECE2AF..0x2ECE2B7, 0x2ECDFFE, 0x2ECE05F), and the TS sector +0x548 is read at 0x2D70E70 / 0x2D70D40.
 inline const RuntimeFieldLayout& runtime_field_layout() {
     const auto b = game::current_build();
-    return b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3663 ? kFieldLayout3527
+    return b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3732 ? kFieldLayout3527
                                                                                           : kFieldLayout2976;
 }
 

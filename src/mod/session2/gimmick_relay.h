@@ -10,6 +10,8 @@
 //  - a client applies a gimmick update the server CONFIRMS: UpdateGimmickAck 2297 (key | key | the same 0xF0 bytes)
 //    -> its handler 0xD0A050 -> 0xA005C0(the gimmick component, &result, the 0xF0 bytes), which queues the update for
 //    the component, but only when this client's user is the gimmick's controller (actor +0x90).
+//    3732 (static, 2026-11-21; never run): the two addresses above are 3663's; the handler is 0xD0AAA0 there (slot 2 of
+//    pa::TrocTrUpdateGimmickAck 0x5A1AC80) and still calls 0xA00E40 with rcx = [[actor+0x68]+0x30].
 // So, with 1, every UpdateGimmickReq the host's own client sends for a SAIL-LIKE gimmick of one of its own ships is
 // given to user 2 as the UpdateGimmickAck the server would write for it (server_push_extra). Sail-like: nothing hangs
 // from it and it hangs directly from a vehicle that is a ship, i.e. one with at least 6 gimmicks hanging directly from

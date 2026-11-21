@@ -30,7 +30,8 @@ struct Addrs {
 // 3576: the world slot from core_globals_3576.json (reader_profile() is null on 3576).
 constexpr Addrs k3576{0x71C0100, flg::kEntry3576, flg::kPoint3576, flg::kOwnCall3576, flg::kVtServerComponent3576};
 // Build 1.0.0.3663 (static, 2026-11-13; never run): the world slot 0x72451C0 (profile_s2.h; two AOB patterns).
-constexpr Addrs k3663{0x72451C0, flg::kEntry3663, flg::kPoint3663, flg::kOwnCall3663, flg::kVtServerComponent3663};
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; the world slot of profile_s2.h (3197 references).
+constexpr Addrs k3732{0x724B350, flg::kEntry3732, flg::kPoint3732, flg::kOwnCall3732, flg::kVtServerComponent3732};
 
 SafetyHookMid g_hook;
 uintptr_t g_base = 0;
@@ -70,14 +71,14 @@ bool code_is(uintptr_t rva, std::span<const uint8_t> expected) {
 DWORD WINAPI install_thread(void*) {
     const auto* profile = game::reader_profile();
     Addrs a{};
-    if (game::current_build() == game::Build::v3663) {
-        a = k3663;
+    if (game::current_build() == game::Build::v3732) {
+        a = k3732;
     } else if (game::current_build() == game::Build::v3576) {
         a = k3576;
     } else if (profile && game::current_build() == game::Build::v3527) {
         a = {profile->world_system, flg::kEntry, flg::kPoint, flg::kOwnCall, kVtServerComponent};
     } else {
-        log::info("FieldLeaveGuard: only for builds 3527, 3549, 3576 and 3663, off");
+        log::info("FieldLeaveGuard: only for builds 3527, 3549, 3576 and 3732, off");
         return 0;
     }
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));

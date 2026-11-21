@@ -53,8 +53,22 @@ constexpr Addrs k3576{0x4578F0, 0x461A60, 0x71C0100, 0x462DD0, kMgr35Head};
 //   ignores its result (rax overwritten at 0xA21197). Its head is another encoding of 3576's (mov [rsp+8],rbx ;
 //   mov [rsp+0x10],rdx ; push rbp/rsi/rdi/r12); the hook patches the first instruction (5 bytes);
 // - the world slot 0x72451C0.
-constexpr uint8_t kMgr35Head3663[] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x54, 0x24, 0x10, 0x55, 0x56, 0x57, 0x41, 0x54};
-constexpr Addrs k3663{0x475BB0, 0x480E90, 0x72451C0, 0x490FC0, kMgr35Head3663};
+// The values below are 1.0.0.3732's (the comment above describes 3663 with 3663's addresses):
+// 3732 (static, 2026-11-21; never run): kMgr35Head3663 unchanged; the 15 bytes at 0x4913D0.
+constexpr uint8_t kMgr35Head3732[] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x54, 0x24, 0x10, 0x55, 0x56, 0x57, 0x41, 0x54};
+// 3732 (static, 2026-11-21; never run): store was 0x475BB0; the .pdata start 0x475FC0-0x476579 (the same 0x5B9 B, int3
+//   before it) whose only caller is 0xCF85D6 in TrocTrSyncHousingPlacedSceneObjectListAck's entry 2 0xCF8190 (vtable
+//   0x5A1B580 by RTTI): rcx = [[[[0x724B348]+0x30]+0x1230]+0x90]+0x230, dl the flags, r8d the stage key, r9 the
+//   records, after the same owner test; 0xAC-B records, sub al,3 ; cmp al,1 at 0x47650C, then 0x182AAF0.
+// 3732 (static, 2026-11-21; never run): rebuild was 0x480E90; the .pdata start 0x4812A0 (int3 before it): edx = the
+//   stage, count [manager+0xB0] != 0 and stage == [manager+0xA0] (0x4812FB), 0x2C-B entries at +0xA8, the stage
+//   entry's +0x70 zeroed (0x48137D), then 0x485350; its only caller 0xA9513A (0xA950E0, with [rbx+0x230]).
+// 3732 (static, 2026-11-21; never run): world_slot was 0x72451C0; 3197 references, read at 0xA219EE before slot 35's
+//   call.
+// 3732 (static, 2026-11-21; never run): mgr35 was 0x490FC0; slot 35 of pa::VHousingManager 0x5986890 (RTTI, 36 slots),
+//   called at 0xA21A12 under cmp dword [rsi+0x41C],-1 with ([[[[0x724B350]+0x20]+0x1230]+0x90]+0x230, [r14+8]); rax
+//   overwritten right after (0xA21A17).
+constexpr Addrs k3732{0x475FC0, 0x4812A0, 0x724B350, 0x4913D0, kMgr35Head3732};
 const Addrs* g_a = &k3576;  // written once by housing_redraw_start, before the install thread
 SafetyHookInline g_mgr35;
 std::atomic<uint64_t> g_mgr35_skipped{0};
@@ -146,11 +160,11 @@ DWORD WINAPI install_thread(LPVOID) {
 
 void housing_redraw_start(bool redraw, bool gimmick_guard) {
     if (!redraw && !gimmick_guard) return;
-    if (!game::is_3576() && !game::is_3663()) {
-        log::warn("HousingRedraw: housing_redraw and housing_gimmick_guard are for builds 3576 and 3663 only; off");
+    if (!game::is_3576() && !game::is_3732()) {
+        log::warn("HousingRedraw: housing_redraw and housing_gimmick_guard are for builds 3576 and 3732 only; off");
         return;
     }
-    g_a = game::is_3663() ? &k3663 : &k3576;
+    g_a = game::is_3732() ? &k3732 : &k3576;
     g_want_redraw = redraw;
     g_want_guard = gimmick_guard;
     if (HANDLE t = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr)) CloseHandle(t);

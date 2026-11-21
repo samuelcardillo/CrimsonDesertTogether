@@ -46,24 +46,37 @@ constexpr uintptr_t kLoadState = 0x15C;  // [world+0x60] -> u8 load state
 // 0x15 at 0x9C31DB, stored at table + index * 8 by 0x2297192); its +0x18 (the manager) is 3527's, not re-derived on
 // the client (the server side keeps it: observer_milestone region 17), and the vtable check refuses any other object.
 // World slot 0x72451C0.
-constexpr uintptr_t kVtManager3663 = 0x59D57E8;
-constexpr uintptr_t kWorldSlot3663 = 0x72451C0;
-constexpr uintptr_t kMarker3663 = 0x261;
-constexpr uintptr_t kLoadState3663 = 0x24C;
-constexpr uint8_t kIdleState3663 = 0x19, kWaitState3663 = 0x12;
+// 3732 (static, 2026-11-21; never run): was 0x59D57E8; pa::ClientSequencerStageManager's vtable by RTTI name
+// (vtable_map_3663_3732.json).
+constexpr uintptr_t kVtManager3732 = 0x59DA8A8;
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; the global of `mov rax,[rip+X]` at 0x3EF8B9 and 0x3EE8C9 (the
+// reads below, 3663's + 0x410), 3197 RIP references in code (3663: 3195).
+constexpr uintptr_t kWorldSlot3732 = 0x724B350;
+// 3732 (static, 2026-11-21; never run): the marker is still +0x261 and the load state +0x24C, with the same state
+// numbers. The load machine is 0x882CD0 (3663's 0x8825B0 + 0x720, 0xBBC bytes): `movzx r14d,[r13+0x24C]` at 0x882DB9,
+// `lea eax,[r14-1] ; cmp al,0x17` at 0x882DC8 (unique in the code section), the states up to 0x19 written to +0x24C
+// (0x19 last, at 0x883790; 0x6C9779 compares with 0x19), the wait 0x12 written at 0x88348B and left for 0x13 after
+// `cmp byte [mgr+0x261],2` at 0x8834A7. The marker is written 0 / 1 at 0x883F27 / 0x884581, 2 by the 2322 handler at
+// 0xCD608B and 1 by the bind (0x99B838C, below). [[world]+0x60]+0x24C is read so at 0x3EF8B9..0x3EF8C4 and
+// [[world]+0x30]+0x50 at 0x3EE8C9..0x3EE8D4; components +0xA8 is still pa::ClientSelfSequencerActorComponent (vtable
+// 0x59D4F00 registered with index 0x15 at 0x9C3A5B by the factory 0x9C3980), whose own functions use [component+0x18]
+// (slots 4, 5 and 36: 0x1C9C966, 0x1914480, 0xB52176); that it is the manager is what the vtable check confirms.
+constexpr uintptr_t kMarker3732 = 0x261;
+constexpr uintptr_t kLoadState3732 = 0x24C;
+constexpr uint8_t kIdleState3732 = 0x19, kWaitState3732 = 0x12;
 
 std::atomic<bool> g_started{false};
 bool g_guest = false;
 uintptr_t g_vt_manager = kVtManager3527;  // set by marker_thread before the first read
 uintptr_t g_marker = kMarker;             // likewise
 uintptr_t g_load_state = kLoadState;      // likewise
-bool g_states_3663 = false;               // likewise
+bool g_states_3732 = false;               // likewise
 
 // 3663's load states in 3527's numbering for the guard (seq_marker_logic.h): only idle and the marker wait matter
 // there; every other 3663 state is one that is neither (0xFE).
 uint8_t guard_state(uint8_t raw) noexcept {
-    if (!g_states_3663) return raw;
-    return raw == kIdleState3663 ? smk::kIdleState : raw == kWaitState3663 ? smk::kWaitState : uint8_t{0xFE};
+    if (!g_states_3732) return raw;
+    return raw == kIdleState3732 ? smk::kIdleState : raw == kWaitState3732 ? smk::kWaitState : uint8_t{0xFE};
 }
 
 // ---------------------------------------------------------------- seq_marker_trace=1: who calls the manager's vf+0x20
@@ -74,7 +87,10 @@ uint8_t guard_state(uint8_t raw) noexcept {
 // section; there the same 15-byte head, `mov [rbp+0x20],rbx` and `mov byte [rbp+0x259],1` (0x9AC7FD0 / 0x9AC8034).
 // 3663 (static, 2026-11-13; never run): slot 4 of 0x59D57E8 is the thunk 0xBD7D00, jmp 0x9C966B0 in the protected
 // section; there the same 15-byte head, `mov [rbp+0x20],rbx` (0x9C966F0) and `mov byte [rbp+0x261],1` (0x9C9674C).
-constexpr uintptr_t kBind3527 = 0x9A7F860, kBind3549 = 0x99BADC0, kBind3576 = 0x9AC7F90, kBind3663 = 0x9C966B0;
+// 3732 (static, 2026-11-21; never run): kBind3663 was 0x9C966B0; slot 4 of 0x59DA8A8 is the thunk 0xBD8750, jmp
+// 0x99B82F0 in the protected section (the code section's only rel32 to it); there, on disk, the same 15-byte head,
+// `mov [rbp+0x20],rbx` (0x99B8330) and `mov byte [rbp+0x261],1` (0x99B838C).
+constexpr uintptr_t kBind3527 = 0x9A7F860, kBind3549 = 0x99BADC0, kBind3576 = 0x9AC7F90, kBind3732 = 0x99B82F0;
 constexpr uint8_t kBindHead[] = {0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x6C, 0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20};
 constexpr int kTraceCalls = 40;
 safetyhook::InlineHook g_bind_hook;
@@ -103,7 +119,7 @@ void* __fastcall on_bind(uintptr_t manager, void* result, uintptr_t field) {
 
 void install_trace(uintptr_t base) {
     g_base = base;
-    const uintptr_t bind = game::is_3663()   ? kBind3663
+    const uintptr_t bind = game::is_3732()   ? kBind3732
                            : game::is_3576() ? kBind3576
                            : game::is_3549() ? kBind3549
                                              : kBind3527;
@@ -160,19 +176,19 @@ smk::Facts read_facts(uintptr_t base, uintptr_t world_system) noexcept {
 
 DWORD WINAPI marker_thread(void*) {
     const bool b3576 = game::current_build() == game::Build::v3576;
-    const bool b3663 = game::current_build() == game::Build::v3663;
+    const bool b3732 = game::current_build() == game::Build::v3732;
     const auto* profile = game::reader_profile();
-    if (!b3576 && !b3663 && (!profile || game::current_build() != game::Build::v3527)) {
-        log::info("SeqMarker: only for builds 3527, 3549, 3576 and 3663, off");
+    if (!b3576 && !b3732 && (!profile || game::current_build() != game::Build::v3527)) {
+        log::info("SeqMarker: only for builds 3527, 3549, 3576 and 3732, off");
         return 0;
     }
     // 3576 / 3663: their own vtable and world slot (reader_profile() may have no entry for them yet); 3663 also its
     // own marker and load-state offsets and state numbers.
-    const uintptr_t world_slot = b3663 ? kWorldSlot3663 : b3576 ? kWorldSlot3576 : profile->world_system;
-    g_vt_manager = b3663 ? kVtManager3663 : b3576 ? kVtManager3576 : kVtManager3527;
-    g_marker = b3663 ? kMarker3663 : kMarker;
-    g_load_state = b3663 ? kLoadState3663 : kLoadState;
-    g_states_3663 = b3663;
+    const uintptr_t world_slot = b3732 ? kWorldSlot3732 : b3576 ? kWorldSlot3576 : profile->world_system;
+    g_vt_manager = b3732 ? kVtManager3732 : b3576 ? kVtManager3576 : kVtManager3527;
+    g_marker = b3732 ? kMarker3732 : kMarker;
+    g_load_state = b3732 ? kLoadState3732 : kLoadState;
+    g_states_3732 = b3732;
     const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     log::info("SeqMarker ON ({}): the own sequencer manager's load marker is put back if it falls with no load running",
               g_guest ? "guest" : "host");

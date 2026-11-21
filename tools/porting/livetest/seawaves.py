@@ -15,7 +15,7 @@ sys.path.insert(0, r'D:/SteamLibrary/steamapps/common/Crimson Desert/multi/tools
 from live_reader_check import Reader  # noqa: E402
 
 BASE = 0x140000000
-BUF = 0x75AD350
+BUF = 0x75B3590  # 3732: the fill routine 0x3FD2C40 writes its first frame here (3663: 0x75AD350)
 LENGTHS = (280, 210, 165, 130, 100, 80, 62, 48, 36, 30, 25, 21)
 MULT = (1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 3.8, 4.1, 4.4, 4.7, 5.0, 5.3)
 SPEED = [math.sqrt(2 * math.pi * 9.8 / l) * m * 0.25 for l, m in zip(LENGTHS, MULT)]  # rad/s at full frame rate

@@ -48,8 +48,19 @@ constexpr uintptr_t kWorldSlot3576 = 0x71C0100, kVtClientActor3576 = 0x5914D58;
 // 0x231E00F -> 0x238FBAF (+0x12F in 0x238FA80, as in 3527's 0x231DEE0; `mov r8b,1 ; mov edx,0x100000` then the call
 // to 0x1932980 at 0x238FBB8). World slot 0x72451C0; ClientChildOnlyInGameActor 0x5914D58 -> 0x5990BF0 (RTTI). The
 // world -> +0x30 -> +0x58 local user is read so at 0xAC86C5.
-constexpr Sites kSites3663{0x1932980, 0x1932C65, 0x1932A21, 0x238FBAF};
-constexpr uintptr_t kWorldSlot3663 = 0x72451C0, kVtClientActor3663 = 0x5990BF0;
+// 3732 (static, 2026-11-21; never run): was 0x1932980; kSetterHead once near old + shift, a .pdata start, 0x318 bytes
+// as on 3663; still (rcx = status, rdx = bit, r8b = set, 5th argument [rsp+0x2C0]), [rcx+8] the actor, +0x3B8 / +0x3C0.
+// 3732 (static, 2026-11-21; never run): was 0x1932C65; the setter's `ret` at +0x2E5 as on 3663, after `pop rdi`.
+// 3732 (static, 2026-11-21; never run): was 0x1932A21; the flags store at +0xA1 as on 3663 (the only copy of those 7
+// bytes in the code section).
+// 3732 (static, 2026-11-21; never run): was 0x238FBAF; +0x12F in 0x2391D50 as on 3663's 0x238FA80 (`mov r8b,1 ; mov
+// edx,0x100000`, then the call of 0x1934810 at 0x2391E88; the other `mov edx,0x100000` before a call of the setter,
+// 0x2390D8D, clears the bit: `xor r8d,r8d`).
+constexpr Sites kSites3732{0x1934810, 0x1934AF5, 0x19348B1, 0x2391E7F};
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; the world system slot (3197 RIP references; world -> +0x30 ->
+// +0x58 local user read so at 0xAC8F75).
+// 3732 (static, 2026-11-21; never run): was 0x5990BF0; RTTI pa::ClientChildOnlyInGameActor.
+constexpr uintptr_t kWorldSlot3732 = 0x724B350, kVtClientActor3732 = 0x59961D0;
 
 constexpr uint32_t kStatusActor = 0x08, kActorKey = 0x60, kActorUser = 0xA0;
 constexpr uint32_t kWorldManager = 0x30, kManagerUser = 0x58;
@@ -91,14 +102,14 @@ void on_status_flag(safetyhook::Context& ctx) {
 
 bool remote_visible_install() {
     const bool b3576 = game::current_build() == game::Build::v3576;
-    const bool b3663 = game::current_build() == game::Build::v3663;
-    if (game::current_build() != game::Build::v3527 && !b3576 && !b3663) return true;
+    const bool b3732 = game::current_build() == game::Build::v3732;
+    if (game::current_build() != game::Build::v3527 && !b3576 && !b3732) return true;
     const auto* profile = game::reader_profile();
-    if (!profile && !b3576 && !b3663) return false;
+    if (!profile && !b3576 && !b3732) return false;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    g_sites = b3663 ? &kSites3663 : b3576 ? &kSites3576 : &kSites3527;
-    g_world_slot = g_base + (b3663 ? kWorldSlot3663 : b3576 ? kWorldSlot3576 : profile->world_system);
-    g_vt_client_actor = g_base + (b3663   ? kVtClientActor3663
+    g_sites = b3732 ? &kSites3732 : b3576 ? &kSites3576 : &kSites3527;
+    g_world_slot = g_base + (b3732 ? kWorldSlot3732 : b3576 ? kWorldSlot3576 : profile->world_system);
+    g_vt_client_actor = g_base + (b3732   ? kVtClientActor3732
                                   : b3576 ? kVtClientActor3576
                                           : profile->vt_controlled_actor);
     g_ret = g_base + g_sites->setter_ret;

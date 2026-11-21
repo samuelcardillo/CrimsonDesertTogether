@@ -48,9 +48,11 @@ constexpr uint8_t kCallBytes3576[] = {  // 0x22E3300
 // 0x2494230 -> 0x2506E70 (+0x72C40; head and return bytes unchanged). What the rule reads keeps 3527's code: derived
 // entries get +0x2E = parent index (0x235C721), +8 null, +0x20 stage 0; the copy skips empty strings (0x235E503); the
 // shared string keeps chars +0 / length +8 (0x16450AF / 0x16450C1).
-constexpr uint8_t kCallBytes3663[] = {  // 0x2353B40
-    0x48, 0x8B, 0x4F, 0x08, 0x48, 0x8B, 0xD3, 0xE8, 0x24, 0x33, 0x1B, 0x00,
-    0x48, 0x8D, 0x4F, 0x10, 0xE8, 0x1B, 0x72, 0x08, 0xFE};
+// 3732 (static, 2026-11-21; never run): was at 0x2353B40; found once near old + shift with the two rel32 masked, the
+// same instructions; the rel32s now go to the serializer 0x2509140 and to 0x3DB180 (3663's 0x3DAD70).
+constexpr uint8_t kCallBytes3732[] = {  // 0x23557B0 (3732)
+    0x48, 0x8B, 0x4F, 0x08, 0x48, 0x8B, 0xD3, 0xE8, 0x84, 0x39, 0x1B, 0x00,
+    0x48, 0x8D, 0x4F, 0x10, 0xE8, 0xBB, 0x59, 0x08, 0xFE};
 
 struct Sites {
     uintptr_t call, vtable, method, serializer;
@@ -58,7 +60,15 @@ struct Sites {
 };
 const Sites kSites3527{kCall, kServerInteractionVtable, 0x22E25F0, 0x2494230, kCallBytes};
 const Sites kSites3576{0x22E3307, 0x5EF4338, 0x22E32A0, 0x2495000, kCallBytes3576};
-const Sites kSites3663{0x2353B47, 0x5F6DE10, 0x2353AE0, 0x2506E70, kCallBytes3663};
+// 3732 (static, 2026-11-21; never run): was 0x2353B47; the call at +0x67 of the method, as on 3663 (kCallBytes3663 at
+// 0x23557B0, 7 bytes before it).
+// 3732 (static, 2026-11-21; never run): was 0x5F6DE10; RTTI pa::ServerInteractionActorComponent.
+// 3732 (static, 2026-11-21; never run): was 0x2353AE0; slot +0xC8 of that vtable (.pdata 0x1F2 bytes as on 3663; still
+// RSI = component, RDI = entry with stride 0x38 from [+0x90] / [+0x98], RBX = archive; the entry fields it serializes
+// keep +8/+0x10/+0x20/+0x28/+0x30/+0x18/+0x14/+0x2C; derived entries still get +0x2E at 0x235E3A1).
+// 3732 (static, 2026-11-21; never run): was 0x2506E70; the call's target; kSerializerHead at its entry and
+// kSerializerReturn at +0xA3, unchanged bytes (.pdata 0xAE bytes).
+const Sites kSites3732{0x23557B7, 0x5F73370, 0x2355750, 0x2509140, kCallBytes3732};
 const Sites* g_sites = &kSites3527;
 
 // Native 2494230 reads only the first pointer on its empty path, emits one
@@ -137,10 +147,10 @@ uintptr_t interaction_condition_argument(uintptr_t holder, uintptr_t entry) noex
 bool interaction_condition_install() {
     if (game::current_build() == game::Build::v2976) return true;
     const game::Build build = game::current_build();
-    if (build != game::Build::v3527 && build != game::Build::v3576 && build != game::Build::v3663) return false;
+    if (build != game::Build::v3527 && build != game::Build::v3576 && build != game::Build::v3732) return false;
     if (g_hook) return true;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    g_sites = build == game::Build::v3663   ? &kSites3663
+    g_sites = build == game::Build::v3732   ? &kSites3732
               : build == game::Build::v3576 ? &kSites3576
                                             : &kSites3527;
     uintptr_t method = 0;

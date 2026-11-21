@@ -28,6 +28,8 @@ size_t game_errors_actor_create_failures_since(uint64_t& cursor, uint64_t* value
 // them) and reads its key there and then, while the object still exists (never checked in the game yet: 0 when no
 // actor is found). The keys from `cursor` on, in order, as above
 // (the last 31 only; older ones are counted in *lost). Lock-free (the hook writes, one reader).
+// 3732 (static, 2026-11-21; never run): the report returns to exe+0x8C203CB there (game_errors.cpp says how it was
+// told from the other call with the same message).
 size_t game_errors_post_create_failures_since(uint64_t& cursor, uint64_t* keys, size_t max, uint64_t* lost = nullptr);
 uint64_t game_errors_post_create_failures();
 // The hook is in (game_errors_install succeeded; it needs the sniffer, mod.cpp late_init).

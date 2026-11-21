@@ -148,23 +148,41 @@ inline uint32_t vf40_ret_of_3576(uint32_t rva) {
 // function as in 3576, except the respawn one and the fast-travel step (their functions changed a little before the
 // call). Function starts from the Trocs' vtable slot 2 by RTTI (2112 0x2D3C910, 2369 0x2D3D520, 2372 0x2D3C650, 2477
 // 0x2D3C060, 2354 0x2D3D250, 2051 0x2F40530, 2215 0x2D3E000) or from their calls.
-inline constexpr Vf40Ret3527 kVf40Rets3663[] = {
-    {0x2E0256E, kRespawnVf40Ret},            // 0x2E02450 (13 callers, as 3527's): `call 0x2DFF2F0` (vf40) at +0x119
+// 3732 (static, 2026-11-21; never run): the table below holds 1.0.0.3732's return addresses, in place (the comments on
+// the right describe 3663). The same callers at the same offsets of their functions, the functions found by their
+// Troc's vtable slot 2 by name (troc_mapping_3663_3732.json: 2112 MissionTriggerInOutReq 0x2D413A0, 2369
+// ChangePlayerbleCharacterReq 0x2D41FB0, 2372 UpdateTraceMissionReq 0x2D410E0, 2477 UpdateMissionUIStateListReq 0x2D40AF0,
+// 2354 SetMissionNewAlarmFalseReq 0x2D41CE0, 2051 StartChallengeCompleteTimerOnceTimer 0x2F44A80, 2215
+// ChallengeDiscoverActorReq 0x2D42A90) or from their calls; each is the only `call [rax+0x40]` of its function.
+inline constexpr Vf40Ret3527 kVf40Rets3732[] = {
+    // 3732 (static, 2026-11-21; never run): was 0x2E0256E; 0x2E06EE0 (13 callers) +0x119 `call 0x2E03D80` (vf40), mov rcx,r14 before it
+    {0x2E06FFE, kRespawnVf40Ret},            // 0x2E02450 (13 callers, as 3527's): `call 0x2DFF2F0` (vf40) at +0x119
                                              // (3576 +0x127); mov rcx,r14 (the field) before it
-    {0x2F5770F, kTriggerVf40Ret},            // 0x2F576B0 +0x5F, from the 2112 handler 0x2D3C910
-    {0x2BE074B, kQuestEventVf40Ret},         // 0x2BE0710 +0x3B (thunk 0x2C021A0 registered by vfB0 0x2BDA410)
-    {0xEA6E9D7, kChallengeDiscoverVf40Ret},  // 0xEA6E860 (the 2215 handler 0x2D3E000's jmp), protected code: the only
+    // 3732 (static, 2026-11-21; never run): was 0x2F5770F; 0x2F5BC00 +0x5F, called by the 2112 handler at 0x2D414FF
+    {0x2F5BC5F, kTriggerVf40Ret},            // 0x2F576B0 +0x5F, from the 2112 handler 0x2D3C910
+    // 3732 (static, 2026-11-21; never run): was 0x2BE074B; 0x2BE3130 +0x3B (thunk 0x2C06090 registered by vfB0 0x2BDCE30)
+    {0x2BE316B, kQuestEventVf40Ret},         // 0x2BE0710 +0x3B (thunk 0x2C021A0 registered by vfB0 0x2BDA410)
+    // 3732 (static, 2026-11-21; never run): was 0xEA6E9D7; the 2215 handler 0x2D42A90 is `jmp 0xE2EE280` (protected section, re-encoded): the only
+    // call [rax+0x40] in its first 0x300 bytes is at +0x154 (3663 +0x174), after `call 0x19A14B0` (the field handle,
+    // as the quest event callback) and before `mov edx,[rbp+0x50] ; mov rcx,rax ; call 0x2BEF840`
+    {0xE2EE3D7, kChallengeDiscoverVf40Ret},  // 0xEA6E860 (the 2215 handler 0x2D3E000's jmp), protected code: the only
                                              // call [rax+0x40] in its first 0x300 bytes, at +0x174 as in 3576
-    {0x2F405AD, kChallengeTimerVf40Ret},     // the 2051 handler 0x2F40530 +0x7D
-    {0x2F578D0, kChangeCharacterVf40Ret},    // 0x2F57880 +0x50, from the 2369 handler 0x2D3D520
-    {0x2F5744D, kTraceVf40Ret},              // 0x2F573F0 +0x5D, from the 2372 handler 0x2D3C650
-    {0x2D3C3A3, kMissionUiVf40Ret},          // the 2477 handler 0x2D3C060 +0x343
-    {0x2D3D391, kMissionAlarmVf40Ret},       // the 2354 handler 0x2D3D250 +0x141
-    {0x2B58C1F, 0x2896347},                  // the fast-travel apply 0x2B586B0's quest step: its only call [rax+0x40],
+    // 3732 (static, 2026-11-21; never run): was 0x2F405AD; the 2051 handler 0x2F44A80 +0x7D
+    {0x2F44AFD, kChallengeTimerVf40Ret},     // the 2051 handler 0x2F40530 +0x7D
+    // 3732 (static, 2026-11-21; never run): was 0x2F578D0; 0x2F5BDD0 +0x50, called by the 2369 handler at 0x2D4211F
+    {0x2F5BE20, kChangeCharacterVf40Ret},    // 0x2F57880 +0x50, from the 2369 handler 0x2D3D520
+    // 3732 (static, 2026-11-21; never run): was 0x2F5744D; 0x2F5B940 +0x5D, called by the 2372 handler at 0x2D41236
+    {0x2F5B99D, kTraceVf40Ret},              // 0x2F573F0 +0x5D, from the 2372 handler 0x2D3C650
+    // 3732 (static, 2026-11-21; never run): was 0x2D3C3A3; the 2477 handler 0x2D40AF0 +0x343
+    {0x2D40E33, kMissionUiVf40Ret},          // the 2477 handler 0x2D3C060 +0x343
+    // 3732 (static, 2026-11-21; never run): was 0x2D3D391; the 2354 handler 0x2D41CE0 +0x141
+    {0x2D41E21, kMissionAlarmVf40Ret},       // the 2354 handler 0x2D3D250 +0x141
+    // 3732 (static, 2026-11-21; never run): was 0x2B58C1F; the fast-travel apply 0x2B5AE00 +0x56F, its only call [rax+0x40]
+    {0x2B5B36F, 0x2896347},                  // the fast-travel apply 0x2B586B0's quest step: its only call [rax+0x40],
                                              // +0x56F (3576 +0x572)
 };
-inline uint32_t vf40_ret_of_3663(uint32_t rva) {
-    for (const Vf40Ret3527& r : kVf40Rets3663) {
+inline uint32_t vf40_ret_of_3732(uint32_t rva) {
+    for (const Vf40Ret3527& r : kVf40Rets3732) {
         if (r.native == rva) return r.logical;
     }
     return rva;

@@ -36,7 +36,10 @@ constexpr uintptr_t kErrorLogger3576 = 0x3A7660;
 // Build 1.0.0.3663 (static, 2026-11-13; never run): 0x3AACB0 = 3576's +0x3650 (the shift of the client's network code
 // next to it, profile_s2.h), with the same 15-byte head, a .pdata function start (0x3AACB0..0x3AADEA) and 2634 call
 // sites (3576: 2640); 38 of 40 sampled callers store [rsp+48] code, [rsp+50] severity, [rsp+58] text before the call.
-constexpr uintptr_t kErrorLogger3663 = 0x3AACB0;
+// 3732 (static, 2026-11-21; never run): was 0x3AACB0; kErrorLoggerHead3527 identical, the only match near (3663
+// +0x410, the shift of the client's network code next to it), .pdata 0x3AB0C0..0x3AB1FA (the same 0x13A bytes), 2634
+// call sites in the code section; callers still store [rsp+48] code, [rsp+50] severity, [rsp+58] text.
+constexpr uintptr_t kErrorLogger3732 = 0x3AB0C0;
 constexpr uint32_t kArgCode = 0x50, kArgSeverity = 0x58, kArgText = 0x60, kArgValue = 0x68;
 constexpr int kExtraValues = 3;  // arguments 14-16 (more format values, if any)
 
@@ -90,29 +93,38 @@ SeqRing<16> g_fail_ring;
 // object, a handle, 0): the attach to its parent is what failed. The failed actor is looked for among those values
 // and one pointer level below them: an object whose vtable is a client actor's (ClientNormalInGameActor /
 // ClientChildOnlyInGameActor) with an actor key at +0x60. 0 when none is found.
-constexpr uintptr_t kPostCreateFailedFrom3663 = 0x8E03AF5;
-constexpr uintptr_t kVtClientNormalActor3663 = 0x5991108, kVtClientChildOnlyActor3663 = 0x5990BF0;
+// 3732 (static, 2026-11-21; never run): was 0x8E03AF5 (seen live). Re-derived on the 3732 file: the protected section
+// has two calls of the logger 0x3AB0C0 with this message (the "Actor AsyncPostProcessForCreate ... failed" string at
+// 0x5996F70), returning to 0x8C1C5B3 and to 0x8C203CB. The second is the one whose stack slots hold what 3663's
+// sessions showed as "values": [rsp+0x60] = the vtable of pa::DontUseThisAlwaysAttacherExceptSpecialProgrammerXXXXXX<0>
+// (0x8C20359), [rsp+0x68] = rbx (an object), [rsp+0x70] a byte, [rsp+0x78] = r12; the first has a stack pointer in
+// [rsp+0x60] (0x8C1C53B). NOT confirmed by a run: if the keys stop arriving, look at the "from exe+0x..." of this
+// message's lines in the log.
+constexpr uintptr_t kPostCreateFailedFrom3732 = 0x8C203CB;
+// 3732 (static, 2026-11-21; never run): were 0x5991108 / 0x5990BF0; pa::ClientNormalInGameActor and
+// pa::ClientChildOnlyInGameActor by RTTI (vtable_map_3663_3732.json).
+constexpr uintptr_t kVtClientNormalActor3732 = 0x5995CB8, kVtClientChildOnlyActor3732 = 0x59961D0;
 constexpr uint32_t kClientActorKey = 0x60;
 SeqRing<32> g_post_fail_ring;
 
-uint32_t client_actor_key_3663(uintptr_t obj) noexcept {
+uint32_t client_actor_key_3732(uintptr_t obj) noexcept {
     uintptr_t vt = 0;
     uint32_t key = 0;
     if (obj < 0x10000 || (obj & 7) || !fast_read(obj, &vt, sizeof vt)) return 0;
-    if (vt != g_base + kVtClientNormalActor3663 && vt != g_base + kVtClientChildOnlyActor3663) return 0;
+    if (vt != g_base + kVtClientNormalActor3732 && vt != g_base + kVtClientChildOnlyActor3732) return 0;
     if (!fast_read(obj + kClientActorKey, &key, sizeof key)) return 0;
     return (key >> 28) == 0xA || (key >> 28) == 0xB ? key : 0;
 }
-uint32_t failed_actor_key_3663(const uint64_t* values, size_t n) noexcept {
+uint32_t failed_actor_key_3732(const uint64_t* values, size_t n) noexcept {
     for (size_t i = 0; i < n; ++i)
-        if (const uint32_t k = client_actor_key_3663(static_cast<uintptr_t>(values[i]))) return k;
+        if (const uint32_t k = client_actor_key_3732(static_cast<uintptr_t>(values[i]))) return k;
     for (size_t i = 0; i < n; ++i) {
         const auto obj = static_cast<uintptr_t>(values[i]);
         if (obj < 0x10000 || (obj & 7) || (obj >= g_base && obj - g_base < 0x20000000)) continue;
         uintptr_t inner[16];
         if (!fast_read(obj, inner, sizeof inner)) continue;
         for (const uintptr_t p : inner)
-            if (const uint32_t k = client_actor_key_3663(p)) return k;
+            if (const uint32_t k = client_actor_key_3732(p)) return k;
     }
     return 0;
 }
@@ -134,9 +146,9 @@ void on_error(safetyhook::Context& ctx) {
         }
         g_fail_ring.push(found);  // its index from its own fetch_add (seq_ring.h)
     }
-    if (g_base && current_build() == Build::v3663 && e.caller == g_base + kPostCreateFailedFrom3663) {
+    if (g_base && current_build() == Build::v3732 && e.caller == g_base + kPostCreateFailedFrom3732) {
         const uint64_t vals[] = {e.extra[0], e.value, e.extra[1], e.extra[2]};
-        g_post_fail_ring.push(failed_actor_key_3663(vals, 4));
+        g_post_fail_ring.push(failed_actor_key_3732(vals, 4));
     }
     if (!TryAcquireSRWLockExclusive(&g_lock)) {
         ++g_lost;
@@ -152,12 +164,12 @@ void on_error(safetyhook::Context& ctx) {
 bool game_errors_install() {
     if (g_hook) return true;
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
-    if (current_build() == Build::v3527 || current_build() == Build::v3576 || current_build() == Build::v3663) {
+    if (current_build() == Build::v3527 || current_build() == Build::v3576 || current_build() == Build::v3732) {
         // The same plain function on all three (3576: kErrorLogger3576, 3663: kErrorLogger3663).
         const bool is3576 = current_build() == Build::v3576;
-        const bool is3663 = current_build() == Build::v3663;
-        const uintptr_t logger = is3663 ? kErrorLogger3663 : is3576 ? kErrorLogger3576 : kErrorLogger3527;
-        const char* const name = is3663 ? "3663" : is3576 ? "3576" : "3527";
+        const bool is3732 = current_build() == Build::v3732;
+        const uintptr_t logger = is3732 ? kErrorLogger3732 : is3576 ? kErrorLogger3576 : kErrorLogger3527;
+        const char* const name = is3732 ? "3732" : is3576 ? "3576" : "3527";
         uint8_t head3527[sizeof kErrorLoggerHead3527]{};
         if (!safe_read(g_base + logger, head3527, sizeof head3527) ||
             std::memcmp(head3527, kErrorLoggerHead3527, sizeof head3527) != 0) {

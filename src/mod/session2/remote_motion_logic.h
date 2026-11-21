@@ -144,7 +144,7 @@ inline const char* byte_site_name(ByteSite s) {
         case ByteSite::Ok: return "ok";
         case ByteSite::NoSection: return "in no section of the image";
         case ByteSite::InCode: return "inside the game's code [0x1000, 0x51EB000)";
-        case ByteSite::Xtls: return "inside .xtls (Denuvo)";
+        case ByteSite::Xtls: return "inside the protected section (executable and writable)";
         case ByteSite::NotWritable: return "in a section that is not writable";
         case ByteSite::Executable: return "in an executable section";
     }
@@ -162,7 +162,11 @@ inline ByteSite check_data_byte(std::span<const SectionInfo> secs, uint32_t rva)
     if (rva >= kCodeBegin && rva < kCodeEnd) return ByteSite::InCode;
     const SectionInfo* s = section_info_of(secs, rva);
     if (!s) return ByteSite::NoSection;
-    if (std::string_view(s->name) == ".xtls") return ByteSite::Xtls;
+    // The protected section by its flags (executable AND writable), never by its name: the protector renames the
+    // sections on every build. Until 2026-11-21 this compared the name with ".xtls" (2976's name for it); on
+    // 1.0.0.3732 ".xtls" is the plain read/write data section that holds the wall-up byte, and wallup_send refused
+    // itself there (seen live that day, both copies).
+    if ((s->flags & kScnExecute) && (s->flags & kScnWrite)) return ByteSite::Xtls;
     if (s->flags & kScnExecute) return ByteSite::Executable;
     if (!(s->flags & kScnWrite)) return ByteSite::NotWritable;
     return ByteSite::Ok;

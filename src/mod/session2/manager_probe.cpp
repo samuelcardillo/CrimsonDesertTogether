@@ -37,8 +37,13 @@ constexpr uintptr_t kVtManager3576 = 0x5EE0B88;
 // (0xE8AD055), "armed" 0x2B3FF00 -> 0xE8B3A30 writes 2 (0xE8B3D45), reset = the vtable's +0x8 (0x2B3F500 ->
 // 0xE8AD380); the preparation 0x2B3F9B0 (.pdata, the same 5 bytes; reset +0x4B0 as in 3576) sets its flag at +0x6C2
 // (0x2B3FC58; 3527's +0x6BA, the same 0x16 below the state). The manager's +0x18 (actor) is 3527's, not re-derived.
-constexpr uintptr_t kVtManager3663 = 0x5F5A758;
-constexpr uint32_t kState3663 = 0x6D8, kPrepareFlag3663 = 0x6C2;
+// 3732 (static, 2026-11-21; never run): was 0x5F5A758; pa::ServerSequencerStageManager by RTTI
+// (vtable_map_3663_3732.json).
+constexpr uintptr_t kVtManager3732 = 0x5F5FAF0;
+// 3732 (static, 2026-11-21; never run): unchanged, re-read on 3732: state 0 (0x2B3B940) writes byte [rdi+0x6D8] = 0
+// (0x2B3B994), the thunks' protected targets write 1 (0xE153CA5) and 2 (0xE15B355) there, the preparation sets
+// byte [rsi+0x6C2] = 1 (0x2B423A8).
+constexpr uint32_t kState3732 = 0x6D8, kPrepareFlag3732 = 0x6C2;
 constexpr int kLinesPerPoint = 24, kStackPointers = 8;
 constexpr size_t kStackScan = 0x400;
 constexpr DWORD kSampleMs = 100;
@@ -66,9 +71,12 @@ constexpr uint8_t kAskUnloadBytes3576[] = {0xE9, 0x7B, 0xE8, 0x79, 0x0B};
 constexpr uint8_t kResetBytes3576[] = {0xE9, 0x6B, 0x0E, 0x7A, 0x0B};
 constexpr uint8_t kArmBytes3576[] = {0xE9, 0x9B, 0x63, 0x7A, 0x0B};
 // 3663's three thunks (their jmp targets: 0xE8AD010, 0xE8AD380, 0xE8B3A30).
-constexpr uint8_t kAskUnloadBytes3663[] = {0xE9, 0xDB, 0xEA, 0xD6, 0x0B};
-constexpr uint8_t kResetBytes3663[] = {0xE9, 0x7B, 0xDE, 0xD6, 0x0B};
-constexpr uint8_t kArmBytes3663[] = {0xE9, 0x2B, 0x3B, 0xD7, 0x0B};
+// 3732 (static, 2026-11-21; never run): were {0xE9,0xDB,0xEA,0xD6,0x0B}, {0xE9,0x7B,0xDE,0xD6,0x0B} and
+// {0xE9,0x2B,0x3B,0xD7,0x0B}; the thunks' rel32 into the re-encoded protected section (targets 0xE153C60, 0xE156250,
+// 0xE15B030).
+constexpr uint8_t kAskUnloadBytes3732[] = {0xE9, 0xDB, 0x2F, 0x61, 0x0B};
+constexpr uint8_t kResetBytes3732[] = {0xE9, 0xFB, 0x45, 0x61, 0x0B};
+constexpr uint8_t kArmBytes3732[] = {0xE9, 0xDB, 0x89, 0x61, 0x0B};
 struct Point {
     uintptr_t rva;
     std::span<const uint8_t> bytes;
@@ -88,12 +96,17 @@ const Point kPointList3576[kPoints] = {
     {0x2AD4D00, kStateZeroBytes, "state 0"},
     {0x2ADBCE0, kPrepareBytes, "preparation"},
 };
-const Point kPointList3663[kPoints] = {
-    {0x2B3E530, kAskUnloadBytes3663, "state 1, unload asked"},
-    {0x2B3F500, kResetBytes3663, "state 0, reset"},
-    {0x2B3FF00, kArmBytes3663, "state 2, armed"},
-    {0x2B391F0, kStateZeroBytes, "state 0"},
-    {0x2B3F9B0, kPrepareBytes, "preparation"},
+// 3732 (static, 2026-11-21; never run): were 0x2B3E530, 0x2B3F500, 0x2B3FF00, 0x2B391F0, 0x2B3F9B0. Reset is the
+// vtable's +0x8 (0x2B41C50, a 5-byte jmp) and state 0 its +0x18 (0x2B3B940, .pdata, the same 5 bytes); the other three
+// keep 3663's distances from reset: "unload asked" -0xFD0 (0x2B40C80, a jmp whose target writes state 1), "armed"
+// +0xA00 (0x2B42650, a jmp whose target writes state 2), the preparation +0x4B0 (0x2B42100, .pdata, the same 5 bytes,
+// sets the flag +0x6C2). The three thunks are not .pdata entries (lone jmps after a function's padding).
+const Point kPointList3732[kPoints] = {
+    {0x2B40C80, kAskUnloadBytes3732, "state 1, unload asked"},
+    {0x2B41C50, kResetBytes3732, "state 0, reset"},
+    {0x2B42650, kArmBytes3732, "state 2, armed"},
+    {0x2B3B940, kStateZeroBytes, "state 0"},
+    {0x2B42100, kPrepareBytes, "preparation"},
 };
 // Set by probe_thread before any hook goes in, then read only.
 const Point* g_points = kPointList;
@@ -159,9 +172,9 @@ void sample(Watched& w, uintptr_t user) {
 
 DWORD WINAPI probe_thread(void*) {
     const bool v3576 = game::is_3576();
-    const bool v3663 = game::is_3663();
-    if (!game::is_3549() && !v3576 && !v3663) {
-        log::info("ManagerProbe: only for builds 3549, 3576 and 3663, off");
+    const bool v3732 = game::is_3732();
+    if (!game::is_3549() && !v3576 && !v3732) {
+        log::info("ManagerProbe: only for builds 3549, 3576 and 3732, off");
         return 0;
     }
     if (v3576) {
@@ -169,18 +182,19 @@ DWORD WINAPI probe_thread(void*) {
         g_vt_manager = kVtManager3576;
         g_image_size = game::kImageSize3576;
     }
-    if (v3663) {
-        g_points = kPointList3663;
-        g_vt_manager = kVtManager3663;
-        g_image_size = game::kImageSize3663;
-        g_state = kState3663;
-        g_prepare_flag = kPrepareFlag3663;
+    if (v3732) {
+        g_points = kPointList3732;
+        g_vt_manager = kVtManager3732;
+        g_image_size = game::kImageSize3732;
+        g_state = kState3732;
+        g_prepare_flag = kPrepareFlag3732;
     }
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     const auto* profile = game::reader_profile();
     // 3576: the world slot from core_globals_3576.json (reader_profile() is null on 3576). 3663: 0x72451C0
     // (profile_s2.h; two AOB patterns).
-    const uintptr_t world_slot = v3663 ? 0x72451C0 : v3576 ? 0x71C0100 : profile ? profile->world_system : 0;
+    // 3732 (static, 2026-11-21; never run): was 0x72451C0; the world slot of profile_s2.h (3197 references).
+    const uintptr_t world_slot = v3732 ? 0x724B350 : v3576 ? 0x71C0100 : profile ? profile->world_system : 0;
     uintptr_t world = 0;
     while (!world_slot || !game::safe_read(g_base + world_slot, &world, sizeof world) || !world) Sleep(500);
     std::vector<gad::Section> secs;

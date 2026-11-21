@@ -22,7 +22,7 @@ from cdbuild import WORLD_SLOT  # noqa: E402
 from live_reader_check import Reader  # noqa: E402
 
 B = 0x140000000
-CHUNK_ORIGIN = 0x7231330  # 3663 (src/mod/game/build_profile.h)
+CHUNK_ORIGIN = 0x7237470  # 3732 (src/mod/game/build_profile.h; 3663: 0x7231330)
 hp, gp, secs = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3])
 period = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
 

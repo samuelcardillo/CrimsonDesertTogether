@@ -84,8 +84,10 @@ Reading read_user2() {
     const uintptr_t base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     // pa::ServerSequencerStageManager by RTTI; 3576 (static, 2026-11-06; not yet run): vtable_map_3549_3576.json.
     // Build 1.0.0.3663 (static, 2026-11-13; never run): 0x5F5A758 by RTTI (vtable_map_3576_3663.json). The line only.
+    // 3732 (static, 2026-11-21; never run): was 0x5F5A758; pa::ServerSequencerStageManager by RTTI
+    // (vtable_map_3663_3732.json).
     const auto build = game::current_build();
-    const uintptr_t seq_vt = build == game::Build::v3663   ? uintptr_t{0x5F5A758}
+    const uintptr_t seq_vt = build == game::Build::v3732   ? uintptr_t{0x5F5FAF0}
                              : build == game::Build::v3576 ? uintptr_t{0x5EE0B88}
                              : build == game::Build::v3527 ? uintptr_t{0x5EDE980}
                              : build == game::Build::v2976 ? kVtServerSequencerStageManager

@@ -15,7 +15,10 @@ namespace cdmp::native_opcode {
 // resolved, 0 opcode and 0 size changes: tools/porting/data/troc_mapping_3549_3576.json), so it shares kEntries3527.
 // v3663 (1.0.0.3663, 2026-11-13): the same 1175 messages renumbered (1066 of them; kinds and sizes unchanged) plus 4 new
 // ones (tools/porting/data/opcode_mapping_3576_3663.json): its own table, kEntries3663; logical IDs unchanged.
-enum class Build : uint32_t { unsupported = 0, v2976 = 2976, v3527 = 3527, v3576 = 3576, v3663 = 3663 };
+// v3732 (1.0.0.3732, 2026-11-19): 3663's catalogue message for message (same names, native numbers and kinds:
+// opcode_mapping_3663_3732.json). 3663 itself cannot be run any more, so its enum value and table were renamed:
+// Build::v3732 and kEntries3732 are what Build::v3663 and kEntries3663 were (docs/research/port-3732.md).
+enum class Build : uint32_t { unsupported = 0, v2976 = 2976, v3527 = 3527, v3576 = 3576, v3732 = 3732 };
 
 // Logical IDs preserve the 2976 catalog. Verified additions in 3527 use
 // 0x8000 | native ID; that namespace is unavailable to unknown messages.

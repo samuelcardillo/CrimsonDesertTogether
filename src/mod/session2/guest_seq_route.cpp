@@ -262,17 +262,36 @@ constexpr uint8_t kP2322B_3576[] = {0xC6, 0x80, 0x59, 0x02, 0x00, 0x00, 0x02, 0x
 // the only such instruction in the code; 0xBDA308 / 0xBDA383 compare it with 2 / 3). The frames (every rbp slot read in
 // guest_seq_route_hook and kFieldSlot3527) are 3527's: the arrays that define them are identical. No branch lands in
 // any of the four patches (rel8 sweep of each function, rel32 scan of both code sections).
-constexpr uintptr_t kP2661_3663 = 0xD6CBFE, kP2981_3663 = 0xD6E724, kP2810_3663 = 0xD6D0F5, kP2322_3663 = 0xCD563B;
+//
+// 1.0.0.3732 (static, 2026-11-21; never run): the values below retargeted in place (the 3663 exe is gone; the comment
+// above keeps 3663's addresses). The four handlers moved whole by +0xA50 with 3663's .pdata sizes: 2661
+// [0xD6D1A0,0xD6D8B1), 2810 [0xD6D8C0,0xD6DD04), 2981 [0xD6EC50,0xD6F3EA), 2322 [0xCD5EA0,0xCD6205). Every point and
+// context array is there at old + 0xA50, equal to the exe but for the rel32 / RIP fields noted below (the three lookups
+// now call 0x9BEEC0, 3663's 0x9BE640 + 0x880). The frames were read again around each point: 2661 kind in R14B, vf48 on
+// [rbp-0x28], the wrapper at [rbp+0x100] (lea rdx,[rbp+0x100] at 0xD6D6A3); 2981 found [rbp+0x30] / actor [rbp+0x28],
+// vf48 on [rbp-0x10], r13 = the raw packet (0xD6EC7D); 2810 key [rbp+0x88], found [rbp+0x10], actor [rbp+8], u64
+// [rbp-0x48], u32 [rbp-0x50], vf48 on [rbp-0x38]; 2322 r14 = the raw packet (0xCD5EC8), found [rbp+8], actor [rbp], vf48
+// on [rbp-0x48], mov byte [rax+0x261],2. No branch lands in any of the four patches (rel8 of each function, rel32
+// patterns of both executable sections).
+// 3732: were 0xD6CBFE / 0xD6E724 / 0xD6D0F5 / 0xCD563B (each handler +0xA50; kP2661B_3663, kP2981B_3527, kP2810B_3527
+// and kP2322B_3663 have one hit each near there).
+constexpr uintptr_t kP2661_3732 = 0xD6D64E, kP2981_3732 = 0xD6F174, kP2810_3732 = 0xD6DB45, kP2322_3732 = 0xCD608B;
 // pa::ClientSequencerStageManager / pa::ClientSequencerPlayDataActorComponent (vtable_map_3576_3663.json, rtti_3663.json).
-constexpr uintptr_t kVtStageManager3663 = 0x59D57E8, kVtSeqPlayComp3663 = 0x59CB770;
-constexpr uint8_t kP2661B_3663[] = {0x41, 0x80, 0xFE, 0x04, 0x74, 0x47, 0x48, 0x8D, 0x05, 0x85, 0x85, 0xC6, 0x04, 0x48, 0x89, 0x44};
-constexpr uint8_t kFind2981_3663[] = {0x44, 0x8B, 0x45, 0xC0, 0x48, 0x8D, 0x55, 0x20, 0x49, 0x8B, 0xCF, 0xE8, 0xAC, 0xFF,
+// 3732: were 0x59D57E8 / 0x59CB770; the same two classes by RTTI name (vtable_map_3663_3732.json).
+constexpr uintptr_t kVtStageManager3732 = 0x59DA8A8, kVtSeqPlayComp3732 = 0x59D0850;
+// 3732: was {.., 0x8D, 0x05, 0x85, 0x85, 0xC6, 0x04, ..} at 0xD6CBFE: only the lea's displacement differs (-> 0x59DA120).
+constexpr uint8_t kP2661B_3732[] = {0x41, 0x80, 0xFE, 0x04, 0x74, 0x47, 0x48, 0x8D, 0x05, 0xC5, 0xCA, 0xC6, 0x04, 0x48, 0x89, 0x44};
+// 3732: the three lookups were E8 AC FF C4 FF / E8 D4 15 C5 FF / E8 8A 90 CE FF (3663's 0x9BE640); now call 0x9BEEC0, at
+// 0xD6F0D4 / 0xD6DAA9 / 0xCD5FFA; the bytes around the rel32 are 3663's.
+constexpr uint8_t kFind2981_3732[] = {0x44, 0x8B, 0x45, 0xC0, 0x48, 0x8D, 0x55, 0x20, 0x49, 0x8B, 0xCF, 0xE8, 0xDC, 0xFD,
                                       0xC4, 0xFF, 0x90, 0x80, 0x7D, 0x30, 0x00, 0x74, 0x29, 0x48, 0x8B, 0x7D, 0x28};
-constexpr uint8_t kFind2810_3663[] = {0x44, 0x8B, 0x85, 0x88, 0x00, 0x00, 0x00, 0x48, 0x8D, 0x55, 0x00, 0x48, 0x8B, 0xCE, 0xE8,
-                                      0xD4, 0x15, 0xC5, 0xFF, 0x90, 0x80, 0x7D, 0x10, 0x00, 0x74, 0x29, 0x48, 0x8B, 0x75, 0x08};
-constexpr uint8_t kFind2322_3663[] = {0x48, 0x8D, 0x55, 0xF8, 0x48, 0x8B, 0xCE, 0xE8, 0x8A, 0x90, 0xCE, 0xFF,
+constexpr uint8_t kFind2810_3732[] = {0x44, 0x8B, 0x85, 0x88, 0x00, 0x00, 0x00, 0x48, 0x8D, 0x55, 0x00, 0x48, 0x8B, 0xCE, 0xE8,
+                                      0x04, 0x14, 0xC5, 0xFF, 0x90, 0x80, 0x7D, 0x10, 0x00, 0x74, 0x29, 0x48, 0x8B, 0x75, 0x08};
+constexpr uint8_t kFind2322_3732[] = {0x48, 0x8D, 0x55, 0xF8, 0x48, 0x8B, 0xCE, 0xE8, 0xBA, 0x8E, 0xCE, 0xFF,
                                       0x90, 0x80, 0x7D, 0x08, 0x00, 0x74, 0x29, 0x48, 0x8B, 0x75, 0x00};
-constexpr uint8_t kP2322B_3663[] = {0xC6, 0x80, 0x61, 0x02, 0x00, 0x00, 0x02, 0x48, 0x8D, 0x05, 0x1F, 0x05, 0x07, 0x05};
+// 3732: was {.., 0x48, 0x8D, 0x05, 0x1F, 0x05, 0x07, 0x05} at 0xCD563B: only the lea's displacement differs (-> 0x5D4ADF0);
+// the write is still mov byte [rax+0x261],2.
+constexpr uint8_t kP2322B_3732[] = {0xC6, 0x80, 0x61, 0x02, 0x00, 0x00, 0x02, 0x48, 0x8D, 0x05, 0x57, 0x4D, 0x07, 0x05};
 
 // The manager's fields this module reads, per build. 3527 [V capstone]: the marker +0x259 (0xBA2FEB, 0xC9CB9B); 0xBA21F0
 // (2976's 0xA97300) returns at once while the vector {+0x1B8, u32 +0x1C0} (0xBA88D0: stages by id) holds anything, which is
@@ -288,7 +307,11 @@ constexpr MgrOff kMgrOff3527{0x259, 0x1C0, 0, 0x1C8, 0x1D8, 0x1F0, 0};
 // the tick 0xBD8000 = 3527's 0xBA0080) tests the vector count +0x1C8 (0xBDA1E6), empties the lists {+0x1D0, n +0x1D8} and
 // {+0x1F0, n +0x1F8} (0xBDA248..0xBDA2B4), plays {+0x1E0, n +0x1E8} in state 3 (0xBDA705..0xBDA740) and compares the
 // ready byte +0x261 with 2 / 3 (0xBDA308, 0xBDA383, 0xBDA705); the 2322 handler writes +0x261 (kP2322B_3663).
-constexpr MgrOff kMgrOff3663{0x261, 0x1C8, 0, 0x1D0, 0x1E0, 0x1F8, 0};
+// 3732 (static, 2026-11-21; never run): unchanged; read again in 0xBDABD0 (3663's 0xBDA180 + 0xA50, the first call of
+// the tick 0xBD8A50): cmp [rdi+0x1C8] 0xBDAC36, the lists {+0x1D0, n +0x1D8} and {+0x1F0, n +0x1F8} emptied
+// 0xBDAC98..0xBDAD04, {+0x1E0, n +0x1E8} 0xBDB165..0xBDB24C, the ready byte +0x261 against 2 / 3 (0xBDAD58, 0xBDADD3,
+// 0xBDB155); the 2322 handler still writes +0x261.
+constexpr MgrOff kMgrOff3732{0x261, 0x1C8, 0, 0x1D0, 0x1E0, 0x1F8, 0};
 
 enum class How : uint8_t { None, Own, StageDiag, P8Probe, NotWanted };
 const char* how_name(How h) {
@@ -305,12 +328,12 @@ uintptr_t g_base = 0;
 // The build, its world slot and the 2661's prefix: written by guest_seq_route_start before any hook or thread.
 bool g_3527 = false;  // 3527's layout (3527, 3549, 3576 and 3663: the same handler frames)
 bool g_3576 = false;  // 3576's addresses
-bool g_3663 = false;  // 3663's addresses (and its manager fields, kMgrOff3663)
+bool g_3732 = false;  // 3663's addresses (and its manager fields, kMgrOff3663)
 uintptr_t g_world_slot = off::kWorldSystemSlot;
 size_t g_prefix = osq::kPreparePrefix;
 const MgrOff* g_mo = &kMgrOff2976;
 uintptr_t vt_mgr() noexcept {
-    return g_3663 ? kVtStageManager3663 : g_3576 ? kVtStageManager3576 : g_3527 ? kVtStageManager3527 : kVtStageManager;
+    return g_3732 ? kVtStageManager3732 : g_3576 ? kVtStageManager3576 : g_3527 ? kVtStageManager3527 : kVtStageManager;
 }
 std::atomic<bool> g_started{false};         // guest_seq_route is probe or 1
 std::atomic<bool> g_thread_started{false};  // the install thread (guest_seq_route or guest_sched_route)
@@ -780,7 +803,7 @@ std::string npc_text(const gsr::NpcState& s) {
 uintptr_t play_comp(uintptr_t a) {
     const uintptr_t comps = a ? rdp(a + kActor_Comps) : 0;
     const uintptr_t comp = comps ? rdp(comps + kComps_Play) : 0;
-    const uintptr_t vt = g_3663   ? kVtSeqPlayComp3663
+    const uintptr_t vt = g_3732   ? kVtSeqPlayComp3732
                          : g_3576 ? kVtSeqPlayComp3576
                          : g_3527 ? kVtSeqPlayComp3527
                                   : kVtSeqPlayComp;
@@ -1188,31 +1211,34 @@ std::vector<PointDef> points_3576() {
 }
 
 // Build 1.0.0.3663 (static): the same contexts as 3527 at old + each handler's shift (see kP2661_3663).
-std::vector<PointDef> points_3663() {
-    constexpr uintptr_t d = 0x38ED0;  // 2661, 2981, 2810
-    constexpr uintptr_t e = 0x38AA0;  // 2322
+// 3732 (static, 2026-11-21; never run): d was 0x38ED0 and e 0x38AA0 (3527 -> 3663); the four handlers moved +0xA50 more,
+// so the same 3527 addresses + these give 3732's (each context array equal to the exe there, the three finds with the
+// new rel32 above).
+std::vector<PointDef> points_3732() {
+    constexpr uintptr_t d = 0x39920;  // 2661, 2981, 2810
+    constexpr uintptr_t e = 0x394F0;  // 2322
     return {
-        {Point::P2661, kP2661_3663, 6, kP2661B_3663,
+        {Point::P2661, kP2661_3732, 6, kP2661B_3732,
          {{0xD33895 + d, kFrame2661_3527}, {0xD33CC9 + d, kKind2661_3527}, {0xD33CC5 + d, kActor2661_3527},
           {0xD33D24 + d, kVf48_2661_3527}, {0xD33885 + d, kHome2661_3527}, {0xD338A4 + d, kWrap2661_3527}},
          on_p2661},
-        {Point::P2981, kP2981_3663, 9, kP2981B_3527,
-         {{0xD35345 + d, kFrame2981_3527}, {0xD3535D + d, kRaw2981_3527}, {0xD357B4 + d, kFind2981_3663},
+        {Point::P2981, kP2981_3732, 9, kP2981B_3527,
+         {{0xD35345 + d, kFrame2981_3527}, {0xD3535D + d, kRaw2981_3527}, {0xD357B4 + d, kFind2981_3732},
           {0xD3584A + d, kVf48_2981_3527}},
          on_p2981},
-        {Point::P2810, kP2810_3663, 7, kP2810B_3527,
-         {{0xD33FB0 + d, kFrame2810_3527}, {0xD34189 + d, kFind2810_3663}, {0xD3421B + d, kVf48_2810_3527},
+        {Point::P2810, kP2810_3732, 7, kP2810B_3527,
+         {{0xD33FB0 + d, kFrame2810_3527}, {0xD34189 + d, kFind2810_3732}, {0xD3421B + d, kVf48_2810_3527},
           {0xD34230 + d, kSeq2810_3527}},
          on_p2810},
-        {Point::P2322, kP2322_3663, 7, kP2322B_3663,
-         {{0xC9C9C0 + e, kFrame2322_3527}, {0xC9C9CC + e, kRaw2322_3527}, {0xC9CB0A + e, kFind2322_3663},
+        {Point::P2322, kP2322_3732, 7, kP2322B_3732,
+         {{0xC9C9C0 + e, kFrame2322_3527}, {0xC9C9CC + e, kRaw2322_3527}, {0xC9CB0A + e, kFind2322_3732},
           {0xC9CB91 + e, kVf48_2322_3527}},
          on_p2322},
     };
 }
 
 std::vector<PointDef> points() {
-    if (g_3663) return points_3663();
+    if (g_3732) return points_3732();
     if (g_3576) return points_3576();
     if (g_3527) return points_3527();
     return {
@@ -1316,7 +1342,7 @@ DWORD WINAPI install_thread(LPVOID) {
     IMAGE_NT_HEADERS64 nt{};
     std::vector<gad::Section> secs;
     if (g_base != off::kImageBase || !game::safe_read(g_base, &dos, sizeof dos) ||
-        !game::safe_read(g_base + dos.e_lfanew, &nt, sizeof nt) || !(game::legacy_layout() || g_3576 || g_3663) ||
+        !game::safe_read(g_base + dos.e_lfanew, &nt, sizeof nt) || !(game::legacy_layout() || g_3576 || g_3732) ||
         !p8_exe_sections(g_base, secs)) {
         log::error("GuestSeqRoute: unsupported game build or unreadable sections; nothing is routed (the gate drops "
                    "every copy)");
@@ -1422,16 +1448,18 @@ void guest_seq_route_start(const std::string& mode, const std::string& watch_lis
                            const std::string& deny_list, const std::string& sched_mode, const std::string& bind_mode,
                            const std::string& route_2524, const std::string& allow_2524) {
     g_3576 = game::current_build() == game::Build::v3576;
-    g_3663 = game::current_build() == game::Build::v3663;
-    g_3527 = game::current_build() == game::Build::v3527 || g_3576 || g_3663;
+    g_3732 = game::current_build() == game::Build::v3732;
+    g_3527 = game::current_build() == game::Build::v3527 || g_3576 || g_3732;
     if (g_3527) {
         if (const auto* profile = game::reader_profile()) g_world_slot = profile->world_system;
         if (g_3576) g_world_slot = 0x71C0100;  // core_globals_3576.json (no reader profile for 3576 yet)
         // Build 1.0.0.3663 (static, 2026-11-13; never run): WorldSystem, profile_s2.h's rva3663() (two AOB patterns).
-        if (g_3663) g_world_slot = 0x72451C0;
+        // 3732 (static, 2026-11-21; never run): was 0x72451C0; the WorldSystem global of the port brief (about 3200
+        // RIP-relative references in the code section).
+        if (g_3732) g_world_slot = 0x724B350;
         // 3663: the 2661 handler parses its payload with 3527's code (every fix / context array identical): same prefix.
         g_prefix = osq::kPreparePrefix3527;
-        g_mo = g_3663 ? &kMgrOff3663 : &kMgrOff3527;
+        g_mo = g_3732 ? &kMgrOff3732 : &kMgrOff3527;
     }
     bool bad_2524 = false;
     gsr::Mode2524 m2524 = gsr::parse_mode_2524(route_2524, &bad_2524);

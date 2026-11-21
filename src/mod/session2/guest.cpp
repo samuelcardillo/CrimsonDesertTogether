@@ -108,10 +108,13 @@ inline uintptr_t server_framework_mode_rva() noexcept {
     // (0x2A0EB1E `mov r8d,[0x6F29B70]`) between the Troc registry 0x165FA60 and Troc::Find 0x165FAC0; the server set-up
     // 0x2A5E840 reads it at the same +0x1318 (0x2A5FB58) and plain code writes it: `mov dword [0x6F29B70],4` (0x2A5E899,
     // 3527's live value); 59 sites read it.
+    // 3732 (static, 2026-11-21; never run): was 0x6F29B70; OnRecvPacket 0x2A111F0 reads it at the same +0xAE
+    // (0x2A1129E `mov r8d,[0x6F2FB70]`) between the calls to 0x16615E0 and 0x1661640; the server set-up 0x2A60F90
+    // writes `mov dword [0x6F2FB70],4` at the same +0x59 (0x2A60FE9); 59 references. The Troc block's +0x6000.
     if (game::current_build() == game::Build::v2976) return kServerFrameworkMode;
     if (game::current_build() == game::Build::v3527) return 0x6EAB858;
     if (game::current_build() == game::Build::v3576) return 0x6EAD858;
-    if (game::current_build() == game::Build::v3663) return 0x6F29B70;
+    if (game::current_build() == game::Build::v3732) return 0x6F2FB70;
     return 0;
 }
 constexpr uint64_t kMaxDecisionLogged = 32, kMaxInternalLogged = 16, kMaxLoginLogged = 8;
@@ -1229,8 +1232,12 @@ constexpr uintptr_t kWorldSystem3576 = 0x71C0100;
 // - unchanged: world 0x72451C0 (profile_s2.h), world+0x30 -> manager -> +0x50 the local actor (0x3EE4BA: the same
 //   chain; the state machine's [P+0x1A8]+0x50 too), actor +0x68 -> +0xA8 -> +0x18 (vf48 above). The actor's +0x60
 //   (key) and +0x90 (user) are 3527's, NOT re-derived (a wrong +0x90 only makes "field is own" false: nothing is sent).
-constexpr uintptr_t kVtClientSequencerStageManager3663 = 0x59D57E8;
-constexpr uintptr_t kWorldSystem3663 = 0x72451C0;
+// 3732 (static, 2026-11-21; never run): was 0x59D57E8; pa::ClientSequencerStageManager by RTTI
+// (vtable_map_3663_3732.json). Its vf4 (0xBD8750 -> protected 0x99B82F0) writes the marker +0x261 = 1 (0x99B838C) and
+// the 2322 handler 0xCD5EA0 writes +0x261 = 2 at the same +0x1EB (0xCD608B).
+constexpr uintptr_t kVtClientSequencerStageManager3732 = 0x59DA8A8;
+// 3732 (static, 2026-11-21; never run): was 0x72451C0; profile_s2.h (3197 references).
+constexpr uintptr_t kWorldSystem3732 = 0x724B350;
 
 // The field-change controller's offsets, [P+state] (u8) and [P+field_holder] (-> the client's field), and the
 // ClientSequencerStageManager's marker [M+marker] (u8).
@@ -1238,7 +1245,13 @@ struct LoadController {
     uint32_t state, field_holder, marker;
 };
 LoadController load_controller() noexcept {
-    if (game::is_3663()) return {0x24C, 0x1B0, 0x261};
+    // 3732 (static, 2026-11-21; never run): unchanged, re-read on 3732. The loading state machine is 0x882CD0 (was
+    // 0x8825B0; its only caller 0xC17EC1): movzx r14d,byte [P+0x24C] at the same +0xE9, the field holder [P+0x1B0]
+    // (0x883498) for ClientField::vf48 0xAE0FC0 (slot 9 of 0x59CE8A8: field+0x180, actor +0x68 -> +0xA8 -> +0x18),
+    // cmp byte [manager+0x261],2 at the same +0x7D7 (0x8834A7), in the case the state 0x12 leads to; the states still
+    // end at 0x19. Plain code still reads [[world]+0x60]+0x24C as "loading" (0x3EF8B9: dec al ; cmp al,0x17) and
+    // [[world]+0x30]+0x50 as the local actor (0x3EE8C9). The actor's +0x60 / +0x90 are still 3527's, not re-derived.
+    if (game::is_3732()) return {0x24C, 0x1B0, 0x261};
     return {0x15C, 0xC0, 0x259};
 }
 
@@ -1246,7 +1259,7 @@ LoadController load_controller() noexcept {
 // and its last state 0x19 is 3527's 0x18; its 0x11 (the step just before the wait) is reported as 0x10, never as the
 // wait. Below that the numbers are passed through (where the extra state sits is not known: logs only).
 uint8_t preload_state_3527(uint8_t raw) noexcept {
-    if (!game::is_3663()) return raw;
+    if (!game::is_3732()) return raw;
     if (raw == prl::kStateWaitPreload) return static_cast<uint8_t>(prl::kStateWaitPreload - 1);
     return raw > prl::kStateWaitPreload ? static_cast<uint8_t>(raw - 1) : raw;
 }
@@ -1264,11 +1277,11 @@ prl::Facts read_preload_facts() noexcept {
     prl::Facts f;
     f.now_ms = GetTickCount64();
     const bool v3576 = game::current_build() == game::Build::v3576;
-    const bool v3663 = game::current_build() == game::Build::v3663;
+    const bool v3732 = game::current_build() == game::Build::v3732;
     const auto* profile = game::reader_profile();
-    if (!v3576 && !v3663 && !profile) return f;
-    const uintptr_t world_slot = v3663 ? kWorldSystem3663 : v3576 ? kWorldSystem3576 : profile->world_system;
-    const uintptr_t vt_sequencer = v3663   ? kVtClientSequencerStageManager3663
+    if (!v3576 && !v3732 && !profile) return f;
+    const uintptr_t world_slot = v3732 ? kWorldSystem3732 : v3576 ? kWorldSystem3576 : profile->world_system;
+    const uintptr_t vt_sequencer = v3732   ? kVtClientSequencerStageManager3732
                                    : v3576 ? kVtClientSequencerStageManager3576
                                            : kVtClientSequencerStageManager3527;
     const LoadController lc = load_controller();
@@ -1298,20 +1311,20 @@ prl::Facts read_preload_facts() noexcept {
 
 void preload_release_tick(uintptr_t net) noexcept {
     const auto build = game::current_build();
-    if (build != game::Build::v3527 && build != game::Build::v3576 && build != game::Build::v3663) return;
+    if (build != game::Build::v3527 && build != game::Build::v3576 && build != game::Build::v3732) return;
     const uint64_t now = GetTickCount64();
     if (now < g_preload_next_ms) return;
     g_preload_next_ms = now + kPreloadTickMs;
     try {
         const prl::Facts f = read_preload_facts();
         // Each change of the game's own number (3663's 0x10 and 0x11 are both 3527's 0x10).
-        const uint8_t game_state = build == game::Build::v3663 ? g_preload_raw_state : f.state;
+        const uint8_t game_state = build == game::Build::v3732 ? g_preload_raw_state : f.state;
         if (f.readable && (game_state != g_preload_last_state || f.marker != g_preload_last_marker)) {
             g_preload_last_state = game_state;
             g_preload_last_marker = f.marker;
             log::info("Session2 guest load: state 0x{:X} marker {} (own 0x{:X}, field is own {}){}", f.state, f.marker,
                       f.own_key, f.field_is_own,
-                      build == game::Build::v3663 ? std::format(" (3527's numbering; the game's 0x{:X})", g_preload_raw_state)
+                      build == game::Build::v3732 ? std::format(" (3527's numbering; the game's 0x{:X})", g_preload_raw_state)
                                                   : std::string());
         }
         const prl::Action action = g_preload_release.decide(f);

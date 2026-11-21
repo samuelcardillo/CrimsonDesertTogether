@@ -390,34 +390,62 @@ static_assert(std::size(kFnPoints3576) == kFns);
 //   UIStageGuide 0x6DD4F0 (.pdata to 0x6DDABE): entry with 3527's bytes, but the hook is 2976's register choice again
 //     (mov r14,r8 ; mov rbx,rcx ; mov eax,0xFFFF = kGuideBytes) and the way out moved to +0x5B3 (0x6DDAA3, 3527's bytes);
 //     the same three tests jump there (0x6DD526 / 0x6DD531); span 0x59C. replay_way_out takes 2976's registers here.
-constexpr uintptr_t kV1Entry3663 = 0x6DC360, kV1Point3663 = 0x6DC387, kV1Out3663 = 0x6DD02C;
-constexpr uintptr_t kUiControlRaxRva3663 = 0x5B40000;  // 0x6CD69B lea rax,[rip+0x547295E]
-constexpr uintptr_t kVtStageManager3663 = 0x59D57E8;   // pa::ClientSequencerStageManager (vtable_map_3576_3663.json)
-constexpr uint8_t kMinimapEntry3663[] = {
+//
+// 1.0.0.3732 (static, 2026-11-21; never run): the values below retargeted in place (the 3663 exe is gone; the comment
+// above keeps 3663's addresses). The handlers are again the client processor vtable's slots (0x599CB30 by RTTI name):
+// +0x158 0x6CD8D0, +0x160 0x6CD920, +0x170 0x6D6510, +0x220 0x6DC6D0, +0x240 0x6DD860 (each 3663's + 0x370), and
+// TimelineEvent 0x2277510 (+0x1C20), the jmp of StageChart_Function_TimelineEvent's vf8 0x25D1A50 (vtable 0x5DC5E70).
+// Each function has 3663's .pdata size (Loading 0xCED, TimelineEvent 0x88C, UIShowMinimap 0xAB5, UIStageGuide 0x5CE) and
+// its entry, hook and way-out arrays equal the exe at the same offsets (the minimap's entry but its __chkstk rel32). The
+// span hashes are 3732's bytes'. That a span is 3663's code but for its relative fields was PROVEN for all five: 3732's
+// span with every rel32 / RIP disp32 to a target outside the function (and TimelineEvent's absolute jump-table RVA)
+// moved back by that target's 3663 -> 3732 shift hashes exactly the 3663 value that stood here (the five in the list
+// below; the shifts of the 75 targets were searched with a meet in the middle on the hash state: group 5's report of
+// the 3732 port, span_shifts.py). So replay_way_out needs no change. The refused paths
+// were read again: Loading 0x6DC6F7 mov r15,r8 ; mov r13,rcx with the same 8 jumps to the epilogue 0x6DD39C;
+// UIShowMinimap 0x6D655E mov r13,r8 ; mov rdi,rdx ; mov rsi,rcx ; rax = [r8+0x20] ; r9 = [rax] ; 0x6D6571 / 0x6D657B je
+// 0x6D6F92 (the epilogue); UIStageGuide 0x6DD87F mov r14,r8 ; mov rbx,rcx ; mov eax,0xFFFF ; 0x6DD896 / 0x6DD8A1 ->
+// 0x6DDE13; UIControl's refused path 0x6CD95B -> 0x6CDA0B lea rax,[0x5B45300] -> 0x6CDA99. No branch lands in any patch
+// (rel8 of each function, rel32 patterns of both executable sections).
+// 3732: were 0x6DC360 / 0x6DC387 / 0x6DD02C (Loading +0x370; kV1EntryBytes3527 / kV1Bytes3527 / kV1OutBytes3527 there).
+constexpr uintptr_t kV1Entry3732 = 0x6DC6D0, kV1Point3732 = 0x6DC6F7, kV1Out3732 = 0x6DD39C;
+// 3732: was 0x5B40000; pa::ScopeAttacherBase by RTTI name, what UIControl's refused path loads into rax.
+constexpr uintptr_t kUiControlRaxRva3732 = 0x5B45300;  // 0x6CDA0B lea rax,[rip+0x54778EE]
+// 3732: was 0x59D57E8; the same class by RTTI name (vtable_map_3663_3732.json).
+constexpr uintptr_t kVtStageManager3732 = 0x59DA8A8;   // pa::ClientSequencerStageManager (vtable_map_3576_3663.json)
+// 3732: was {.., 0xE8, 0x09, 0xE8, 0x54, 0x04, ..} at 0x6D61A0: only the __chkstk rel32 differs (0x6D6510, -> 0x4C28F70).
+constexpr uint8_t kMinimapEntry3732[] = {
     0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x4C, 0x24, 0x08, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56,
-    0x41, 0x57, 0x48, 0x8D, 0xAC, 0x24, 0xD0, 0xEC, 0xFF, 0xFF, 0xB8, 0x30, 0x14, 0x00, 0x00, 0xE8, 0x09, 0xE8, 0x54,
+    0x41, 0x57, 0x48, 0x8D, 0xAC, 0x24, 0xD0, 0xEC, 0xFF, 0xFF, 0xB8, 0x30, 0x14, 0x00, 0x00, 0xE8, 0x39, 0x2A, 0x55,
     0x04, 0x48, 0x2B, 0xE0, 0xC5, 0xF8, 0x29, 0xB4, 0x24, 0x20, 0x14, 0x00, 0x00, 0xC5, 0xF8, 0x29, 0xBC, 0x24, 0x10,
     0x14, 0x00, 0x00, 0xC5, 0x78, 0x29, 0x84, 0x24, 0x00, 0x14, 0x00, 0x00, 0xC5, 0x78, 0x29, 0x8C, 0x24, 0xF0, 0x13,
     0x00, 0x00};
-constexpr uint8_t kMinimapOut3663[] = {0x4C, 0x8D, 0x9C, 0x24, 0x30, 0x14, 0x00, 0x00};  // lea r11,[rsp+0x1430]
-constexpr FnPoint kFnPoints3663[] = {
+constexpr uint8_t kMinimapOut3732[] = {0x4C, 0x8D, 0x9C, 0x24, 0x30, 0x14, 0x00, 0x00};  // lea r11,[rsp+0x1430]
+// 3732: the five ported rows, hook / entry / way out / span hash, were
+//   TimelineEvent 0x227591D / 0x22758F0 / 0x227613C / 0x1A6A2803039C0874 (+0x1C20; 48 outside fields, 25 targets)
+//   InputBlock    0x6CD56E / 0x6CD560 / 0x6CD59F / 0x2386ED143A237F54 (+0x370; its one call is 0xBDC6E0, +0xA50)
+//   UIControl     0x6CD5C5 / 0x6CD5B0 / 0x6CD729 / 0xB6422D722C907FFE (+0x370; 6 fields; the try-lock is 0x22993A0)
+//   UIShowMinimap 0x6D61EE / 0x6D61A0 / 0x6D6C22 / 0xFB93C0A7B7BEAE3B (+0x370; 47 outside fields, 31 targets)
+//   UIStageGuide  0x6DD50F / 0x6DD4F0 / 0x6DDAA3 / 0x2932D3CD3C14D0D7 (+0x370; 33 outside fields, 25 targets)
+// The span lengths are 3663's (way out - hook + its bytes); each span PROVEN 3663's code but for those fields (above).
+constexpr FnPoint kFnPoints3732[] = {
     {Fn::SetQuestDialogAICategory, 0, 0, {}, ProcAt::Rcx},
-    {Fn::TimelineEvent, 0x227591D, 6, kTimelineBytes, ProcAt::Rcx, 0x22758F0, kTimelineEntry3527, 0x227613C, kTimelineOut3527,
-     0x827, 0x1A6A2803039C0874},
+    {Fn::TimelineEvent, 0x227753D, 6, kTimelineBytes, ProcAt::Rcx, 0x2277510, kTimelineEntry3527, 0x2277D5C, kTimelineOut3527,
+     0x827, 0x4A1ED7F0B7FBE39E},
     {Fn::TimelineEventEnd, 0, 0, {}, ProcAt::Rcx},
     {Fn::BlockInteraction, 0, 0, {}, ProcAt::CtxRdx},
     {Fn::SetInteraction, 0, 0, {}, ProcAt::CtxRdx},
-    {Fn::InputBlock, 0x6CD56E, 7, kInputBytes3527, ProcAt::Rcx, 0x6CD560, kInputEntry3527, 0x6CD59F, kInputOut3527, 0x36,
-     0x2386ED143A237F54},
-    {Fn::UIControl, 0x6CD5C5, 6, kUiControlBytes3527, ProcAt::Rcx, 0x6CD5B0, kUiControlEntry3527, 0x6CD729, kUiControlOut3527,
-     0x16C, 0xB6422D722C907FFE},
+    {Fn::InputBlock, 0x6CD8DE, 7, kInputBytes3527, ProcAt::Rcx, 0x6CD8D0, kInputEntry3527, 0x6CD90F, kInputOut3527, 0x36,
+     0x6B21E3CD6D25879B},
+    {Fn::UIControl, 0x6CD935, 6, kUiControlBytes3527, ProcAt::Rcx, 0x6CD920, kUiControlEntry3527, 0x6CDA99, kUiControlOut3527,
+     0x16C, 0x5F3A635513A2956A},
     {Fn::ChangePhasePanelTag, 0, 0, {}, ProcAt::Rcx},
-    {Fn::UIShowMinimap, 0x6D61EE, 6, kMinimapBytes3527, ProcAt::Rcx, 0x6D61A0, kMinimapEntry3663, 0x6D6C22, kMinimapOut3663,
-     0xA3C, 0xFB93C0A7B7BEAE3B},
+    {Fn::UIShowMinimap, 0x6D655E, 6, kMinimapBytes3527, ProcAt::Rcx, 0x6D6510, kMinimapEntry3732, 0x6D6F92, kMinimapOut3732,
+     0xA3C, 0x6528487F5BBC36C8},
     {Fn::UIFindPath, 0, 0, {}, ProcAt::Rcx},
     {Fn::UIStageIcon, 0, 0, {}, ProcAt::Rcx},
-    {Fn::UIStageGuide, 0x6DD50F, 6, kGuideBytes, ProcAt::Rcx, 0x6DD4F0, kGuideEntry3527, 0x6DDAA3, kGuideOut3527, 0x59C,
-     0x2932D3CD3C14D0D7},
+    {Fn::UIStageGuide, 0x6DD87F, 6, kGuideBytes, ProcAt::Rcx, 0x6DD860, kGuideEntry3527, 0x6DDE13, kGuideOut3527, 0x59C,
+     0x0ADDF1FB65705925},
     {Fn::UIStageBackgroundGuide, 0, 0, {}, ProcAt::Rcx},
     {Fn::UIHint, 0, 0, {}, ProcAt::Rcx},
     {Fn::UIHintEnd, 0, 0, {}, ProcAt::Rcx},
@@ -435,14 +463,14 @@ constexpr FnPoint kFnPoints3663[] = {
     {Fn::LookAtEnd, 0, 0, {}, ProcAt::Rcx},
     {Fn::PostProcess, 0, 0, {}, ProcAt::Rcx},
 };
-static_assert(std::size(kFnPoints3663) == kFns);
-constexpr bool fn_points_3663_in_order() {
+static_assert(std::size(kFnPoints3732) == kFns);
+constexpr bool fn_points_3732_in_order() {
     for (size_t i = 0; i < kFns; ++i) {
-        if (static_cast<size_t>(kFnPoints3663[i].fn) != i) return false;
+        if (static_cast<size_t>(kFnPoints3732[i].fn) != i) return false;
     }
     return true;
 }
-static_assert(fn_points_3663_in_order(), "kFnPoints3663 follows gxv::Fn (the hook callbacks index it)");
+static_assert(fn_points_3732_in_order(), "kFnPoints3732 follows gxv::Fn (the hook callbacks index it)");
 
 constexpr uintptr_t kVtStageManager = 0x55C9720;  // pa::ClientSequencerStageManager (RTTI)
 constexpr uint32_t kProc_Mgr = 0x08, kProc_Stage = 0x10, kStage_Key = 0x30;
@@ -456,7 +484,7 @@ uintptr_t g_base = 0;
 // The build and what depends on it: written by guest_x_veto_start before any hook or thread.
 bool g_3527 = false;  // 3527's layout (3527, 3549, 3576, 3663)
 bool g_3576 = false;  // 3576's addresses
-bool g_3663 = false;  // 3663's addresses
+bool g_3732 = false;  // 3663's addresses
 const FnPoint* g_points = kFnPoints;
 uintptr_t g_vt_mgr = kVtStageManager;
 uintptr_t g_world_slot = off::kWorldSystemSlot;
@@ -597,7 +625,7 @@ void on_v1_3527(safetyhook::Context& ctx) noexcept {
     if (v == Verdict::OwnManager) g_v1_own_m.fetch_add(1, std::memory_order_relaxed);
     if (a == Act::None) return;
     if (a == Act::Veto) {
-        ctx.rip = g_base + (g_3663 ? kV1Out3663 : g_3576 ? kV1Out3576 : kV1Out3527);
+        ctx.rip = g_base + (g_3732 ? kV1Out3732 : g_3576 ? kV1Out3576 : kV1Out3527);
         g_v1_vetoed.fetch_add(1, std::memory_order_relaxed);
     } else {
         g_v1_would.fetch_add(1, std::memory_order_relaxed);
@@ -677,7 +705,7 @@ void replay_way_out(gxv::Fn fn, safetyhook::Context& ctx) noexcept {
             ctx.rbx = ctx.rdx;  // 3527: the same, 0x6A1065; the try-lock is 0x2227820, the lea 0x6A113B
             ctx.r14 = ctx.rcx;
             ctx.rdi = 0;
-            ctx.rax = g_base + (g_3663   ? kUiControlRaxRva3663
+            ctx.rax = g_base + (g_3732   ? kUiControlRaxRva3732
                                 : g_3576 ? kUiControlRaxRva3576
                                 : g_3527 ? kUiControlRaxRva3527
                                          : kUiControlRaxRva);
@@ -691,7 +719,7 @@ void replay_way_out(gxv::Fn fn, safetyhook::Context& ctx) noexcept {
             break;
         case Fn::UIStageGuide:  // 0x5F3AAF mov r14,r8 ; mov rbx,rcx ; mov eax,0xFFFF ; cmp ... ; jcc 0x5F4031
             // 3663: 0x6DD50F mov r14,r8 ; mov rbx,rcx (2976's registers again) ; jcc 0x6DDAA3
-            if (g_3527 && !g_3663) {  // 0x6B0FBF mov r15,r8 ; mov rdi,rcx ; mov eax,0xFFFF ; cmp ... ; jcc 0x6B1543
+            if (g_3527 && !g_3732) {  // 0x6B0FBF mov r15,r8 ; mov rdi,rcx ; mov eax,0xFFFF ; cmp ... ; jcc 0x6B1543
                 ctx.r15 = ctx.r8;
                 ctx.rdi = ctx.rcx;
             } else {
@@ -930,7 +958,7 @@ DWORD WINAPI install_thread(LPVOID) {
     IMAGE_NT_HEADERS64 nt{};
     std::vector<gad::Section> secs;
     if (g_base != off::kImageBase || !game::safe_read(g_base, &dos, sizeof dos) ||
-        !game::safe_read(g_base + dos.e_lfanew, &nt, sizeof nt) || !(game::legacy_layout() || g_3576 || g_3663) ||
+        !game::safe_read(g_base + dos.e_lfanew, &nt, sizeof nt) || !(game::legacy_layout() || g_3576 || g_3732) ||
         !p8_exe_sections(g_base, secs)) {
         log::error("GuestXVeto: unsupported game build or unreadable sections; nothing installed");
         return 0;
@@ -944,9 +972,9 @@ DWORD WINAPI install_thread(LPVOID) {
     if (g_stage.load() != 0 && g_3527) {
         // V1 with the frame it relies on and the whole epilogue it resumes at. V0 and the X context's clear point only
         // counted a load request inside an X context: not ported (V1 is the veto).
-        const uintptr_t v1_entry = g_3663 ? kV1Entry3663 : g_3576 ? kV1Entry3576 : kV1Entry3527;
-        const uintptr_t v1_point = g_3663 ? kV1Point3663 : g_3576 ? kV1Point3576 : kV1Point3527;
-        const uintptr_t v1_out = g_3663 ? kV1Out3663 : g_3576 ? kV1Out3576 : kV1Out3527;
+        const uintptr_t v1_entry = g_3732 ? kV1Entry3732 : g_3576 ? kV1Entry3576 : kV1Entry3527;
+        const uintptr_t v1_point = g_3732 ? kV1Point3732 : g_3576 ? kV1Point3576 : kV1Point3527;
+        const uintptr_t v1_out = g_3732 ? kV1Out3732 : g_3576 ? kV1Out3576 : kV1Out3527;
         if (context_ok(secs, v1_entry, kV1EntryBytes3527, "Loading's prologue") &&
             context_ok(secs, v1_out, kV1OutBytes3527, "Loading's epilogue") &&
             p8_install_mid(g_base, secs, v1_point, kV1Patch3527, kV1Bytes3527, on_v1_3527, g_v1_hook, "GuestXVeto",
@@ -1040,18 +1068,21 @@ DWORD WINAPI install_thread(LPVOID) {
 void guest_x_veto_start(const std::string& stage_mode, const std::string& camera_mode, const std::string& ui_mode,
                         const std::string& ui_allow, const std::string& route_mode) {
     g_3576 = game::current_build() == game::Build::v3576;
-    g_3663 = game::current_build() == game::Build::v3663;
-    g_3527 = game::current_build() == game::Build::v3527 || g_3576 || g_3663;
+    g_3732 = game::current_build() == game::Build::v3732;
+    g_3527 = game::current_build() == game::Build::v3527 || g_3576 || g_3732;
     if (g_3527) {
-        g_points = g_3663 ? kFnPoints3663 : g_3576 ? kFnPoints3576 : kFnPoints3527;
-        g_vt_mgr = g_3663 ? kVtStageManager3663 : g_3576 ? kVtStageManager3576 : kVtStageManager3527;
+        g_points = g_3732 ? kFnPoints3732 : g_3576 ? kFnPoints3576 : kFnPoints3527;
+        g_vt_mgr = g_3732 ? kVtStageManager3732 : g_3576 ? kVtStageManager3576 : kVtStageManager3527;
         // [[stage+0x50]+0x1B8]: SetInteraction 0x255D3F0 (3663: 0x25CFA60 / 0x25CFA69, and [stage+0x60] at 0x25CFA87)
+        // 3732 (static, 2026-11-21; never run): unchanged; SetInteraction 0x25D1E30 reads them at 0x25D1EF0 / 0x25D1EF9
+        // and [stage+0x60] at 0x25D1F17; TimelineEvent's vf8 0x25D1A50 takes rcx = [[rdx]+0x60].
         g_stage_data = 0x50;
         g_stage_proc = 0x60;
         if (const auto* profile = game::reader_profile()) g_world_slot = profile->world_system;
         if (g_3576) g_world_slot = 0x71C0100;  // core_globals_3576.json (no reader profile for 3576 yet)
         // Build 1.0.0.3663 (static, 2026-11-13; never run): WorldSystem, profile_s2.h's rva3663().
-        if (g_3663) g_world_slot = 0x72451C0;
+        // 3732 (static, 2026-11-21; never run): was 0x72451C0; the WorldSystem global of the port brief.
+        if (g_3732) g_world_slot = 0x724B350;
     }
     bool bad_s = false, bad_c = false, bad_u = false;
     Mode stage = gxv::parse_mode(stage_mode, &bad_s);

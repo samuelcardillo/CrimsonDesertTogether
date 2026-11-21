@@ -24,9 +24,15 @@ inline constexpr uint32_t kPeTimestamp3549 = 0x6AEB7D59, kImageSize3549 = 0x13CF
 // is unchanged. Each module needs its own port to it (docs/research/port-3576.md); until then it refuses it.
 inline constexpr uint32_t kPeTimestamp3576 = 0x6AED2E85, kImageSize3576 = 0x13CC4000;
 // 1.0.0.3663 (Steam, 2026-11-13 ~19:28): another new layout (vtables +0x79000..+0x7E000, code shifted, globals
-// +0x85000) and a RENUMBERED Troc catalogue (native_opcode.h). docs/research/port-3663.md. Nothing ported yet: every
-// module refuses it (their gates admit only the builds they carry tables for).
-inline constexpr uint32_t kPeTimestamp3663 = 0x6AF5D198, kImageSize3663 = 0x144E9000;
+// +0x85000) and a RENUMBERED Troc catalogue (native_opcode.h). docs/research/port-3663.md; ported that night, module
+// by module. It was PE 0x6AF5D198, image 0x144E9000; it is no longer admitted (next paragraph).
+// 1.0.0.3732 (Steam, 2026-11-19 ~10:26; ported 2026-11-21, docs/research/port-3732.md): 3663 recompiled. The Troc
+// catalogue is 3663's message for message (names, numbers, kinds, sizes: opcode_mapping_3663_3732.json); the code
+// shifted by +0x370 .. +0x50xx, vtables and globals by about +0x5000 .. +0x6200. Steam replaces the exe, so nobody
+// can run 3663 any more: its tables were RETARGETED to 3732 in place and every `3663` identifier renamed, so
+// Build::v3732 / is_3732() / k...3732 are what the 3663 ones were. Comments written before 2026-11-21 that say 3663
+// describe how a value was found on 3663, with 3663's addresses; each retargeted value has a `// 3732 (...)` note.
+inline constexpr uint32_t kPeTimestamp3732 = 0x6AFDC0CF, kImageSize3732 = 0x13C7E000;
 
 // The running exe's PE identity; zero if it is not a 64-bit image at the game's fixed base.
 struct PeIdentity {
@@ -63,9 +69,9 @@ inline bool is_3576() noexcept {
     return id.timestamp == kPeTimestamp3576 && id.image_size == kImageSize3576;
 }
 
-inline bool is_3663() noexcept {
+inline bool is_3732() noexcept {
     const PeIdentity id = pe_identity();
-    return id.timestamp == kPeTimestamp3663 && id.image_size == kImageSize3663;
+    return id.timestamp == kPeTimestamp3732 && id.image_size == kImageSize3732;
 }
 
 inline Build current_build() noexcept {
@@ -73,7 +79,7 @@ inline Build current_build() noexcept {
     if (id.timestamp == build_2976::kPeTimestamp) return Build::v2976;
     if ((id.timestamp == kPeTimestamp3527 && id.image_size == kImageSize3527) || is_3549()) return Build::v3527;
     if (is_3576()) return Build::v3576;
-    if (is_3663()) return Build::v3663;
+    if (is_3732()) return Build::v3732;
     return Build::unsupported;
 }
 
@@ -102,9 +108,17 @@ inline bool layout_3527() noexcept {
 // LoadingFieldDataAck 0xCD6E00 (entry stride 56), MainPlayerDataStartAck 0xCB72E0; MoveData 0x26A8CE0, StartAction
 // A/B 0x26A6F70 / 0x26A7570, Path 0x14CB240 / 0x14CB150, Transform 0x1644720, quaternion 0x1644640, the stream read
 // 0x1643CD0 (data +0x20, length +0x28, cursor +0x2C), the MoveField entry 0x26AB5D0. So its payloads are 3527's.
+// 3732 (static, 2026-11-21; never run): compared again with the saved 3527 listings, operand by operand (only call /
+// jump targets, RIP displacements and jump-table bases may differ): 0 differences in the seven handlers (whole .pdata
+// ranges; by their Troc vtable's slot 2, troc_mapping_3663_3732.json) and in the thirteen helpers their calls lead to.
+// The addresses above became: MoveActorReq 0x2C57760, MoveActorAck 0xCA9500, StartActionReq 0x2C4BA30, StartActionAck
+// 0xC9D460 (these three: the same seven jump-table cases), MoveFieldAck 0xCD57C0, LoadingFieldDataAck 0xCD7850 (stride
+// 56), MainPlayerDataStartAck 0xCB7D30; MoveData 0x26AB440, StartAction A/B 0x26A96D0 / 0x26A9CD0, Path 0x14CCDC0 /
+// 0x14CCCD0, Transform 0x16462A0, quaternion 0x16461C0, the stream read 0x1645850 (data +0x20, length +0x28, cursor
+// +0x2C), the MoveField entry 0x26ADD30. So 3732's payloads are 3527's too.
 inline Build wire_build() noexcept {
     const Build b = current_build();
-    return b == Build::v3576 || b == Build::v3663 ? Build::v3527 : b;
+    return b == Build::v3576 || b == Build::v3732 ? Build::v3527 : b;
 }
 
 inline Build native_build() noexcept { return current_build(); }
@@ -120,16 +134,16 @@ inline bool validate_native_catalog() noexcept {
     if (catalog.empty() || catalog.size() > kMaxCatalog) return false;
     const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     // The singleton block (troc_mapping_*.json instance_range); 3576's moved by +0x2000, 3663's
-    // (troc_mapping_3576_3663.json) is 0x6F14E10..0x6F48840.
-    const uintptr_t begin = build == Build::v3663   ? 0x6F14E10
+    // (troc_mapping_3663_3732.json, build 3732) is 0x6F1AE10..0x6F4E840.
+    const uintptr_t begin = build == Build::v3732   ? 0x6F1AE10
                             : build == Build::v3576 ? 0x6E90D10
                             : build == Build::v3527 ? 0x6E8ED10
                                                     : 0x6A51AE0;
-    const uintptr_t end = build == Build::v3663   ? 0x6F48840
+    const uintptr_t end = build == Build::v3732   ? 0x6F4E840
                           : build == Build::v3576 ? 0x6EC4400
                           : build == Build::v3527 ? 0x6EC2400
                                                   : 0x6A82C80;
-    const uintptr_t image_limit = build == Build::v3663   ? kImageSize3663
+    const uintptr_t image_limit = build == Build::v3732   ? kImageSize3732
                                   : build == Build::v3576 ? kImageSize3576
                                   : build == Build::v3527 ? 0x13EB2000
                                                           : 0x10000000;
@@ -229,15 +243,26 @@ inline const ReaderProfile* reader_profile() noexcept {
     //   pattern read 0x302CB37); slots 1/2 are the unique patterns 0x3C48340 / 0x3EB1120;
     // - camera block 0x430: slot 11 (0x3EB3D80) writes the near plane at [[cam+0x430]+0x860] and slot 21 (0x3EAB810)
     //   reads +0x430 / +0x438, as in 3576. The stat container offsets are 3527's (not re-derived; reads are bounded).
-    static constexpr ReaderProfile current3663{
-        Build::v3663, "1.0.0.3663", 0x72451C0, 0x7231330, 0x7253E60,
-        0x59C2760, 0x5990BF0, 0x59C1660, 0x5998B60, 0x614A050,
-        0x71602A8, 0x6169B58, 0x430};
+    // Retargeted to build 1.0.0.3732, value by value (the lines above describe 3663 with 3663's addresses):
+    // 3732 (static, 2026-11-21; never run): version string was "1.0.0.3663" (the log line "Game reader enabled").
+    // 3732 (static, 2026-11-21; never run): world was 0x72451C0; both AOB patterns (0xCD6C3B, 0x3AF206), 3197 references, 67 sites read [[[world]+0x30]+0x50].
+    // 3732 (static, 2026-11-21; never run): chunk origin was 0x7231330; world_offset_sub 0x39FBA01 (`mov rcx,[rbx+0x2D0]`; vsubps at 0x39FBA16; `vmovups [rcx+0x90],xmm0`), 229 references.
+    // 3732 (static, 2026-11-21; never run): static position was 0x7253E60; pattern write 0xA61F47 (z 0x725A048 at 0xA61F4F), read 0xA61E46, no other reference.
+    // 3732 (static, 2026-11-21; never run): manager was 0x59C2760, actor 0x5990BF0, control 0x59C1660, status 0x5998B60; by RTTI name (vtable_map_3663_3732.json).
+    // 3732 (static, 2026-11-21; never run): physics was 0x614A050; the inner's constructor allocates 0x270 bytes (0x39F44DF), calls 0x3CEFB70 (jmp to the protected 0x1125BC70, vptr written at 0x1125BC88) and stores the result at inner+0x2D0 (0x39F4557); slot 1 0x3CEFDF0 -> 0x1125D690 writes the same vptr (0x1125D6A1); it moved by +0x5358 like the camera's; 37 sites read [[x+0x140]+0x2D0]; 0x3CF00C5 passes physics+0x60.
+    // 3732 (static, 2026-11-21; never run): camera slot was 0x71602A8; the camera constructor 0x3EA7BC0 (rdi = this) stores rdi there at 0x3EA8FB3; the only other reference is the pattern read 0x3031087.
+    // 3732 (static, 2026-11-21; never run): camera vtable was 0x6169B58; the constructor writes it at 0x3EA7C0A; its slots 1/2 are the unique patterns 0x3C4C890 / 0x3EB5610.
+    // 3732 (static, 2026-11-21; never run): camera block 0x430 unchanged; slot 11 (0x3EB8270) writes [[cam+0x430]+0x860] and 0 at +0x864, slot 21 (0x3EAFD00) reads +0x430 / +0x438.
+    // 3732 (static, 2026-11-21; never run): stat container: 0x194EBC0 (the get_stat_entry pattern) returns [container+0x58] + slot * 0x90 and 114 of its 148 callers pass [x+0x18] loaded right before the call; count +0x60 and the entry fields not re-derived.
+    static constexpr ReaderProfile current3732{
+        Build::v3732, "1.0.0.3732", 0x724B350, 0x7237470, 0x725A040,
+        0x59C7A08, 0x59961D0, 0x59C6748, 0x599DC40, 0x614F3A8,
+        0x7166368, 0x616EEB0, 0x430};
     switch (current_build()) {
         case Build::v2976: return &old;
         case Build::v3527: return is_3549() ? &current3549 : &current;
         case Build::v3576: return &current3576;
-        case Build::v3663: return &current3663;
+        case Build::v3732: return &current3732;
         default: return nullptr;
     }
 }

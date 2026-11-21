@@ -11,7 +11,10 @@ import time
 sys.path.insert(0, r'D:/SteamLibrary/steamapps/common/Crimson Desert/multi/tools/porting')
 from live_reader_check import Reader  # noqa: E402
 
-BUFS = (('grid', 0x75ACF30, 0x410), ('wave', 0x75AD350, 0x770), ('misc', 0x6F4CBD0, 0x50))
+# 3732 (2026-11-21; 3663: 0x75ACF30, 0x75AD350, 0x6F4CBD0, update 0x3FCF410): the wave buffer is the operand of the
+# same instruction of the fill routine (0x3FD2C40); the grid is 0x420 before it as it was; the third one is the
+# update's (0x3FD3900) nearest operand and is NOT checked: look at what it holds before trusting it.
+BUFS = (('grid', 0x75B3170, 0x410), ('wave', 0x75B3590, 0x770), ('misc', 0x6F52BA0, 0x50))
 
 
 def base(r):

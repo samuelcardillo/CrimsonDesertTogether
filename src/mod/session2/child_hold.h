@@ -14,6 +14,13 @@
 // NotifyAppear +0x67B20, its callers +0x67A10, StartActionReq::vf2 +0x666E0, the restore writer +0x72750, the realm mark
 // +0x63280 (child_hold.cpp, kHoldChecks3663); three call rel32 are new; TLS realm +0x1EB and TransformSync sector +0x548
 // unchanged.
+// 3732 (static, 2026-11-21; never run): Build::v3663 is now 1.0.0.3732 (3663 cannot be run any more); kHoldChecks3663
+// holds its sites, the same hooks and checks in the same functions with 3663's bytes. Of the offsets below, re-read in
+// 3732's code: actor key +0x60, components +0x68, CC +0x40 and its actor +8, restore [CC+0x40]+0x30, TransformSync
+// +0x1A0 and its sector +0x548, info +0x88/+1, owner +0xA0, controller +0x90, sector observers +0x68/+0x70 (16-byte
+// entries), user's main character +0xD0, hierarchy +0x1B8 with its parent +0x1C and its actor +8 (the components'
+// shared init 0x266BBD0 stores the owner there), the Req wrapper +0x10/+0x18 and raw +3/+5 (addresses in
+// child_hold.cpp). Not re-read: the actor's own parent key +0xAC (kActorParent).
 // Option D, D-53 (docs/research/pendientes/companeros-publicacion.md §3): the
 // server does not publish a child of ANY user (pet, horse, companion; the
 // host's as well as user 2's) to the other users until that child has its

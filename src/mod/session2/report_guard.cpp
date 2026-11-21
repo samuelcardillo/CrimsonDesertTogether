@@ -34,7 +34,9 @@ constexpr uintptr_t kReporter3576 = 0x14F7E00;
 // Build 1.0.0.3663 (static, 2026-11-13; never run): the same 32 bytes, unique in the code section, at 0x1536D20
 // (3576 +0x3EF20), a .pdata entry of the same 0x1D0 bytes (0x1536D20..0x1536EF0); the same Sentry reporter: the
 // [rcx] "Sentry up" check first, the "Project" and "Message" tags, "[Pentry] sendMessageEvent".
-constexpr uintptr_t kReporter3663 = 0x1536D20;
+// 3732 (static, 2026-11-21; never run): was 0x1536D20; the same 32 bytes (kReporter3527Head), the only match in the
+// code section, a .pdata entry of the same 0x1D0 bytes (0x15388A0..0x1538A70).
+constexpr uintptr_t kReporter3732 = 0x15388A0;
 constexpr uint32_t kMaxPaths = 8;
 constexpr size_t kMaxText = 260;
 constexpr uint64_t kMaxLogged = 16;  // a broken loop must not flood the log
@@ -55,7 +57,7 @@ ReporterProfile reporter_profile() noexcept {
         case game::Build::v2976: return {kReporter, kReporterHead, sizeof kReporterHead};
         case game::Build::v3527: return {kReporter3527, kReporter3527Head, sizeof kReporter3527Head};
         case game::Build::v3576: return {kReporter3576, kReporter3527Head, sizeof kReporter3527Head};
-        case game::Build::v3663: return {kReporter3663, kReporter3527Head, sizeof kReporter3527Head};
+        case game::Build::v3732: return {kReporter3732, kReporter3527Head, sizeof kReporter3527Head};
         default: return {};
     }
 }

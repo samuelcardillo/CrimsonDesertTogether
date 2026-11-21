@@ -517,8 +517,12 @@ void observer_seq_copy_configure(const std::string& mode, const std::string& onl
         // 92 + 11 n; the 2810 (0x2D42250, 0xA63): 17 bytes, the u64 id at +4; the 2981 (0x2D43070, 0xAC0): u8 | u32
         // actor | u64 id | ...; the 2322 (0x2C7A9A0, 0xB7D): u32 actor; the 2174 (0x2C7A2B0, 0x93C): 17 + 0x30 n
         // (0x26AB510). The 2005 / 2516 and the C>S Reqs' u64 @0 were not re-read (the session core's payloads).
+        // 3732 (static, 2026-11-21; never run): no value here; the catalogue is 3663's (same native ids) and the 2661
+        // serializer, now 0x2D46700 (0x934 at 0x2D468AF), still emits u8 4 | u32 actor | the play data 0x26B5940 (87
+        // bytes: 21 writes, the owner u32 first, then the u64 id) | u32 | u32 | u8 | u8 | u8 per binding: prefix 92.
+        // The others only located by their opcode writes: 2810 0x2D46CE0, 2981 0x2D47CB6, 2322 0x2C7F527, 2174 0x2C7EEDA.
         const game::Build b = game::current_build();
-        const size_t prefix = b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3663
+        const size_t prefix = b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3732
                                   ? osq::kPreparePrefix3527
                                   : osq::kPreparePrefix;
         g_prepare_prefix.store(prefix);

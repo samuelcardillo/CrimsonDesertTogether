@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "mod/session2/remote_motion_logic.h"
@@ -137,7 +138,23 @@ void test_byte_site() {
     x.vsize = 0x1000;
     x.flags = 0xE0000020;
     rwx.push_back(x);
-    CHECK(rmo::check_data_byte(rwx, 0x18000010) == rmo::ByteSite::Executable);
+    // An executable and writable section is the protected one whatever it is called (by flags, never by name).
+    CHECK(rmo::check_data_byte(rwx, 0x18000010) == rmo::ByteSite::Xtls);
+    // 1.0.0.3732 (2026-11-21): the protector gave the name ".xtls" to the plain read/write data section, where the
+    // wall-up byte lives (exe+0x7259480), and ".text1" to the protected one. The name-based check refused the byte.
+    std::vector<rmo::SectionInfo> s3732;
+    for (const auto& [name, va, vsize, flags] :
+         {std::tuple{".xpdata", 0x1000u, 0x5617000u, 0x60000020u}, std::tuple{".xtls", 0x6D5C000u, 0x872000u, 0xC0000040u},
+          std::tuple{".text1", 0x7ACB000u, 0xBD0F7FCu, 0xE0000020u}}) {
+        rmo::SectionInfo s;
+        std::memcpy(s.name, name, std::strlen(name));
+        s.va = va;
+        s.vsize = vsize;
+        s.flags = flags;
+        s3732.push_back(s);
+    }
+    CHECK(rmo::check_data_byte(s3732, 0x7259480) == rmo::ByteSite::Ok);
+    CHECK(rmo::check_data_byte(s3732, 0x8000000) == rmo::ByteSite::Xtls);
     CHECK(rmo::check_data_byte(secs, 0x400) == rmo::ByteSite::NoSection);
     CHECK(rmo::check_data_byte(secs, 0x70E7000) == rmo::ByteSite::NotWritable);  // first byte past .rdata
     CHECK(rmo::page_writable_data(0x1000, 0x04));

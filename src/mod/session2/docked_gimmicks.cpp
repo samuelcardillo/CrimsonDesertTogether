@@ -84,15 +84,17 @@ const Addrs kAddrs3576{dgl::kClientRequest3576, dgl::kClientRequest23576, dgl::k
 // 0x5613000 (its flags: R-X, 0x1000 + 0x5612000); the 2005 record layout of 3527 (game::wire_build(): 3663's payload
 // readers are 3527's, build_profile.h; build_ok() admits 3663 only while it says so); the controller write with its own
 // bytes and the field in rdi.
-const Addrs kAddrs3663{dgl::kClientRequest3663, dgl::kClientRequest23663, dgl::kClientGimmickVtbl3663,
-                       dgl::kClientGimmickRequestSlot3663, dgl::kErrNotControllerGlobal3663, dgl::kClientRequest2Head3527,
-                       dgl::kDockEquip3663, dgl::kDockOther3663, dgl::kDockEquipCallSite3663, dgl::kDockEquipCall3663,
-                       dgl::kControllerWrite3663, dgl::kControllerBlock3663, dgl::kFieldOwnerRead3663,
-                       dgl::kControllerBlockBytes3663, dgl::kServerExecute3663, dgl::kServerUpdate3663,
-                       dgl::kServerUpdateHead3527, 0x5613000, dgl::kRecLayout3527, dgl::kControllerWriteBytes3663,
-                       dgl::kFieldOwnerReadBytes3663, true};
+// 3732 (static, 2026-11-21; never run): the code section's end was 0x5613000; now 0x5618000 (its flags: R-X, 0x1000 +
+// 0x5617000). docked_gimmicks_logic.h's 3663 table holds 3732's values; the field is still in rdi at the write.
+const Addrs kAddrs3732{dgl::kClientRequest3732, dgl::kClientRequest23732, dgl::kClientGimmickVtbl3732,
+                       dgl::kClientGimmickRequestSlot3732, dgl::kErrNotControllerGlobal3732, dgl::kClientRequest2Head3527,
+                       dgl::kDockEquip3732, dgl::kDockOther3732, dgl::kDockEquipCallSite3732, dgl::kDockEquipCall3732,
+                       dgl::kControllerWrite3732, dgl::kControllerBlock3732, dgl::kFieldOwnerRead3732,
+                       dgl::kControllerBlockBytes3732, dgl::kServerExecute3732, dgl::kServerUpdate3732,
+                       dgl::kServerUpdateHead3527, 0x5618000, dgl::kRecLayout3527, dgl::kControllerWriteBytes3732,
+                       dgl::kFieldOwnerReadBytes3732, true};
 const Addrs& addrs() noexcept {
-    static const Addrs& a = game::current_build() == game::Build::v3663   ? kAddrs3663
+    static const Addrs& a = game::current_build() == game::Build::v3732   ? kAddrs3732
                             : game::current_build() == game::Build::v3576 ? kAddrs3576
                             : game::current_build() == game::Build::v3527 ? kAddrs3527
                                                                           : kAddrs2976;
@@ -716,15 +718,15 @@ void install_interact(std::span<const gad::Section> secs) {
         return;
     }
     const game::Build build = game::current_build();
-    if (build != game::Build::v3527 && build != game::Build::v3576 && build != game::Build::v3663) {
+    if (build != game::Build::v3527 && build != game::Build::v3576 && build != game::Build::v3732) {
         log::error("GimmickInteract: guest_gimmick_interact=1 has no compare addresses for this build; it stays trace");
         return;
     }
     // 3576 / 3663: the same compares (3527's bytes and patches) at docked_gimmicks_logic.h's addresses of the build.
-    const uintptr_t check1 = build == game::Build::v3663   ? dgl::kClientCheck3663
+    const uintptr_t check1 = build == game::Build::v3732   ? dgl::kClientCheck3732
                              : build == game::Build::v3576 ? dgl::kClientCheck3576
                                                            : dgl::kClientCheck3527;
-    const uintptr_t check2 = build == game::Build::v3663   ? dgl::kClientCheck23663
+    const uintptr_t check2 = build == game::Build::v3732   ? dgl::kClientCheck23732
                              : build == game::Build::v3576 ? dgl::kClientCheck23576
                                                            : dgl::kClientCheck23527;
     if (!p8_install_mid(g_base, secs, check1, dgl::kClientCheckPatch3527, dgl::kClientCheckBytes3527, &gi_compare_mid,
@@ -834,7 +836,7 @@ bool build_ok() {
     // 3663: only while its 2005 payload is 3527's (game::wire_build(), the record layout kAddrs3663 uses).
     return g_base == g2976::kImageBase &&
            (b == game::Build::v2976 || b == game::Build::v3527 || b == game::Build::v3576 ||
-            (b == game::Build::v3663 && game::wire_build() == game::Build::v3527));
+            (b == game::Build::v3732 && game::wire_build() == game::Build::v3527));
 }
 
 // ---------------------------------------------------------------- the module's thread
@@ -1659,9 +1661,9 @@ bool docked_gimmicks_ctl_write_for_user2(const char* who) noexcept {
         // 3527 / 3576 / 3663: user2_npc_control is not ported; only docked_gimmicks' read-only use of the hook is
         // verified there.
         const game::Build b = game::current_build();
-        if (b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3663) {
+        if (b == game::Build::v3527 || b == game::Build::v3576 || b == game::Build::v3732) {
             log::warn("{}: user2_npc_control's use of the server's controller write is not ported to 1.0.0.{}; REFUSED",
-                      who, b == game::Build::v3663 ? 3663 : b == game::Build::v3576 ? 3576 : 3527);
+                      who, b == game::Build::v3732 ? 3732 : b == game::Build::v3576 ? 3576 : 3527);
             return false;
         }
         return ctl_write_acquire(kCtlUserU2, who);
@@ -1775,7 +1777,7 @@ bool start_common(bool guest) {
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     if (!build_ok()) {
         g_common.store(-1);
-        log::error("DockedGimmicks: unsupported game build (not 1.0.0.2976, 1.0.0.3527, 1.0.0.3576 or 1.0.0.3663); docked_gimmicks "
+        log::error("DockedGimmicks: unsupported game build (not 1.0.0.2976, 1.0.0.3527, 1.0.0.3576 or 1.0.0.3732); docked_gimmicks "
                    "and gimmick_event_dedup stay off");
         return false;
     }
@@ -1793,9 +1795,9 @@ void gimmick_event_dedup_start(const std::string& raw, bool guest) {
     // 3527: the 2779 / 2250 layouts this mode parses have not been checked (no 2779 in the captures); only docked_gimmicks
     // is ported. As before this module knew 3527, it stays off there.
     if (game::current_build() == game::Build::v3527 || game::current_build() == game::Build::v3576 ||
-        game::current_build() == game::Build::v3663) {
+        game::current_build() == game::Build::v3732) {
         log::warn("GimmickEventDedup: not ported to 1.0.0.{} (2779 / 2250 unverified); gimmick_event_dedup stays off",
-                  game::current_build() == game::Build::v3663   ? 3663
+                  game::current_build() == game::Build::v3732   ? 3732
                   : game::current_build() == game::Build::v3576 ? 3576
                                                                 : 3527);
         return;

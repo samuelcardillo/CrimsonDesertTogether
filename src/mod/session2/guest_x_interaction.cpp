@@ -84,14 +84,39 @@ const Points kPoints3576{isl::kPointA3576, isl::kPointR3576, isl::kPointF3576, i
 //   0x59D57E8 (42 slots, 3576 41; only its address is compared).
 // X's chain (kMgr_Actor, kComps_Seq, kSeqComp_Mgr) is 3576's, not re-derived (36 sites in 3663 read
 // [[[r+0x68]+0xA8]+0x18]; the manager's vtable has no reference in normal code to confirm it from).
-constexpr isl::MgrLayout kLayout3663{0x138, 0x13C, 0x148, 0x150};
-constexpr uint8_t kBytesR3663[] = {0x48, 0x8D, 0x8D, 0xE0, 0x08, 0x00, 0x00};
-constexpr uint8_t kCtxLookupBytes3663[] = {0x4D, 0x8B, 0x45, 0x20, 0x48, 0x8D, 0x95, 0xE0, 0x08, 0x00, 0x00,
-                                           0x48, 0x8B, 0xCF, 0xE8, 0x97, 0x6A, 0xE6, 0xFF};
-const Points kPoints3663{0x235EC69, 0x235ECF5, 0x235EF99, 0x235EC5E, 0x235ECA6,
-                         isl::kPatchA3527, isl::kPatchR3527, isl::kPatchF3527, isl::kBytesA3527, kBytesR3663,
-                         isl::kBytesF3527, isl::kCtxABytes3527, kCtxLookupBytes3663, isl::kRbpMgrUsed3527,
-                         0x59C97C0, 0x59D57E8, kLayout3663, "A 0x235EC69, R 0x235ECF5, F 0x235EF99 (build 3663)"};
+// The values below are 1.0.0.3732's (the comment above describes 3663 with 3663's addresses). The function moved as one
+// block, +0x1C70: 0x23607D0 (.pdata 0x23607D0-0x2360C36, the same 0x466 B; one caller, 0x2359CE8, with rcx = the entry
+// and rdx = [r15+8]); r13 = rcx, r15 = rdx, [rcx+0x20] & 0x1FFFFFFF first (0x23607FD), no push in the body, no branch of
+// the function into a patch.
+// 3732 (static, 2026-11-21; never run): kLayout3663 unchanged; the lookup 0x21C7370 (was 0x21C5750) reads +0x13C
+//   (count), +0x138, +0x148, +0x150, 0x100-B buckets, pairs from +8, element +8 / +0x10, instance +0x15; the hash
+//   0x1588060 still lea ebx,[rdx-0x2145E233].
+constexpr isl::MgrLayout kLayout3732{0x138, 0x13C, 0x148, 0x150};
+// 3732 (static, 2026-11-21; never run): kBytesR3663 unchanged; the bytes at 0x2360965 (lea rcx,[rbp+0x8E0]).
+constexpr uint8_t kBytesR3732[] = {0x48, 0x8D, 0x8D, 0xE0, 0x08, 0x00, 0x00};
+// 3732 (static, 2026-11-21; never run): the call's rel32 was 97 6A E6 FF; the bytes at 0x2360916 (call 0x21C7370), the
+//   masked array is unique in the code section.
+constexpr uint8_t kCtxLookupBytes3732[] = {0x4D, 0x8B, 0x45, 0x20, 0x48, 0x8D, 0x95, 0xE0, 0x08, 0x00, 0x00,
+                                           0x48, 0x8B, 0xCF, 0xE8, 0x47, 0x6A, 0xE6, 0xFF};
+// 3732 (static, 2026-11-21; never run): A was 0x235EC69; kBytesA3527, unique in the code section (+0x109 of the
+//   function as before); RAX = the field's vf48, the field at [rsp+0x48].
+// 3732 (static, 2026-11-21; never run): R was 0x235ECF5; kBytesR3663 where both paths after the lookup join (je at
+//   0x236093A and 0x236095F), rsi = the instance or 0, [rbp+0x8F8] the manager used (the dead check 0x21CABF0 reads it
+//   at 0x236098A).
+// 3732 (static, 2026-11-21; never run): F was 0x235EF99; kBytesF3527 at +0x439 as before, BL = the result (0x2360B63 /
+//   0x2360B67 / 0x2360B7A, and 0x2360838), movzx eax,bl after.
+// 3732 (static, 2026-11-21; never run): ctx A was 0x235EC5E; kCtxABytes3527 right before A (mov rcx,[rsp+0x48] ; mov
+//   rax,[rcx] ; call [rax+0x48]).
+// 3732 (static, 2026-11-21; never run): ctx lookup was 0x235ECA6; kCtxLookupBytes3663 (mov r8,[r13+0x20] ; lea
+//   rdx,[rbp+0x8E0] ; mov rcx,rdi ; call), after the lock of [rdi+8] (0x3E5780 at 0x2360910).
+// 3732 (static, 2026-11-21; never run): the vtables were 0x59C97C0 / 0x59D57E8; by RTTI name: pa::ClientField
+//   0x59CE8A8, pa::ClientSequencerStageManager 0x59DA8A8 (42 slots as in 3663).
+// 3732 (static, 2026-11-21; never run): X's chain (kMgr_Actor, kComps_Seq, kSeqComp_Mgr) still not re-derived: 36
+//   sites read [[[r+0x68]+0xA8]+0x18], as in 3663.
+const Points kPoints3732{0x23608D9, 0x2360965, 0x2360C09, 0x23608CE, 0x2360916,
+                         isl::kPatchA3527, isl::kPatchR3527, isl::kPatchF3527, isl::kBytesA3527, kBytesR3732,
+                         isl::kBytesF3527, isl::kCtxABytes3527, kCtxLookupBytes3732, isl::kRbpMgrUsed3527,
+                         0x59CE8A8, 0x59DA8A8, kLayout3732, "A 0x23608D9, R 0x2360965, F 0x2360C09 (build 3732)"};
 const Points* g_pts = &kPoints2976;
 
 uintptr_t g_base = 0;
@@ -487,9 +512,9 @@ DWORD WINAPI install_thread(LPVOID) {
     const game::Build build = game::current_build();
     if (build == game::Build::v3527) g_pts = &kPoints3527;
     if (build == game::Build::v3576) g_pts = &kPoints3576;
-    if (build == game::Build::v3663) g_pts = &kPoints3663;
+    if (build == game::Build::v3732) g_pts = &kPoints3732;
     if (g_base != off::kImageBase ||
-        !(game::legacy_layout() || build == game::Build::v3576 || build == game::Build::v3663) ||
+        !(game::legacy_layout() || build == game::Build::v3576 || build == game::Build::v3732) ||
         !game::safe_read(g_base, &dos, sizeof dos) ||
         !game::safe_read(g_base + dos.e_lfanew, &nt, sizeof nt) || !p8_exe_sections(g_base, secs)) {
         log::error("GuestXInter: unsupported game build or unreadable sections; nothing installed");
@@ -498,8 +523,9 @@ DWORD WINAPI install_thread(LPVOID) {
     const game::ReaderProfile* profile = game::reader_profile();
     // 3576: 0x71C0100 (core_globals_3576.json; no reader profile for 3576 yet). 3663: 0x72451C0 (two AOB patterns,
     // docs/research/port-3663.md).
+    // 3732 (static, 2026-11-21; never run): was 0x72451C0; 3197 references, [[world]+0x30] in the press handler 0xC05440
     const uintptr_t world_slot = build == game::Build::v3576                ? uintptr_t{0x71C0100}
-                                 : build == game::Build::v3663              ? uintptr_t{0x72451C0}
+                                 : build == game::Build::v3732              ? uintptr_t{0x724B350}
                                  : build == game::Build::v3527 && profile ? profile->world_system
                                                                           : off::kWorldSystemSlot;
     for (int i = 0; i < 1200; ++i) {  // WorldSystem (up to 10 minutes), as the other guest modules

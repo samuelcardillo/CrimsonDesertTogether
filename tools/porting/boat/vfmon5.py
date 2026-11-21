@@ -5,7 +5,7 @@ with open(r'D:/SteamLibrary/steamapps/common/Crimson Desert/bin64/CrimsonDesert.
     _h = _f.read(0x400)
 _ts = _st.unpack_from('<I', _h, _st.unpack_from('<I', _h, 0x3C)[0] + 8)[0]
 # The world slot of the installed build: 1.0.0.3663 (PE 0x6AF5D198) or 1.0.0.3576 (0x6AED2E85).
-WORLD_SLOT = {0x6AF5D198: 0x72451C0, 0x6AED2E85: 0x71C0100}[_ts]
+WORLD_SLOT = {0x6AFDC0CF: 0x724B350, 0x6AF5D198: 0x72451C0, 0x6AED2E85: 0x71C0100}[_ts]
 import sys, time, math
 sys.path.insert(0, r'D:/SteamLibrary/steamapps/common/Crimson Desert/multi/tools/porting')
 from live_reader_check import Reader

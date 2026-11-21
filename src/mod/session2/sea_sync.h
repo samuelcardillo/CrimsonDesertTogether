@@ -13,6 +13,8 @@
 //             trains, carried forward to now, are written over this client's own in the frame about to be copied
 //             (guarded writes of 5 words per train). Nothing is written without a fresh sample (1.5 s) of a sea that
 //             moves: then this client's sea goes on by itself from where it is.
+// 3732 (static, 2026-11-21; never run): the address above is 3663's; the routine is exe+0x3FD2C40 there, the same
+// entry bytes (sea_sync.cpp).
 
 #include <cstdint>
 #include <span>

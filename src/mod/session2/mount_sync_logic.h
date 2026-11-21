@@ -1503,6 +1503,11 @@ private:
 // Its output: float pos[3] at +0x0 (in-sector), int16 sector x / z at +0xC / +0xE (0x88E82A / 0x88E82E). Its own
 // current pose comes from 0x4F8220 on TS = [[actor+0x68]+0x1A0], whose fast path copies exactly TS+0xB4..+0xC3 (pos
 // 12 bytes, sector u16 x at +0xC0, z at +0xC2). The actor of mc is [[mc+0x60]+8].
+// 3732 (static, 2026-11-21; never run): NOT retargeted, and NOT what 3732's code tests. The value is 2976's and every
+// build shares it (no table); on 3732 the mode-2 update 0x9A5950 starts with `lea rbx,[rcx+0x430]; cmp byte [rbx],1;
+// je <return>` (0x9A597C..0x9A5986): the flag is the first byte of the position buffer, which remote_interp.cpp has at
+// mc+0x430 since 3527. With ride_hold_pos=0 (the default) nothing reads it; with probe or 1 the detour looks at
+// another byte. Left as the 3663 path had it (changing it needs a per-build value: reported to the port's lead).
 inline constexpr uint32_t kMcEmptyFlag = 0x3D0;
 enum class HoldWho : uint8_t { None, Remote, Other };
 // Whose early return this is: the tracked remote player (never the local one), another 0xA actor, or nobody to count.

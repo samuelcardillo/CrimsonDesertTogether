@@ -28,7 +28,16 @@ namespace {
 //   0x620B2C  E8 ..                    call 0x620F90         ; the mount's state
 //   0x620B3F  4C 8D 25 ..              lea r12, [rip+..]     ; where a character that is not riding goes on
 // Nothing jumps into 0x620B19..0x620B20 (the function's only branch near it targets 0x620B13).
-constexpr uintptr_t kPoint = 0x620B19, kSkipTo = 0x620B3F, kWorldSlot = 0x72451C0;
+// Build 1.0.0.3732 (static, 2026-11-21; never run; the listing above is 3663's): the function is 0x620900 (.pdata
+// start, was 0x620590) and the same instructions are 0x370 further on:
+//   0x620E83 cmp r12b,0x10 ; 0x620E87 jne 0x620EAF ; 0x620E89 mov rax,[rbp+0x6F] ; 0x620E8D mov rax,[rax+0x68] ;
+//   0x620E91 mov rcx,[rax+0x30] ; 0x620E95 mov rcx,[rcx+0x448] ; 0x620E9C call 0x621300 ; 0x620EAF lea r12,[rip+..]
+// 3732 (static, 2026-11-21; never run): kPoint was 0x620B19: kPointBytes' 19 bytes are at 0x620E89 and nowhere else in
+// the code section; kSkipTo was 0x620B3F: the target of the jne at 0x620E87 (and of 0x620EA3), kSkipBytes there;
+// [rbp+0x6F] is still the second argument's home slot (mov [rsp+10h],rdx at 0x62090A, eight pushes, lea rbp,[rsp-1Fh]);
+// the branches that land near are 0x620DD5 -> 0x620E83 and the two on 0x620EAF, none into 0x620E89..0x620E90, and no
+// rel32 of the code section lands inside the 8 patched bytes. kWorldSlot was 0x72451C0 (3197 references).
+constexpr uintptr_t kPoint = 0x620E89, kSkipTo = 0x620EAF, kWorldSlot = 0x724B350;
 constexpr uint32_t kPatch = 8, kMountAtRbp = 0x6F;
 constexpr uint8_t kPointBytes[19] = {0x48, 0x8B, 0x45, 0x6F, 0x48, 0x8B, 0x40, 0x68, 0x48, 0x8B,
                                      0x48, 0x30, 0x48, 0x8B, 0x89, 0x48, 0x04, 0x00, 0x00};
@@ -51,8 +60,8 @@ void on_point(safetyhook::Context& ctx) noexcept {
 }
 
 DWORD WINAPI install_thread(void*) {
-    if (game::current_build() != game::Build::v3663) {
-        log::info("RideNullGuard: only for build 3663, off");
+    if (game::current_build() != game::Build::v3732) {
+        log::info("RideNullGuard: only for build 3732, off");
         return 0;
     }
     g_base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));

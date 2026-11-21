@@ -138,18 +138,30 @@ static_assert(sizeof kCheckSiteBytes3576 == sizeof kCheckSiteBytes3527);
 // the function, and the fields after it (comp +0x68 / +0x6C) are read as on 3527. vf188 of ClientChildOnlyInGameActor
 // 0x5990BF0 / ClientNormalInGameActor 0x5991108 is 0x5DABF0: `[rcx+0xC8] != 0` for 5 (kActor_Control unchanged). Code
 // section end 0x5613000 (R-X section 0x1000 + 0x5612000).
-inline constexpr uintptr_t kApply3663 = 0xA548B0;
-inline constexpr uintptr_t kApplyCall3663 = 0xC9DD0B;
-inline constexpr uint8_t kApplyCallBytes3663[5] = {0xE8, 0xA0, 0x6B, 0xDB, 0xFF};  // 0xC9DD0B: call 0xA548B0
-inline constexpr uintptr_t kApplyReturn3663 = 0xC9DD10;
-inline constexpr uintptr_t kCheckSite3663 = 0xA54923;
-inline constexpr uint8_t kCheckSiteBytes3663[] = {  // 0xA54923
+// 3732 (static, 2026-11-21; never run): CatchActionResultAck's vtable is 0x5A1C940 (RTTI pa::TrocTrCatchActionResultAck)
+// and its slot 2 the handler 0xC9E0C0 (3663's + 0xA50), whose call at +0x69B is the only rel32 caller of 0xA55130 (3663's
+// 0xA548B0 + 0x880: kApplyHead at its entry, .pdata 0x4E0 bytes). The check at +0x73 has 3663's instructions; only the
+// lock call's rel32 differs (to 0x3E4FB0, the Actor_Lock MoveField 0x2ECE9D0 also calls), then comp +0x6C / +0x68 as
+// before. The actors' vtable slot +0x188 (ClientChildOnlyInGameActor 0x59961D0 / ClientNormalInGameActor 0x5995CB8) is
+// 0x5DAF30: `[rcx+0xC8] != 0` for 5 (kActor_Control unchanged). Code section end 0x5618000 (R-X 0x1000 + 0x5617000).
+// 3732 (static, 2026-11-21; never run): was 0xA548B0; the handler's call target, kApplyHead once near old + shift.
+inline constexpr uintptr_t kApply3732 = 0xA55130;
+// 3732 (static, 2026-11-21; never run): was 0xC9DD0B; handler (vtable slot 2) + 0x69B, the only caller of 0xA55130.
+inline constexpr uintptr_t kApplyCall3732 = 0xC9E75B;
+// 3732 (static, 2026-11-21; never run): was E8 A0 6B DB FF at 0xC9DD0B; the same call with its new rel32.
+inline constexpr uint8_t kApplyCallBytes3732[5] = {0xE8, 0xD0, 0x69, 0xDB, 0xFF};  // 0xC9E75B: call 0xA55130
+// 3732 (static, 2026-11-21; never run): was 0xC9DD10; the instruction after that call.
+inline constexpr uintptr_t kApplyReturn3732 = 0xC9E760;
+// 3732 (static, 2026-11-21; never run): was 0xA54923; 0xA55130 + 0x73 as on 3663, the array found once there.
+inline constexpr uintptr_t kCheckSite3732 = 0xA551A3;
+// 3732 (static, 2026-11-21; never run): was at 0xA54923; only the lock call's rel32 differs (4D 02 99 FF -> DD FD 98 FF)
+inline constexpr uint8_t kCheckSiteBytes3732[] = {  // 0xA551A3 (3732)
     0x4C, 0x8B, 0xAD, 0xB7, 0x00, 0x00, 0x00, 0x41, 0x80, 0x7D, 0x00, 0x00, 0x0F, 0x84, 0x4D, 0x01, 0x00, 0x00,
     0x49, 0x8B, 0x47, 0x08, 0x48, 0x8D, 0x50, 0x08, 0x48, 0x85, 0xC0, 0x48, 0x0F, 0x44, 0xD7, 0x41, 0xB0, 0x01,
-    0x48, 0x8B, 0x12, 0x48, 0x8D, 0x4D, 0xAF, 0xE8, 0x4D, 0x02, 0x99, 0xFF, 0x90, 0x48, 0x8B, 0x85, 0xCF, 0x00,
+    0x48, 0x8B, 0x12, 0x48, 0x8D, 0x4D, 0xAF, 0xE8, 0xDD, 0xFD, 0x98, 0xFF, 0x90, 0x48, 0x8B, 0x85, 0xCF, 0x00,
     0x00, 0x00, 0x0F, 0xB6, 0x10, 0x49, 0x8B, 0x47, 0x08, 0x48, 0x8B, 0x48, 0x68, 0x48, 0x8B, 0x41, 0x40, 0x48,
     0x8B, 0x48, 0x48, 0x38, 0x91, 0x93, 0x00, 0x00, 0x00, 0x0F, 0x84, 0xC8, 0x00, 0x00, 0x00};
-static_assert(sizeof kCheckSiteBytes3663 == sizeof kCheckSiteBytes3527);
+static_assert(sizeof kCheckSiteBytes3732 == sizeof kCheckSiteBytes3527);
 
 // The chain the comparison reads (the same hops as 0x935E7E..0x935E8E; the same in 3527).
 inline constexpr uint32_t kComp_Owner = 0x08;      // ClientCatchActorComponent -> its actor (the grabber)
